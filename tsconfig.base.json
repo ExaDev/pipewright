@@ -1,22 +1,22 @@
 {
   // The compiler options every program in this workspace shares. Packages are source-only workspace members run by Node's type stripping, so nothing is emitted and `erasableSyntaxOnly` rejects the syntax stripping cannot remove.
   "compilerOptions": {
-    "target": "ES2024",
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
     "lib": ["ES2024"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "verbatimModuleSyntax": true,
-    "isolatedModules": true,
-    "erasableSyntaxOnly": true,
-    "allowImportingTsExtensions": true,
     "noEmit": true,
-    "esModuleInterop": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "strict": true,
+    "target": "ES2024",
+    "types": ["node"],
+    "verbatimModuleSyntax": true
   }
 }
