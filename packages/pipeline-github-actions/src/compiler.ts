@@ -9,7 +9,6 @@ import {
   renderTemplate,
   slugOf,
   type CompileOptions,
-  type ContextKey,
   type EmittedFile,
   type EventKind,
   type Job,
@@ -23,49 +22,14 @@ import {
 } from "@ci-adapters/pipeline-contract";
 import { renderYaml } from "@ci-adapters/yaml-emit";
 
-const PROVIDER = "github-actions";
-
-/**
- * The checkout action, pinned to the commit its v7 tag pointed at when it was resolved, because a tag is a mutable reference and a checkout runs in every job. It is pinned here, in one place, so a bump is a single reviewed change to the adapter rather than an edit to every pipeline.
- */
-const CHECKOUT_ACTION = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
-
-const CONTEXT_EXPRESSION: Readonly<Record<ContextKey, string>> = {
-  event: "github.event_name",
-  refName: "github.ref_name",
-  baseRefName: "github.base_ref",
-  sha: "github.sha",
-  repository: "github.repository",
-  workflow: "github.workflow",
-  runId: "github.run_id",
-};
-
-const EVENT_NAME: Readonly<Record<EventKind, string>> = {
-  push: "push",
-  pullRequest: "pull_request",
-  schedule: "schedule",
-  manual: "workflow_dispatch",
-};
-
-/**
- * The step a gate job starts with. GitHub reports a job skipped because a dependency failed as successful, and a skipped job does not block a required check, so a gate has to run regardless and fail explicitly when any job it needs did not succeed.
- * @see https://docs.github.com/en/actions/using-jobs/using-conditions-to-control-job-execution
- */
-const GATE_STEP = {
-  name: "Fail unless every needed job succeeded",
-  if: "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')",
-  run: "exit 1",
-} as const;
-
-const PERMISSION_SCOPE: Readonly<Record<keyof Permissions, string>> = {
-  actions: "actions",
-  contents: "contents",
-  pullRequests: "pull-requests",
-  issues: "issues",
-  checks: "checks",
-  packages: "packages",
-  identityToken: "id-token",
-};
+import {
+  CHECKOUT_ACTION,
+  CONTEXT_EXPRESSION,
+  EVENT_NAME,
+  GATE_STEP,
+  PERMISSION_SCOPE,
+  PROVIDER,
+} from "./vocabulary.ts";
 
 function quote(text: string): string {
   return `'${text.replaceAll("'", "''")}'`;
