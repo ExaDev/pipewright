@@ -5,8 +5,8 @@ import { join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { samplePipeline } from "@ci-adapters/pipeline-contract";
-import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
+import { samplePipeline } from "@pipewright/pipeline-contract";
+import { createGitLabCiCompiler } from "@pipewright/pipeline-gitlab-ci";
 
 /** The GitLab release whose own linter judges the output. Pinned, because the linter's behaviour is the thing under test. */
 const IMAGE = "gitlab/gitlab-ce:19.4.1-ce.0";

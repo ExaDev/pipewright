@@ -1,8 +1,8 @@
 import { chromium, type Browser } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { createBitbucketPipelinesCompiler } from "@ci-adapters/pipeline-bitbucket";
-import { pipelineSchema, samplePipeline } from "@ci-adapters/pipeline-contract";
+import { createBitbucketPipelinesCompiler } from "@pipewright/pipeline-bitbucket";
+import { pipelineSchema, samplePipeline } from "@pipewright/pipeline-contract";
 
 const VALIDATOR_URL = "https://bitbucket.org/product/pipelines/validator";
 const VERDICT_TIMEOUT_MS = 30_000;

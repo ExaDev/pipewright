@@ -17,7 +17,7 @@ import {
   type RunOptions,
   type Step,
   type StepReport,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 const PROVIDER = "local";
 

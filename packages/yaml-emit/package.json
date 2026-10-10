@@ -1,5 +1,5 @@
 {
-  "name": "@ci-adapters/yaml-emit",
+  "name": "@pipewright/yaml-emit",
   "version": "0.0.0",
   "dependencies": {
     "yaml": "catalog:"

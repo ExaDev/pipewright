@@ -1,4 +1,4 @@
-import type { StepInput } from "@ci-adapters/pipeline-contract";
+import type { StepInput } from "@pipewright/pipeline-contract";
 
 /**
  * Third-party actions pinned to a commit, because a tag is a mutable reference and every job that uses these holds a token. The tag each commit was resolved from is in the name.

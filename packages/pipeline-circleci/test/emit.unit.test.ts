@@ -7,7 +7,7 @@ import {
   pipelineSchema,
   samplePipeline,
   type Pipeline,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 import { createCircleCiCompiler } from "../src/index.ts";
 

@@ -1,9 +1,9 @@
 {
-  "name": "@ci-adapters/pipeline-bitbucket",
+  "name": "@pipewright/pipeline-bitbucket",
   "version": "0.0.0",
   "dependencies": {
-    "@ci-adapters/pipeline-contract": "0.0.0",
-    "@ci-adapters/yaml-emit": "0.0.0",
+    "@pipewright/pipeline-contract": "0.0.0",
+    "@pipewright/yaml-emit": "0.0.0",
     "process-graph": "catalog:"
   },
   "exports": {

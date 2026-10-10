@@ -1,4 +1,4 @@
-import type { FakeState } from "@ci-adapters/platform-contract";
+import type { FakeState } from "@pipewright/platform-contract";
 
 import { runCodec, checkCodec } from "../src/wire.ts";
 

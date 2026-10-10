@@ -3,9 +3,9 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadPipeline, pipelineSchema } from "@ci-adapters/pipeline-contract";
-import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
-import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
+import { loadPipeline, pipelineSchema } from "@pipewright/pipeline-contract";
+import { createGitHubActionsCompiler } from "@pipewright/pipeline-github-actions";
+import { createGitLabCiCompiler } from "@pipewright/pipeline-gitlab-ci";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 

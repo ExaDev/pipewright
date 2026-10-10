@@ -1,4 +1,4 @@
-import type { ContextKey, EventKind, Permissions } from "@ci-adapters/pipeline-contract";
+import type { ContextKey, EventKind, Permissions } from "@pipewright/pipeline-contract";
 
 export const PROVIDER = "github-actions";
 

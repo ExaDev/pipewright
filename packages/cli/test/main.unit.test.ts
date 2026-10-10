@@ -173,7 +173,7 @@ describe("TypeScript pipelines", () => {
       await main(["emit", "--pipeline", "ci/ci.pipeline.ts", "--provider", "github-actions"], h.io),
     ).toBe(0);
     expect(h.files.get(".github/workflows/ci.yml")).toContain(
-      "# Generated from ci/ci.pipeline.ts by ci-adapters.",
+      "# Generated from ci/ci.pipeline.ts by pipewright.",
     );
   });
 
@@ -417,7 +417,7 @@ describe("schema, check-names and platform", () => {
   it("prints usage and exits 2 for no command", async () => {
     const h = harness();
     expect(await main([], h.io)).toBe(2);
-    expect(h.out.join("")).toContain("ci-adapters <command>");
+    expect(h.out.join("")).toContain("pipewright <command>");
   });
 });
 
@@ -436,7 +436,7 @@ describe("import and convert", () => {
     ).toBe(0);
     const text = h.out.join("");
 
-    expect(text).toContain('import { definePipeline } from "@ci-adapters/pipeline-contract";');
+    expect(text).toContain('import { definePipeline } from "@pipewright/pipeline-contract";');
     expect(text).toContain("export default definePipeline({");
     expect(text).toContain('"needs": [\n        "lint"\n      ]');
   });

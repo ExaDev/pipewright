@@ -5,7 +5,7 @@ import {
   definePipeline,
   jobsOf,
   matrixJob,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 const RUNNER = "ubuntu-latest";
 const TOOL = "node packages/cli/src/bin.ts";

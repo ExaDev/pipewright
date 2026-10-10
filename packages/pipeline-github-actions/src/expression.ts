@@ -4,7 +4,7 @@ import {
   type Condition,
   type Operand,
   type PredicateNode,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 import { CONTEXT_OF_EXPRESSION, EVENT_OF_NAME } from "./vocabulary.ts";
 

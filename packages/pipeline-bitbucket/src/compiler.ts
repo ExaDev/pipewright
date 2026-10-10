@@ -12,8 +12,8 @@ import {
   type Pipeline,
   type PipelineCompiler,
   type Step,
-} from "@ci-adapters/pipeline-contract";
-import { commentPath, renderYaml } from "@ci-adapters/yaml-emit";
+} from "@pipewright/pipeline-contract";
+import { commentPath, renderYaml } from "@pipewright/yaml-emit";
 import { dag } from "process-graph";
 
 import {

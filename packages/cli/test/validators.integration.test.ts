@@ -11,11 +11,11 @@ import {
   samplePipeline,
   type PipelineCompiler,
   type SampleFeatures,
-} from "@ci-adapters/pipeline-contract";
-import { createBitbucketPipelinesCompiler } from "@ci-adapters/pipeline-bitbucket";
-import { createCircleCiCompiler } from "@ci-adapters/pipeline-circleci";
-import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
-import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
+} from "@pipewright/pipeline-contract";
+import { createBitbucketPipelinesCompiler } from "@pipewright/pipeline-bitbucket";
+import { createCircleCiCompiler } from "@pipewright/pipeline-circleci";
+import { createGitHubActionsCompiler } from "@pipewright/pipeline-github-actions";
+import { createGitLabCiCompiler } from "@pipewright/pipeline-gitlab-ci";
 
 /**
  * Runs a provider's own validator and rejects with its output when it exits non-zero. A missing binary is a failure, not a skip.

@@ -7,7 +7,7 @@ import {
   type DispatchRequest,
   type Run,
   type RunQuery,
-} from "@ci-adapters/platform-contract";
+} from "@pipewright/platform-contract";
 
 import {
   GITHUB_MAX_PAGE_SIZE,

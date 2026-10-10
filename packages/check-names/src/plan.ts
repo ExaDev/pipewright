@@ -1,4 +1,4 @@
-import type { Pipeline, PipelineCompiler } from "@ci-adapters/pipeline-contract";
+import type { Pipeline, PipelineCompiler } from "@pipewright/pipeline-contract";
 
 /**
  * Which jobs' checks are required: `gates` is the fan-in jobs (those with `needsPolicy: gate`), which is the single branch-protection target a pipeline is built around; `all` is every job.

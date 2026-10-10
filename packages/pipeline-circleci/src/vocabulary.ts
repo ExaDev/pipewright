@@ -1,4 +1,4 @@
-import type { ContextKey } from "@ci-adapters/pipeline-contract";
+import type { ContextKey } from "@pipewright/pipeline-contract";
 
 export const PROVIDER = "circleci";
 export const FILE = ".circleci/config.yml";

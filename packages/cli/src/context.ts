@@ -1,4 +1,4 @@
-import type { ContextKey, RunContext } from "@ci-adapters/pipeline-contract";
+import type { ContextKey, RunContext } from "@pipewright/pipeline-contract";
 
 type Environment = Readonly<Record<string, string | undefined>>;
 type Values = Partial<Record<ContextKey, string>>;

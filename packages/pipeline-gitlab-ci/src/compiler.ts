@@ -18,8 +18,8 @@ import {
   type PredicateHandlers,
   type Step,
   type Trigger,
-} from "@ci-adapters/pipeline-contract";
-import { renderYaml } from "@ci-adapters/yaml-emit";
+} from "@pipewright/pipeline-contract";
+import { renderYaml } from "@pipewright/yaml-emit";
 import { dag } from "process-graph";
 
 import {

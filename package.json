@@ -1,12 +1,12 @@
 {
-  "name": "ci-adapters",
+  "name": "pipewright",
   "description": "Workspace root. Never published: it holds the workspace, the shared tooling configuration and the repository's own self-hosted pipeline definition.",
   "devDependencies": {
-    "@ci-adapters/pipeline-contract": "0.0.0",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@eslint/js": "10.0.1",
     "@exadev/eslint-config": "3.0.0",
+    "@pipewright/pipeline-contract": "0.0.0",
     "@types/node": "26.6.4",
     "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",
@@ -28,7 +28,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ExaDev/ci-adapters.git"
+    "url": "git+https://github.com/ExaDev/pipewright.git"
   },
   "scripts": {
     "ci:check": "node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",

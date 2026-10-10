@@ -1,6 +1,6 @@
 import { describe, it } from "vitest";
 
-import { describeCompilerConformance } from "@ci-adapters/pipeline-contract";
+import { describeCompilerConformance } from "@pipewright/pipeline-contract";
 
 import { createBitbucketPipelinesCompiler } from "../src/index.ts";
 

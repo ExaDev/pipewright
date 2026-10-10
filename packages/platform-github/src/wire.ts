@@ -3,7 +3,7 @@ import {
   runSchema,
   type Conclusion,
   type Run,
-} from "@ci-adapters/platform-contract";
+} from "@pipewright/platform-contract";
 import { z } from "zod";
 
 const STATUS_TO_WIRE = {

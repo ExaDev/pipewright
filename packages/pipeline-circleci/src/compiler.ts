@@ -14,8 +14,8 @@ import {
   type PipelineCompiler,
   type Step,
   type TemplateToken,
-} from "@ci-adapters/pipeline-contract";
-import { renderYaml } from "@ci-adapters/yaml-emit";
+} from "@pipewright/pipeline-contract";
+import { renderYaml } from "@pipewright/yaml-emit";
 
 import {
   CONFIG_VERSION,

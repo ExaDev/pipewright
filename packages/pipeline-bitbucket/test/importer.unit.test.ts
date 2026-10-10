@@ -4,7 +4,7 @@ import {
   UnsupportedNativeError,
   describeImporterConformance,
   type Pipeline,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 import {
   createBitbucketPipelinesCompiler,

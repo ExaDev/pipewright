@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 
-import { pipelineSchema, type Pipeline } from "@ci-adapters/pipeline-contract";
+import { pipelineSchema, type Pipeline } from "@pipewright/pipeline-contract";
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 

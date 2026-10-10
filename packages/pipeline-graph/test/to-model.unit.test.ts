@@ -15,7 +15,7 @@ import {
   samplePipeline,
   when,
   type Pipeline,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 import {
   FINAL_ID,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createReferenceCompiler, samplePipeline } from "@ci-adapters/pipeline-contract";
-import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
-import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
+import { createReferenceCompiler, samplePipeline } from "@pipewright/pipeline-contract";
+import { createGitHubActionsCompiler } from "@pipewright/pipeline-github-actions";
+import { createGitLabCiCompiler } from "@pipewright/pipeline-gitlab-ci";
 
 import { deriveRequiredChecks, planRequiredChecks } from "../src/index.ts";
 

@@ -6,7 +6,7 @@ import {
   deriveRequiredChecks,
   planRequiredChecks,
   type RequiredScope,
-} from "@ci-adapters/check-names";
+} from "@pipewright/check-names";
 import {
   ImportedPipelineError,
   PipelineLoadError,
@@ -26,19 +26,19 @@ import {
   type Pipeline,
   type PipelineCompiler,
   type PipelineImporter,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 import {
   createBitbucketPipelinesCompiler,
   createBitbucketPipelinesImporter,
-} from "@ci-adapters/pipeline-bitbucket";
-import { createCircleCiCompiler, createCircleCiImporter } from "@ci-adapters/pipeline-circleci";
+} from "@pipewright/pipeline-bitbucket";
+import { createCircleCiCompiler, createCircleCiImporter } from "@pipewright/pipeline-circleci";
 import {
   createGitHubActionsCompiler,
   createGitHubActionsImporter,
-} from "@ci-adapters/pipeline-github-actions";
-import { createGitLabCiCompiler, createGitLabCiImporter } from "@ci-adapters/pipeline-gitlab-ci";
-import { createLocalRunner } from "@ci-adapters/pipeline-local";
-import { createGitHubReader } from "@ci-adapters/platform-github";
+} from "@pipewright/pipeline-github-actions";
+import { createGitLabCiCompiler, createGitLabCiImporter } from "@pipewright/pipeline-gitlab-ci";
+import { createLocalRunner } from "@pipewright/pipeline-local";
+import { createGitHubReader } from "@pipewright/platform-github";
 
 import { resolveContext } from "./context.ts";
 
@@ -76,7 +76,7 @@ const IMPORTERS: Readonly<Record<string, () => PipelineImporter>> = {
 /** Where an exported document says its JSON Schema is, relative to the file it is written to. */
 const DEFAULT_SCHEMA_REFERENCE = "pipeline.schema.json";
 
-const USAGE = `ci-adapters <command> [options]
+const USAGE = `pipewright <command> [options]
 
 Commands
   emit         --pipeline <file> --provider <id> [--tool-command <cmd>]   write the provider's native files
@@ -123,7 +123,7 @@ function importerFor(name: string | undefined, flag: string): PipelineImporter {
  * The TypeScript module an imported pipeline is written as: its default export is the model's own input, so it is edited and composed like any pipeline authored by hand.
  */
 function moduleOf(pipeline: Pipeline): string {
-  return `import { definePipeline } from "@ci-adapters/pipeline-contract";\n\nexport default definePipeline(${JSON.stringify(pipeline, null, 2)});\n`;
+  return `import { definePipeline } from "@pipewright/pipeline-contract";\n\nexport default definePipeline(${JSON.stringify(pipeline, null, 2)});\n`;
 }
 
 /**
