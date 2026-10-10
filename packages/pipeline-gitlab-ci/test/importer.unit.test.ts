@@ -31,10 +31,6 @@ const JOB = "  script:\n    - echo\n  tags:\n    - linux\n";
 
 const REJECTS = [
   {
-    name: "a job with no tags",
-    text: `${WORKFLOW}build:\n  script:\n    - echo\n`,
-  },
-  {
     name: "a file with no workflow rules",
     text: `build:\n${JOB}`,
   },
@@ -56,6 +52,7 @@ describeImporterConformance({ describe, it }, createGitLabCiCompiler, createGitL
   rejects: REJECTS.map(({ name, text }) => ({ name, file: { path: FILE, content: text } })),
   wrapperForm: true,
   distinguishesGate: false,
+  recoversMatrix: true,
 });
 
 describe("GitLab CI import", () => {
@@ -156,8 +153,14 @@ describe("GitLab CI import", () => {
     expect(pipeline).toBeInstanceOf(UnsupportedNativeError);
   });
 
+  it("reads a job with no tags as one with no runner label", async () => {
+    const pipeline = await importText(`${WORKFLOW}build:\n  script:\n    - echo\n`);
+
+    expect(pipeline.jobs.build?.runsOn).toEqual([]);
+  });
+
   it("names the provider and pointer of what it rejects", async () => {
-    const error = await rejection(`${WORKFLOW}build:\n  script:\n    - echo\n`);
+    const error = await rejection(`${WORKFLOW}build:\n  script:\n    - echo\n  tags: linux\n`);
 
     expect(error.pointer).toBe("/build/tags");
     expect(error.provider).toBe("gitlab-ci");
