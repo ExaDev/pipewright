@@ -16,6 +16,8 @@ A workflow file mixes two things. The orchestration (triggers, job graph, matrix
 
 **Query the platform.** A separate read-only contract lists runs, checks, logs and the checks a branch requires. It does not depend on the pipeline model.
 
+**Import a native file.** `import` reads a provider's file into a pipeline, as TypeScript or JSON, and `convert` writes another provider's files from it. What the model cannot express is rejected with the file and pointer, never approximated.
+
 ## Authoring
 
 A pipeline is a TypeScript module whose default export comes from `definePipeline`. The type is the model's input type, so an editor completes and checks it, and composition is ordinary TypeScript: functions, spreads and shared constants.
@@ -90,6 +92,8 @@ A pipeline or a job can set `form: "wrapper"`. Orchestration (triggers, `needs`,
 node packages/cli/src/bin.ts emit --pipeline ci/ci.pipeline.ts --provider github-actions
 node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions
 node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.ts --local --skip-provider-steps --job lint
+node packages/cli/src/bin.ts import --provider github-actions --file .github/workflows/ci.yml --output ci/ci.pipeline.ts
+node packages/cli/src/bin.ts convert --from github-actions --file .github/workflows/ci.yml --to gitlab-ci
 node packages/cli/src/bin.ts export --pipeline ci/ci.pipeline.ts --schema ../schemas/pipeline.schema.json
 node packages/cli/src/bin.ts schema --authoring
 node packages/cli/src/bin.ts check-names --pipeline ci/ci.pipeline.ts --provider github-actions --scope gates
@@ -104,17 +108,17 @@ Platform commands read the token from `GH_TOKEN`; the adapter reads no files or 
 
 ```
 packages/
-  pipeline-contract         model, loaders, JSON Schema, predicate compiler, conformance kits, reference fake
-  pipeline-github-actions   compiler
-  pipeline-gitlab-ci        compiler
-  pipeline-bitbucket        compiler
-  pipeline-circleci         compiler
+  pipeline-contract         model, loaders, JSON Schema, predicate compiler, importer contract, conformance kits, reference fake
+  pipeline-github-actions   compiler and importer
+  pipeline-gitlab-ci        compiler and importer
+  pipeline-bitbucket        compiler and importer
+  pipeline-circleci         compiler and importer
   pipeline-local            in-process runner
   platform-contract         read and control interfaces, reference fake, conformance kit, wait helper
   platform-github           read-only reader, controller, Zod codecs for the wire format
   check-names               required check names derived from a pipeline
   pipeline-graph            a pipeline as a process-graph model, and run state as its overlay
-  yaml-emit                 deterministic YAML with comments
+  yaml-emit                 deterministic YAML with comments, and reading it back
   cli                       composition root
 ci/                         this repository's own pipeline definition, in TypeScript
 examples/                   a pipeline authored as JSON
@@ -147,7 +151,7 @@ Packages are source-only workspace members run through Node's type stripping, so
 
 `.github/workflows/ci.yml` is generated from `ci/ci.pipeline.ts` and is not edited by hand. A job fails if it, or either JSON Schema, differs from what the tool emits. The test job renders in the wrapper form, so CI runs the tests through this tool's own runner, one job reads its own run back through the platform adapter, and the pre-push hook runs the same pipeline locally.
 
-The generated workflow and the schemas are committed because the provider and editors read them from the repository. The drift check is what keeps them honest.
+The generated workflows and the schemas are the repository's one exception to not committing generated content, and it holds for three reasons: GitHub runs only workflows that exist as files in the repository, a JSON pipeline's `$schema` must resolve to a document, and the drift check fails when a committed copy differs from what the tool would write, so neither can diverge from its TypeScript source. The schemas stop being committed when the packages are first published, because `$schema` then resolves to a stable package URL.
 
 ## Constraints
 
