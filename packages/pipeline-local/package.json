@@ -1,0 +1,12 @@
+{
+  "name": "@ci-adapters/pipeline-local",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@ci-adapters/pipeline-contract": "0.0.0"
+  }
+}
