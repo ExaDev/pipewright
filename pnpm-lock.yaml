@@ -305,6 +305,9 @@ importers:
       '@ci-adapters/platform-contract':
         specifier: 0.0.0
         version: link:../platform-contract
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/yaml-emit:
     dependencies:
