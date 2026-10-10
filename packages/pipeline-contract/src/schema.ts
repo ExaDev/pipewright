@@ -99,6 +99,12 @@ const matrixSchema = z.record(
   z.array(z.union([z.string(), z.number(), z.boolean()])).min(1),
 );
 
+/**
+ * How a provider adapter that supports both renders steps. `native` writes every step in the provider's own syntax; `wrapper` keeps the orchestration native and collapses runs of portable steps into one invocation of the tool's runner, so editing step logic changes no emitted file. A job's `form` overrides the pipeline's.
+ */
+export const formSchema = z.enum(["native", "wrapper"]);
+export type Form = z.infer<typeof formSchema>;
+
 export const JOB_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 export const jobSchema = z.strictObject({
@@ -110,6 +116,7 @@ export const jobSchema = z.strictObject({
    * `success` (the default) runs the job only when every job it needs succeeded; `always` runs it whatever they concluded, which is how a fan-in gate job reports on failures.
    */
   needsPolicy: z.enum(["success", "always"]).optional(),
+  form: formSchema.optional(),
   when: PredicateNodeSchema.optional(),
   timeoutMinutes: z.number().int().positive().optional(),
   permissions: permissionsSchema.optional(),
@@ -126,6 +133,7 @@ const pipelineShape = z.strictObject({
   $schema: z.string().min(1).optional(),
   name: z.string().min(1),
   description,
+  form: formSchema.optional(),
   triggers: z.array(triggerSchema).min(1),
   permissions: permissionsSchema.optional(),
   concurrency: z

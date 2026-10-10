@@ -49,8 +49,12 @@ export interface RunReport {
 export interface RunOptions {
   readonly executor: CommandExecutor;
   readonly context: RunContext;
-  /** Run only these job ids, treating their `needs` as already satisfied; every job when omitted. */
+  /** Run only these job ids; every job when omitted. The host has already decided to run them, so their `needs` and job-level `when` are treated as satisfied. */
   readonly only?: readonly string[];
+  /** Run only the matrix combinations that agree with these axis values. Throws when none do. */
+  readonly matrix?: MatrixCombination;
+  /** Run only the steps with these inclusive indexes, reporting the rest as skipped. Only steps inside the range are checked for being portable. */
+  readonly steps?: { readonly from: number; readonly to: number };
   readonly signal?: AbortSignal;
 }
 

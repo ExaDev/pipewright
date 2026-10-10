@@ -177,7 +177,48 @@ function stepOf(step: Step, pointer: string): Record<string, unknown> {
   }
 }
 
-function jobOf(id: string, job: Job): Record<string, unknown> {
+interface WrapperContext {
+  readonly source: string;
+  readonly toolCommand: string;
+}
+
+/**
+ * Renders a job's steps in the wrapper form: checkouts and GitHub-owned steps stay native and keep their order, and each contiguous run of portable `run` steps becomes one invocation of the tool's runner for exactly those step indexes. Step names, conditions and per-step environments move into the pipeline file the runner reads, so GitHub's UI and actionlint no longer see them.
+ */
+function wrapperStepsOf(
+  id: string,
+  job: Job,
+  context: WrapperContext,
+): Record<string, unknown>[] {
+  const pointer = `/jobs/${id}`;
+  const matrixFlags = Object.keys(job.matrix ?? {})
+    .map((axis) => ` --matrix ${axis}=\${{ matrix.${axis} }}`)
+    .join("");
+  const steps: Record<string, unknown>[] = [];
+  let index = 0;
+  while (index < job.steps.length) {
+    const step = job.steps[index];
+    if (step?.kind !== "run") {
+      if (step === undefined) break;
+      steps.push(stepOf(step, `${pointer}/steps/${index}`));
+      index += 1;
+      continue;
+    }
+    const from = index;
+    while (job.steps[index]?.kind === "run") index += 1;
+    steps.push({
+      name: `Run ${job.name}`,
+      run: `${context.toolCommand} run --pipeline ${context.source} --job ${id} --steps ${from}-${index - 1}${matrixFlags}`,
+    });
+  }
+  return steps;
+}
+
+function jobOf(
+  id: string,
+  job: Job,
+  wrapper: WrapperContext | undefined,
+): Record<string, unknown> {
   const pointer = `/jobs/${id}`;
   const conditions: string[] = [];
   if (job.needsPolicy === "always") conditions.push("always()");
@@ -201,7 +242,10 @@ function jobOf(id: string, job: Job): Record<string, unknown> {
     ...(job.environment === undefined ? {} : { environment: job.environment }),
     ...(job.env === undefined ? {} : { env: envOf(job.env) }),
     ...(job.matrix === undefined ? {} : { strategy: { matrix: job.matrix } }),
-    steps: job.steps.map((step, index) => stepOf(step, `${pointer}/steps/${index}`)),
+    steps:
+      wrapper === undefined
+        ? job.steps.map((step, index) => stepOf(step, `${pointer}/steps/${index}`))
+        : wrapperStepsOf(id, job, wrapper),
     ...(job.native?.["github-actions"] ?? {}),
   };
 }
@@ -255,14 +299,15 @@ function triggersOf(
 }
 
 /**
- * Compiles a pipeline to one GitHub Actions workflow file, `.github/workflows/<name>.yml`.
+ * Compiles a pipeline to one GitHub Actions workflow file, `.github/workflows/<name>.yml`, with each job in the `native` or `wrapper` form (see `formSchema`); the two mix freely within a file.
  *
  * Support matrix: every trigger kind; permissions; concurrency; matrix; `checkout`, `run` and GitHub-owned `provider` steps; job and step conditions over `not`, `and`, `or`, `allOf`, `anyOf`, text equality and membership. Not supported: regular-expression text comparisons, ordering comparisons, arithmetic and collection quantifiers, none of which GitHub's expression language can render with the neutral model's meaning. A matrix reference is rejected in a job-level condition.
  */
 export function createGitHubActionsCompiler(): PipelineCompiler {
   return {
     provider: PROVIDER,
-    compile(pipeline: Pipeline, options: CompileOptions): Promise<readonly EmittedFile[]> {
+    // eslint-disable-next-line @typescript-eslint/require-await -- the contract is async so that a synchronous throw cannot escape as an exception instead of a rejection
+    async compile(pipeline: Pipeline, options: CompileOptions): Promise<readonly EmittedFile[]> {
       options.signal?.throwIfAborted();
       const comments = new Map<string, string>();
       if (pipeline.description !== undefined) comments.set("name", pipeline.description);
@@ -294,17 +339,27 @@ export function createGitHubActionsCompiler(): PipelineCompiler {
                 comments.set(`jobs/${id}/steps/${index}`, step.description);
               }
             }
-            return [id, jobOf(id, job)];
+            const form = job.form ?? pipeline.form ?? "native";
+            if (form === "wrapper" && options.toolCommand === undefined) {
+              throw new Error(
+                `job ${id} renders in the wrapper form, which needs CompileOptions.toolCommand`,
+              );
+            }
+            const wrapper =
+              form === "wrapper" && options.toolCommand !== undefined
+                ? { source: options.source, toolCommand: options.toolCommand }
+                : undefined;
+            return [id, jobOf(id, job, wrapper)];
           }),
         ),
       };
 
-      return Promise.resolve([
+      return [
         {
           path: `.github/workflows/${slug(pipeline.name)}.yml`,
           content: renderYaml(document, comments, generatedHeaderLines(options.source)),
         },
-      ]);
+      ];
     },
   };
 }

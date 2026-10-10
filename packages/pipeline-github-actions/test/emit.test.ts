@@ -101,6 +101,61 @@ describe("GitHub Actions emission", () => {
     expect(text).toContain("if: (matrix.node == '22')");
   });
 
+  describe("wrapper form", () => {
+    async function emitWrapper(pipeline: Pipeline): Promise<string> {
+      const [file] = await createGitHubActionsCompiler().compile(pipeline, {
+        source: SOURCE,
+        toolCommand: "node tool/bin.ts",
+      });
+      if (file === undefined) throw new Error("no file emitted");
+      return file.content;
+    }
+
+    it("collapses contiguous run steps and keeps native steps in order", async () => {
+      const text = await emitWrapper(
+        pipelineWith({
+          form: "wrapper",
+          matrix: { node: ["22"] },
+          steps: [
+            { kind: "checkout" },
+            { kind: "run", run: "one" },
+            { kind: "run", run: "two" },
+            { kind: "provider", provider: "github-actions", native: { uses: "x/y@v1" } },
+            { kind: "run", run: "three" },
+          ],
+        }),
+      );
+      expect(text).toContain("uses: actions/checkout@v7");
+      expect(text).toContain(
+        "run: node tool/bin.ts run --pipeline ci/sample.pipeline.json --job only --steps 1-2 --matrix node=${{ matrix.node }}",
+      );
+      expect(text).toContain("uses: x/y@v1");
+      expect(text).toContain("--steps 4-4");
+      expect(text.indexOf("--steps 1-2")).toBeLessThan(text.indexOf("uses: x/y@v1"));
+      expect(text.indexOf("uses: x/y@v1")).toBeLessThan(text.indexOf("--steps 4-4"));
+      expect(text).not.toContain("run: one");
+    });
+
+    it("applies a pipeline-level form to every job unless a job overrides it", async () => {
+      const pipeline = samplePipeline();
+      pipeline.form = "wrapper";
+      const gate = pipeline.jobs["gate"];
+      if (gate === undefined) throw new Error("sample pipeline lost its gate job");
+      gate.form = "native";
+      const text = await emitWrapper(pipeline);
+      expect(text).toContain("--job lint --steps 1-1");
+      expect(text).toContain("--job test --steps 1-1 --matrix node=${{ matrix.node }}");
+      expect(text).toContain("run: echo gate");
+    });
+
+    it("needs the tool command", async () => {
+      const pipeline = pipelineWith({ form: "wrapper" });
+      await expect(
+        createGitHubActionsCompiler().compile(pipeline, { source: SOURCE }),
+      ).rejects.toThrow("toolCommand");
+    });
+  });
+
   describe("guard", () => {
     async function rejection(job: Record<string, unknown>): Promise<UnsupportedFeatureError> {
       try {

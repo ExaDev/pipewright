@@ -24,7 +24,6 @@ export function samplePipeline(): Pipeline {
       { kind: "pullRequest" },
       { kind: "manual" },
     ],
-    permissions: { contents: "read" },
     concurrency: { group: "ci-{{ workflow }}-{{ refName }}", cancelInProgress: true },
     jobs: {
       lint: {
@@ -42,14 +41,8 @@ export function samplePipeline(): Pipeline {
         runsOn: ["ubuntu-latest"],
         needs: ["lint"],
         matrix: { node: ["22", "24"] },
-        steps: [
-          { kind: "checkout" },
-          {
-            kind: "run",
-            run: "pnpm test",
-            env: { SHA: "{{ sha }}", NODE_VERSION: "{{ matrix.node }}" },
-          },
-        ],
+        env: { SHA: "{{ sha }}", NODE_VERSION: "{{ matrix.node }}" },
+        steps: [{ kind: "checkout" }, { kind: "run", run: "pnpm test" }],
       },
       gate: {
         name: "Required checks",

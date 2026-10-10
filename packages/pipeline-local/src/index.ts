@@ -113,12 +113,18 @@ export function createLocalRunner(): PipelineRunner {
         if (job === undefined) continue;
         if (selected !== undefined && !selected.has(id)) continue;
 
-        const jobCondition = conditionOf(job.when, `/jobs/${id}/when`);
+        const jobCondition =
+          selected === undefined
+            ? conditionOf(job.when, `/jobs/${id}/when`)
+            : (): boolean => true;
+        const inRange = (index: number): boolean =>
+          options.steps === undefined ||
+          (index >= options.steps.from && index <= options.steps.to);
         const stepConditions = job.steps.map((step, index) =>
           conditionOf(step.when, `/jobs/${id}/steps/${index}/when`),
         );
         for (const [index, step] of job.steps.entries()) {
-          if (step.kind === "provider") {
+          if (step.kind === "provider" && inRange(index)) {
             throw new UnsupportedFeatureError(
               PROVIDER,
               `/jobs/${id}/steps/${index}`,
@@ -133,7 +139,17 @@ export function createLocalRunner(): PipelineRunner {
         const mayRun = job.needsPolicy === "always" || needsSatisfied;
 
         let aggregate: Outcome = "success";
-        for (const matrix of expandMatrix(job.matrix)) {
+        const combinations = expandMatrix(job.matrix).filter((combination) =>
+          Object.entries(options.matrix ?? {}).every(
+            ([axis, value]) => String(combination[axis]) === String(value),
+          ),
+        );
+        if (combinations.length === 0) {
+          throw new Error(
+            `no matrix combination of job ${id} matches ${JSON.stringify(options.matrix)}`,
+          );
+        }
+        for (const matrix of combinations) {
           const scope: Scope = { context: options.context, matrix };
           const steps: StepReport[] = [];
           let outcome: Outcome;
@@ -148,7 +164,12 @@ export function createLocalRunner(): PipelineRunner {
             for (const [index, step] of job.steps.entries()) {
               const name = stepName(job, index);
               const condition = stepConditions[index];
-              if (outcome === "failure" || condition === undefined || !condition(scope)) {
+              if (
+                outcome === "failure" ||
+                condition === undefined ||
+                !inRange(index) ||
+                !condition(scope)
+              ) {
                 steps.push({ name, outcome: "skipped" });
                 continue;
               }

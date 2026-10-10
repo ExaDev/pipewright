@@ -13,6 +13,7 @@ export {
 export { UnsupportedFeatureError } from "./errors.ts";
 export {
   JOB_ID_PATTERN,
+  formSchema,
   PERMISSION_SCOPES,
   PIPELINE_JSON_SCHEMA_ID,
   jobSchema,
@@ -20,6 +21,7 @@ export {
   pipelineSchema,
   stepSchema,
   triggerSchema,
+  type Form,
   type Job,
   type Permissions,
   type Pipeline,

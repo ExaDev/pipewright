@@ -1,0 +1,14 @@
+{
+  "name": "@ci-adapters/pipeline-gitlab-ci",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@ci-adapters/pipeline-contract": "0.0.0",
+    "@ci-adapters/yaml-emit": "0.0.0",
+    "yaml": "2.9.1"
+  }
+}

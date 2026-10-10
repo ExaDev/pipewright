@@ -125,6 +125,51 @@ export function describeRunnerConformance(
       check(thrown instanceof UnsupportedFeatureError, "a provider step was accepted");
     });
 
+    api.it("runs only the matrix combination it is given", async () => {
+      const executor = recordingExecutor();
+      await makeRunner().run(samplePipeline(), {
+        executor,
+        context: CONTEXT,
+        only: ["test"],
+        matrix: { node: "24" },
+      });
+      const versions = executor.executed.map((entry) => entry.env["NODE_VERSION"]);
+      check(
+        versions.length === 1 && versions[0] === "24",
+        `ran matrix values ${JSON.stringify(versions)}`,
+      );
+    });
+
+    api.it("runs only the steps in the given range", async () => {
+      const pipeline = pipelineSchema.parse({
+        name: "CI",
+        triggers: [{ kind: "push" }],
+        jobs: {
+          build: {
+            name: "Build",
+            runsOn: ["ubuntu-latest"],
+            steps: [
+              { kind: "run", run: "echo one" },
+              { kind: "run", run: "echo two" },
+              { kind: "run", run: "echo three" },
+            ],
+          },
+        },
+      });
+      const executor = recordingExecutor();
+      await makeRunner().run(pipeline, {
+        executor,
+        context: CONTEXT,
+        only: ["build"],
+        steps: { from: 1, to: 1 },
+      });
+      const commands = executor.executed.map((entry) => entry.command);
+      check(
+        commands.length === 1 && commands[0] === "echo two",
+        `ran ${commands.join(", ")} instead of only step 1`,
+      );
+    });
+
     api.it("runs only the named jobs when asked", async () => {
       const executor = recordingExecutor();
       await makeRunner().run(samplePipeline(), {

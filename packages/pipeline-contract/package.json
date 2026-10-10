@@ -9,5 +9,9 @@
   "dependencies": {
     "trilean": "1.7.1",
     "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "yaml": "2.9.1"
   }
 }

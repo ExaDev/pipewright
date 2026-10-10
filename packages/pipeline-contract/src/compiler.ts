@@ -11,6 +11,8 @@ export interface EmittedFile {
 export interface CompileOptions {
   /** Stable label for the pipeline's source (normally its repository-relative path), written into the generated header so the file says where it came from. */
   readonly source: string;
+  /** The command that invokes this tool's CLI on the machine that will run the generated file (for example `node packages/cli/src/bin.ts`). Required when any job renders in the `wrapper` form, which calls it; ignored otherwise. */
+  readonly toolCommand?: string;
   readonly signal?: AbortSignal;
 }
 
