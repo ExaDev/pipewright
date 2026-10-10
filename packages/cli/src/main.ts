@@ -127,7 +127,7 @@ function moduleOf(pipeline: Pipeline): string {
 }
 
 /**
- * Reads a native file through the provider's importer. A construct the model cannot express is reported with the file and the JSON pointer of the node in it, as a load error is.
+ * Reads a native file through the provider's importer. A construct the model cannot express is reported with the file and the JSON pointer of the node in it, as a load error is. A value that read but is not a valid model is reported against the imported pipeline, whose job ids are not always keys in the file.
  */
 async function importNative(
   io: Io,
@@ -146,12 +146,11 @@ async function importNative(
       ]);
     }
     if (error instanceof ImportedPipelineError) {
-      throw new PipelineLoadError(
-        error.issues.map((issue) => ({
-          file: path,
-          pointer: issue.pointer,
-          message: issue.message,
-        })),
+      throw new Error(
+        `${path} does not map to a valid pipeline: ${error.issues
+          .map((issue) => `${issue.pointer} in the imported pipeline ${issue.message}`)
+          .join("; ")}`,
+        { cause: error },
       );
     }
     throw error;
@@ -159,11 +158,13 @@ async function importNative(
 }
 
 /**
- * The jobs that carry settings written for `provider`, which another provider's compiler ignores. Converting such a pipeline would drop them without a word, so it is refused instead.
+ * The settings, by job and key, that a pipeline carries for `provider` and that another provider's compiler ignores. Converting such a pipeline would drop them without a word, so it is refused instead.
  */
-function providerOwnedJobs(pipeline: Pipeline, provider: string): string[] {
+function providerOwnedSettings(pipeline: Pipeline, provider: string): string[] {
   return Object.entries(pipeline.jobs).flatMap(([id, job]) =>
-    job.native !== undefined && Object.keys(job.native).includes(provider) ? [id] : [],
+    Object.entries(job.native ?? {}).flatMap(([owner, settings]) =>
+      owner === provider ? [`job ${JSON.stringify(id)}: ${Object.keys(settings).join(", ")}`] : [],
+    ),
   );
 }
 
@@ -401,14 +402,10 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
         const source = required(values.file, "--file");
         const compiler = compilerFor(required(values.to, "--to"));
         const pipeline = await importNative(io, from, "--from", source);
-        const owned = from === compiler.provider ? [] : providerOwnedJobs(pipeline, from);
+        const owned = from === compiler.provider ? [] : providerOwnedSettings(pipeline, from);
         if (owned.length > 0) {
-          throw new PipelineLoadError(
-            owned.map((id) => ({
-              file: source,
-              pointer: `/jobs/${id}/native/${from}`,
-              message: `${from}-specific settings that ${compiler.provider} would drop`,
-            })),
+          throw new Error(
+            `${source} carries ${from} settings that ${compiler.provider} would drop, so it is not converted: ${owned.join("; ")}`,
           );
         }
         const files = await compiler.compile(pipeline, {

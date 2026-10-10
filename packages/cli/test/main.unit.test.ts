@@ -516,7 +516,9 @@ describe("import and convert", () => {
       ),
     ).toBe(1);
 
-    expect(h.err.join("")).toContain("ci.yml#/jobs/a/native/github-actions");
+    expect(h.err.join("")).toContain(
+      'carries github-actions settings that gitlab-ci would drop, so it is not converted: job "a": continue-on-error',
+    );
     expect(h.files.has(".gitlab-ci.yml")).toBe(false);
   });
 
