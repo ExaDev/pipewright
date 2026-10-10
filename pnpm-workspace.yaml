@@ -18,6 +18,7 @@ minimumReleaseAgeExclude:
   - "@exadev/process-graph-projection"
   - "@exadev/process-graph-schema"
   - "trilean"
+  - "trilean-regex"
   - "eslint-plugin-json-canonical"
 
 # esbuild (via vitest) fetches its platform binary in an install script and does not run without it; every other install script stays refused.
@@ -28,6 +29,10 @@ allowBuilds:
 catalogMode: prefer
 catalog:
   "@exadev/process-graph-dag": 1.0.0
+  "@exadev/process-graph-domain": 1.0.0
+  "@exadev/process-graph-projection": 1.0.0
+  "@exadev/process-graph-schema": 1.0.0
   ajv: 8.20.0
+  trilean: 1.7.2
   yaml: 2.9.1
   zod: 4.6.5
