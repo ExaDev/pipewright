@@ -59,7 +59,7 @@ export default definePipeline({
 
 JSON is an alternative way to write the same model, and its serialisation. `export` prints any pipeline, whichever format it was written in, as a JSON document, and loading that document gives the same model back; a test holds this repository's own pipeline to that. [`examples/basic.pipeline.json`](examples/basic.pipeline.json) is a pipeline authored directly as JSON.
 
-JSON has no functions, so a JSON document composes with two mechanisms a TypeScript module does not need:
+JSON has no functions, so a JSON document composes with two mechanisms a TypeScript module does not need, provided by [`@exadev/json-compose`](https://github.com/ExaDev/json-compose):
 
 - `extends` pulls in fragments by relative path, in order, with the document's own content applied last. Objects deep-merge, `steps` arrays concatenate, every other array and scalar is replaced, and `{"$replace": ...}` replaces an inherited value outright.
 - Typed `parameters` are supplied by the extending document's `with`, and `{"$param": "name"}` is replaced by the value. A load error names the source file and JSON pointer of the offending node, including across `extends`.
