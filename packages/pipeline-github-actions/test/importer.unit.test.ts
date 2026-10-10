@@ -266,4 +266,61 @@ jobs:
     // The file is equal as a document. Text can differ in key order, because the repository's pipeline writes some job environments through `native`, which the compiler places after the steps and the importer reads into the model's own `env` field.
     expect(readYaml(second?.content ?? "").value).toEqual(readYaml(first.content).value);
   });
+
+  it("keeps an expression with a brace inside a quoted string as GitHub's, not as neutral text", async () => {
+    const pipeline = await importText(
+      "on: push\njobs:\n  a:\n    runs-on: x\n    env:\n      TAG: \"${{ format('v{0}', github.run_number) }}\"\n    steps:\n      - run: a\n",
+    );
+
+    expect(pipeline.jobs.a?.env).toBeUndefined();
+    expect(pipeline.jobs.a?.native).toEqual({
+      "github-actions": { env: { TAG: "${{ format('v{0}', github.run_number) }}" } },
+    });
+  });
+
+  it("rejects a branch pattern, which the model's branch names are not", async () => {
+    const error = await rejection(
+      "on:\n  push:\n    branches: [main, 'release/**']\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
+    );
+
+    expect(error.pointer).toBe("/on/push/branches/1");
+  });
+
+  it("keeps a matrix whose axis name the model cannot take as GitHub's", async () => {
+    const pipeline = await importText(
+      "on: push\njobs:\n  a:\n    runs-on: x\n    strategy:\n      matrix:\n        node-version: ['20', '22']\n    steps:\n      - run: a\n",
+    );
+
+    expect(pipeline.jobs.a?.matrix).toBeUndefined();
+    expect(pipeline.jobs.a?.native).toEqual({
+      "github-actions": { strategy: { matrix: { "node-version": ["20", "22"] } } },
+    });
+  });
+
+  it("rejects a job id the model cannot take, naming the id", async () => {
+    const error = await rejection(
+      "on: push\njobs:\n  build_and_test:\n    runs-on: x\n    steps:\n      - run: a\n",
+    );
+
+    expect(error.pointer).toBe("/jobs/build_and_test");
+  });
+
+  it("carries a command that reads a runner variable as a provider step", async () => {
+    const pipeline = await importText(
+      'on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: echo "X=1" >> "$GITHUB_ENV"\n',
+    );
+
+    expect(pipeline.jobs.a?.steps[0]).toMatchObject({ kind: "provider" });
+  });
+
+  it("keeps a deployment environment computed by an expression as GitHub's", async () => {
+    const pipeline = await importText(
+      "on: push\njobs:\n  a:\n    runs-on: x\n    environment: ${{ inputs.target }}\n    steps:\n      - run: a\n",
+    );
+
+    expect(pipeline.jobs.a?.environment).toBeUndefined();
+    expect(pipeline.jobs.a?.native).toEqual({
+      "github-actions": { environment: "${{ inputs.target }}" },
+    });
+  });
 });
