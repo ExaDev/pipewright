@@ -119,6 +119,19 @@ export function describeCompilerConformance(
       check(all.includes(DESCRIPTION_TEXT), "the description was dropped");
     });
 
+    api.it("names one check per job and matrix combination", async () => {
+      const names = [...makeCompiler().checkNames(samplePipeline()).values()].flat();
+      check(
+        new Set(names).size === names.length,
+        `check names are not unique: ${names.join(", ")}`,
+      );
+      const test = names.filter((name) => name.includes("Test"));
+      check(test.length === 2, `the two-value matrix produced ${test.length} names`);
+      for (const base of ["Lint", "Required checks"]) {
+        check(names.includes(base), `no check named ${base}`);
+      }
+    });
+
     api.it("rejects a step owned by another provider", async () => {
       const compiler = makeCompiler();
       const pipeline = samplePipeline();

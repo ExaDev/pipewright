@@ -27,6 +27,10 @@ export interface PipelineCompiler {
     pipeline: Pipeline,
     options: CompileOptions,
   ): Promise<readonly EmittedFile[]>;
+  /**
+   * For each job id, the names under which this provider reports it as a check, one per matrix combination. A branch ruleset's required checks are matched against these, so they are what check-name derivation is built from. Throws `UnsupportedFeatureError` where `compile` would.
+   */
+  checkNames(pipeline: Pipeline): ReadonlyMap<string, readonly string[]>;
 }
 
 /**

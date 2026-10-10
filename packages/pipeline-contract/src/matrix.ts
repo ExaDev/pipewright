@@ -3,6 +3,16 @@ import type { Job } from "./schema.ts";
 export type MatrixCombination = Readonly<Record<string, string | number | boolean>>;
 
 /**
+ * The axis values of a combination in declared axis order, which is how providers label a matrix job.
+ */
+export function matrixValues(
+  matrix: Job["matrix"],
+  combination: MatrixCombination,
+): string[] {
+  return Object.keys(matrix ?? {}).map((axis) => String(combination[axis]));
+}
+
+/**
  * Every combination of a job's matrix axes, first axis varying slowest. A job without a matrix has exactly one empty combination, so callers can treat "no matrix" and "a matrix" uniformly.
  */
 export function expandMatrix(matrix: Job["matrix"]): MatrixCombination[] {

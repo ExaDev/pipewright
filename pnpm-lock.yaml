@@ -220,9 +220,13 @@ importers:
       '@ci-adapters/pipeline-contract':
         specifier: 0.0.0
         version: link:../pipeline-contract
-      '@ci-adapters/platform-contract':
+    devDependencies:
+      '@ci-adapters/pipeline-github-actions':
         specifier: 0.0.0
-        version: link:../platform-contract
+        version: link:../pipeline-github-actions
+      '@ci-adapters/pipeline-gitlab-ci':
+        specifier: 0.0.0
+        version: link:../pipeline-gitlab-ci
 
   packages/cli:
     dependencies:

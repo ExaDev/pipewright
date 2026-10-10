@@ -1,6 +1,8 @@
 import {
   UnsupportedFeatureError,
   compilePredicate,
+  expandMatrix,
+  matrixValues,
   generatedHeaderLines,
   renderTemplate,
   type CompileOptions,
@@ -306,6 +308,19 @@ function triggersOf(
 export function createGitHubActionsCompiler(): PipelineCompiler {
   return {
     provider: PROVIDER,
+    /** GitHub reports a matrix job as `<name> (<value>, <value>)`, values in declared axis order. */
+    checkNames(pipeline: Pipeline): ReadonlyMap<string, readonly string[]> {
+      return new Map(
+        Object.entries(pipeline.jobs).map(([id, job]) => [
+          id,
+          expandMatrix(job.matrix).map((combination) =>
+            job.matrix === undefined
+              ? job.name
+              : `${job.name} (${matrixValues(job.matrix, combination).join(", ")})`,
+          ),
+        ]),
+      );
+    },
     // eslint-disable-next-line @typescript-eslint/require-await -- the contract is async so that a synchronous throw cannot escape as an exception instead of a rejection
     async compile(pipeline: Pipeline, options: CompileOptions): Promise<readonly EmittedFile[]> {
       options.signal?.throwIfAborted();

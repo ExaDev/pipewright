@@ -57,7 +57,7 @@ export {
   type LoadedPipeline,
 } from "./load.ts";
 export { pipelineAuthoringJsonSchema, pipelineJsonSchema } from "./json-schema.ts";
-export { expandMatrix, type MatrixCombination } from "./matrix.ts";
+export { expandMatrix, matrixValues, type MatrixCombination } from "./matrix.ts";
 export {
   type CommandExecution,
   type CommandExecutor,

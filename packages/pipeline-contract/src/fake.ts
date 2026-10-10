@@ -1,5 +1,6 @@
 import { generatedHeaderLines, type EmittedFile, type PipelineCompiler } from "./compiler.ts";
 import { UnsupportedFeatureError } from "./errors.ts";
+import { expandMatrix, matrixValues } from "./matrix.ts";
 import type { Pipeline, ProviderId } from "./schema.ts";
 
 /**
@@ -10,6 +11,18 @@ export function createReferenceCompiler(
 ): PipelineCompiler {
   return {
     provider,
+    checkNames(pipeline: Pipeline): ReadonlyMap<string, readonly string[]> {
+      return new Map(
+        Object.entries(pipeline.jobs).map(([id, job]) => [
+          id,
+          expandMatrix(job.matrix).map((combination) =>
+            job.matrix === undefined
+              ? job.name
+              : `${job.name} (${matrixValues(job.matrix, combination).join(", ")})`,
+          ),
+        ]),
+      );
+    },
     compile(pipeline: Pipeline, options): Promise<readonly EmittedFile[]> {
       for (const [id, job] of Object.entries(pipeline.jobs)) {
         for (const [index, step] of job.steps.entries()) {
