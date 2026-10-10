@@ -162,6 +162,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    ajv:
+      specifier: 8.20.0
+      version: 8.20.0
+    yaml:
+      specifier: 2.9.1
+      version: 2.9.1
+    zod:
+      specifier: 4.6.5
+      version: 4.6.5
+
 importers:
 
   .:
@@ -262,10 +274,10 @@ importers:
         version: link:../platform-github
     devDependencies:
       ajv:
-        specifier: 8.20.0
+        specifier: 'catalog:'
         version: 8.20.0
       yaml:
-        specifier: 2.9.1
+        specifier: 'catalog:'
         version: 2.9.1
 
   packages/pipeline-bitbucket:
@@ -292,15 +304,12 @@ importers:
         specifier: 1.7.1
         version: 1.7.1
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
       ajv:
-        specifier: 8.20.0
+        specifier: 'catalog:'
         version: 8.20.0
-      yaml:
-        specifier: 2.9.1
-        version: 2.9.1
 
   packages/pipeline-github-actions:
     dependencies:
@@ -310,9 +319,6 @@ importers:
       '@ci-adapters/yaml-emit':
         specifier: 0.0.0
         version: link:../yaml-emit
-      yaml:
-        specifier: 2.9.1
-        version: 2.9.1
 
   packages/pipeline-gitlab-ci:
     dependencies:
@@ -322,9 +328,6 @@ importers:
       '@ci-adapters/yaml-emit':
         specifier: 0.0.0
         version: link:../yaml-emit
-      yaml:
-        specifier: 2.9.1
-        version: 2.9.1
 
   packages/pipeline-local:
     dependencies:
@@ -335,7 +338,7 @@ importers:
   packages/platform-contract:
     dependencies:
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
 
   packages/platform-github:
@@ -344,13 +347,13 @@ importers:
         specifier: 0.0.0
         version: link:../platform-contract
       zod:
-        specifier: 4.6.5
+        specifier: 'catalog:'
         version: 4.6.5
 
   packages/yaml-emit:
     dependencies:
       yaml:
-        specifier: 2.9.1
+        specifier: 'catalog:'
         version: 2.9.1
 
 packages:

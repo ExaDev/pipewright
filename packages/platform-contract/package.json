@@ -2,7 +2,7 @@
   "name": "@ci-adapters/platform-contract",
   "version": "0.0.0",
   "dependencies": {
-    "zod": "4.6.5"
+    "zod": "catalog:"
   },
   "exports": {
     ".": "./src/index.ts"

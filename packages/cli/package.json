@@ -13,8 +13,8 @@
     "@ci-adapters/platform-github": "0.0.0"
   },
   "devDependencies": {
-    "ajv": "8.20.0",
-    "yaml": "2.9.1"
+    "ajv": "catalog:",
+    "yaml": "catalog:"
   },
   "exports": {
     ".": "./src/index.ts"
