@@ -236,6 +236,12 @@ importers:
       '@ci-adapters/check-names':
         specifier: 0.0.0
         version: link:../check-names
+      '@ci-adapters/pipeline-bitbucket':
+        specifier: 0.0.0
+        version: link:../pipeline-bitbucket
+      '@ci-adapters/pipeline-circleci':
+        specifier: 0.0.0
+        version: link:../pipeline-circleci
       '@ci-adapters/pipeline-contract':
         specifier: 0.0.0
         version: link:../pipeline-contract
@@ -254,6 +260,13 @@ importers:
       '@ci-adapters/platform-github':
         specifier: 0.0.0
         version: link:../platform-github
+    devDependencies:
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
   packages/pipeline-bitbucket:
     dependencies:

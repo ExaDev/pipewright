@@ -20,6 +20,8 @@ import {
   type MatrixCombination,
   type PipelineCompiler,
 } from "@ci-adapters/pipeline-contract";
+import { createBitbucketPipelinesCompiler } from "@ci-adapters/pipeline-bitbucket";
+import { createCircleCiCompiler } from "@ci-adapters/pipeline-circleci";
 import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
 import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
 import { createLocalRunner } from "@ci-adapters/pipeline-local";
@@ -45,6 +47,8 @@ export interface Io {
 }
 
 const COMPILERS: Readonly<Record<string, () => PipelineCompiler>> = {
+  "bitbucket-pipelines": createBitbucketPipelinesCompiler,
+  circleci: createCircleCiCompiler,
   "github-actions": createGitHubActionsCompiler,
   "gitlab-ci": createGitLabCiCompiler,
 };

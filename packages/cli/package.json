@@ -3,12 +3,18 @@
   "version": "0.0.0",
   "dependencies": {
     "@ci-adapters/check-names": "0.0.0",
+    "@ci-adapters/pipeline-bitbucket": "0.0.0",
+    "@ci-adapters/pipeline-circleci": "0.0.0",
     "@ci-adapters/pipeline-contract": "0.0.0",
     "@ci-adapters/pipeline-github-actions": "0.0.0",
     "@ci-adapters/pipeline-gitlab-ci": "0.0.0",
     "@ci-adapters/pipeline-local": "0.0.0",
     "@ci-adapters/platform-contract": "0.0.0",
     "@ci-adapters/platform-github": "0.0.0"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "yaml": "2.9.1"
   },
   "exports": {
     ".": "./src/index.ts"
