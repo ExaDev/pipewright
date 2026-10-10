@@ -420,3 +420,112 @@ describe("schema, check-names and platform", () => {
     expect(h.out.join("")).toContain("ci-adapters <command>");
   });
 });
+
+describe("import and convert", () => {
+  const WORKFLOW =
+    "name: CI\non:\n  push:\n    branches: [main]\njobs:\n  lint:\n    name: Lint\n    runs-on: ubuntu-latest\n    steps:\n      - run: pnpm run lint\n  test:\n    name: Test\n    runs-on: ubuntu-latest\n    needs: lint\n    steps:\n      - run: pnpm test\n";
+  const NATIVE = { ".github/workflows/ci.yml": WORKFLOW };
+
+  it("prints a TypeScript module that defines the pipeline", async () => {
+    const h = harness({ files: NATIVE });
+    expect(
+      await main(
+        ["import", "--provider", "github-actions", "--file", ".github/workflows/ci.yml"],
+        h.io,
+      ),
+    ).toBe(0);
+    const text = h.out.join("");
+
+    expect(text).toContain('import { definePipeline } from "@ci-adapters/pipeline-contract";');
+    expect(text).toContain("export default definePipeline({");
+    expect(text).toContain('"needs": [\n        "lint"\n      ]');
+  });
+
+  it("writes a JSON document that loads back as the same pipeline", async () => {
+    const h = harness({ files: NATIVE });
+    expect(
+      await main(
+        [
+          "import",
+          "--provider",
+          "github-actions",
+          "--file",
+          ".github/workflows/ci.yml",
+          "--format",
+          "json",
+          "--output",
+          "ci/ci.pipeline.json",
+        ],
+        h.io,
+      ),
+    ).toBe(0);
+    const document = h.files.get("ci/ci.pipeline.json");
+    expect(document).toContain('"$schema": "pipeline.schema.json"');
+
+    const again = harness({ files: { "ci/ci.pipeline.json": document ?? "" } });
+    expect(await main(["emit", ...EMIT], again.io)).toBe(0);
+    expect(again.files.get(".github/workflows/ci.yml")).toContain("name: CI");
+  });
+
+  it("converts a native file to another provider's files", async () => {
+    const h = harness({ files: NATIVE });
+    expect(
+      await main(
+        [
+          "convert",
+          "--from",
+          "github-actions",
+          "--file",
+          ".github/workflows/ci.yml",
+          "--to",
+          "gitlab-ci",
+        ],
+        h.io,
+      ),
+    ).toBe(0);
+
+    expect(h.files.get(".gitlab-ci.yml")).toContain("script:");
+    expect(h.out.join("")).toContain("wrote .gitlab-ci.yml");
+  });
+
+  it("locates a construct the model cannot express by file and pointer", async () => {
+    const h = harness({
+      files: {
+        "ci.yml":
+          "on:\n  release:\n    types: [created]\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
+      },
+    });
+    expect(await main(["import", "--provider", "github-actions", "--file", "ci.yml"], h.io)).toBe(
+      1,
+    );
+
+    expect(h.err.join("")).toContain("ci.yml#/on/release: github-actions");
+  });
+
+  it("refuses to convert a pipeline that carries settings the target would drop", async () => {
+    const h = harness({
+      files: {
+        "ci.yml":
+          "on: push\njobs:\n  a:\n    runs-on: x\n    continue-on-error: true\n    steps:\n      - run: a\n",
+      },
+    });
+    expect(
+      await main(
+        ["convert", "--from", "github-actions", "--file", "ci.yml", "--to", "gitlab-ci"],
+        h.io,
+      ),
+    ).toBe(1);
+
+    expect(h.err.join("")).toContain("ci.yml#/jobs/a/native/github-actions");
+    expect(h.files.has(".gitlab-ci.yml")).toBe(false);
+  });
+
+  it("names the providers it can read when one is unknown", async () => {
+    const h = harness({ files: NATIVE });
+    expect(
+      await main(["import", "--provider", "travis", "--file", ".github/workflows/ci.yml"], h.io),
+    ).toBe(1);
+
+    expect(h.err.join("")).toContain("--provider expects one of");
+  });
+});
