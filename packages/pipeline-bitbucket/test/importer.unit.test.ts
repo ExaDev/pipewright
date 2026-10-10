@@ -139,11 +139,11 @@ describe("Bitbucket Pipelines import", () => {
 
   it("reads branch names, pull requests and the manual pipeline as triggers", async () => {
     const pipeline = await importText(
-      `pipelines:\n  branches:\n    main:\n${STEP}    release/*:\n${STEP}  pull-requests:\n    "**":\n${STEP}  custom:\n    manual:\n${STEP}`,
+      `pipelines:\n  branches:\n    main:\n${STEP}    release/1:\n${STEP}  pull-requests:\n    "**":\n${STEP}  custom:\n    manual:\n${STEP}`,
     );
 
     expect(pipeline.triggers).toEqual([
-      { kind: "push", branches: ["main", "release/*"] },
+      { kind: "push", branches: ["main", "release/1"] },
       { kind: "pullRequest" },
       { kind: "manual" },
     ]);
@@ -163,5 +163,33 @@ describe("Bitbucket Pipelines import", () => {
 
     expect(error.pointer).toBe("/pipelines/default/0/step/script");
     expect(error.provider).toBe("bitbucket-pipelines");
+  });
+
+  it("reads the command lines of a step as one step, since they share a shell", async () => {
+    const pipeline = await importText(
+      "pipelines:\n  default:\n    - step:\n        script:\n          - cd web\n          - npm test\n          - pipe: atlassian/slack-notify:2\n          - echo done\n",
+    );
+    const [job] = Object.values(pipeline.jobs);
+
+    expect(job?.steps.map((step) => step.kind)).toEqual(["checkout", "run", "provider", "run"]);
+    expect(job?.steps[1]).toEqual({ kind: "run", run: "cd web\nnpm test" });
+  });
+
+  it("carries a script that reads a Bitbucket variable as a provider step", async () => {
+    const pipeline = await importText(
+      "pipelines:\n  default:\n    - step:\n        script:\n          - echo $BITBUCKET_COMMIT\n",
+    );
+
+    expect(Object.values(pipeline.jobs)[0]?.steps[1]).toEqual({
+      kind: "provider",
+      provider: "bitbucket-pipelines",
+      native: { script: ["echo $BITBUCKET_COMMIT"] },
+    });
+  });
+
+  it("rejects a branch pattern, which the model's branch names are not", async () => {
+    const error = await rejection(`pipelines:\n  branches:\n    "feature/*":\n${STEP}`);
+
+    expect(error.pointer).toBe("/pipelines/branches/feature~1*");
   });
 });
