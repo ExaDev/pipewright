@@ -123,6 +123,7 @@
       "propertyNames": {
         "type": "string",
         "enum": [
+          "actions",
           "contents",
           "pullRequests",
           "issues",
@@ -229,6 +230,7 @@
             "propertyNames": {
               "type": "string",
               "enum": [
+                "actions",
                 "contents",
                 "pullRequests",
                 "issues",
@@ -330,6 +332,13 @@
                     "run": {
                       "type": "string",
                       "minLength": 1
+                    },
+                    "form": {
+                      "type": "string",
+                      "enum": [
+                        "native",
+                        "wrapper"
+                      ]
                     },
                     "env": {
                       "type": "object",

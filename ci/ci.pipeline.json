@@ -27,58 +27,6 @@
       ],
       "timeoutMinutes": 10
     },
-    "check-names": {
-      "description": "Compares the check names this pipeline produces with the branch ruleset's required checks, through the platform adapter. Reports only: applying a ruleset change is a person's decision.",
-      "name": "Required check names",
-      "native": {
-        "github-actions": {
-          "continue-on-error": true,
-          "env": {
-            "GH_TOKEN": "${{ github.token }}",
-            "REPOSITORY": "${{ github.repository }}"
-          }
-        }
-      },
-      "runsOn": [
-        {
-          "$param": "runner"
-        }
-      ],
-      "steps": [
-        {
-          "kind": "checkout"
-        },
-        {
-          "kind": "provider",
-          "native": {
-            "uses": "pnpm/action-setup@v6"
-          },
-          "provider": "github-actions"
-        },
-        {
-          "kind": "provider",
-          "native": {
-            "uses": "actions/setup-node@v7",
-            "with": {
-              "cache": "pnpm",
-              "node-version-file": ".tool-versions"
-            }
-          },
-          "provider": "github-actions"
-        },
-        {
-          "kind": "run",
-          "name": "Install",
-          "run": "pnpm install --frozen-lockfile"
-        },
-        {
-          "kind": "run",
-          "name": "Compare required checks",
-          "run": "node packages/cli/src/bin.ts check-names --pipeline ci/ci.pipeline.json --provider github-actions --scope gates --repo \"$REPOSITORY\" --branch main"
-        }
-      ],
-      "timeoutMinutes": 10
-    },
     "drift": {
       "description": "Fails when a generated file differs from what the tool emits now.",
       "name": "Generated files",
@@ -110,6 +58,7 @@
           "provider": "github-actions"
         },
         {
+          "form": "native",
           "kind": "run",
           "name": "Install",
           "run": "pnpm install --frozen-lockfile"
@@ -153,6 +102,7 @@
           "provider": "github-actions"
         },
         {
+          "form": "native",
           "kind": "run",
           "name": "Install",
           "run": "pnpm install --frozen-lockfile"
@@ -165,6 +115,70 @@
       ],
       "timeoutMinutes": 15
     },
+    "platform-smoke": {
+      "description": "Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. Required-check comparison is not possible here: rulesets are unavailable to a private repository on this organisation's plan, and the API answers 403.",
+      "name": "Platform read path",
+      "native": {
+        "github-actions": {
+          "env": {
+            "COMMIT": "${{ github.sha }}",
+            "GH_TOKEN": "${{ github.token }}",
+            "REPOSITORY": "${{ github.repository }}",
+            "RUN_ID": "${{ github.run_id }}"
+          }
+        }
+      },
+      "permissions": {
+        "actions": "read",
+        "checks": "read",
+        "contents": "read"
+      },
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "pnpm/action-setup@v6"
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "actions/setup-node@v7",
+            "with": {
+              "cache": "pnpm",
+              "node-version-file": ".tool-versions"
+            }
+          },
+          "provider": "github-actions"
+        },
+        {
+          "form": "native",
+          "kind": "run",
+          "name": "Install",
+          "run": "pnpm install --frozen-lockfile"
+        },
+        {
+          "kind": "run",
+          "name": "List this run",
+          "run": "node packages/cli/src/bin.ts platform runs --repo \"$REPOSITORY\" --sha \"$COMMIT\" | grep -F \"$RUN_ID\""
+        },
+        {
+          "kind": "run",
+          "name": "List this commit's checks",
+          "run": "node packages/cli/src/bin.ts platform checks --sha \"$COMMIT\""
+        }
+      ],
+      "timeoutMinutes": 10
+    },
     "required-checks": {
       "description": "The single branch-protection target. It runs whatever the other jobs concluded and fails unless all succeeded.",
       "name": "Required checks",
@@ -173,7 +187,8 @@
         "typecheck",
         "test",
         "drift",
-        "actionlint"
+        "actionlint",
+        "platform-smoke"
       ],
       "needsPolicy": "always",
       "runsOn": [
@@ -231,6 +246,7 @@
           "provider": "github-actions"
         },
         {
+          "form": "native",
           "kind": "run",
           "name": "Install",
           "run": "pnpm install --frozen-lockfile"
@@ -274,6 +290,7 @@
           "provider": "github-actions"
         },
         {
+          "form": "native",
           "kind": "run",
           "name": "Install",
           "run": "pnpm install --frozen-lockfile"

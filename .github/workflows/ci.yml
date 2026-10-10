@@ -27,26 +27,6 @@ jobs:
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
       - name: Lint workflows
         run: '"$(go env GOPATH)/bin/actionlint"'
-  # Compares the check names this pipeline produces with the branch ruleset's required checks, through the platform adapter. Reports only: applying a ruleset change is a person's decision.
-  check-names:
-    name: Required check names
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
-        with:
-          cache: pnpm
-          node-version-file: .tool-versions
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: Compare required checks
-        run: node packages/cli/src/bin.ts check-names --pipeline ci/ci.pipeline.json --provider github-actions --scope gates --repo "$REPOSITORY" --branch main
-    continue-on-error: true
-    env:
-      GH_TOKEN: ${{ github.token }}
-      REPOSITORY: ${{ github.repository }}
   # Fails when a generated file differs from what the tool emits now.
   drift:
     name: Generated files
@@ -79,6 +59,33 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm run lint
+  # Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. Required-check comparison is not possible here: rulesets are unavailable to a private repository on this organisation's plan, and the API answers 403.
+  platform-smoke:
+    name: Platform read path
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          cache: pnpm
+          node-version-file: .tool-versions
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: List this run
+        run: node packages/cli/src/bin.ts platform runs --repo "$REPOSITORY" --sha "$COMMIT" | grep -F "$RUN_ID"
+      - name: List this commit's checks
+        run: node packages/cli/src/bin.ts platform checks --sha "$COMMIT"
+    env:
+      COMMIT: ${{ github.sha }}
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      RUN_ID: ${{ github.run_id }}
   # The single branch-protection target. It runs whatever the other jobs concluded and fails unless all succeeded.
   required-checks:
     name: Required checks
@@ -89,6 +96,7 @@ jobs:
       - test
       - drift
       - actionlint
+      - platform-smoke
     if: always()
     timeout-minutes: 5
     steps:
@@ -109,8 +117,10 @@ jobs:
         with:
           cache: pnpm
           node-version-file: .tool-versions
+      - name: Install
+        run: pnpm install --frozen-lockfile
       - name: Run Test
-        run: node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.json --job test --steps 3-4
+        run: node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.json --job test --steps 4-4
   # One TypeScript program for every package.
   typecheck:
     name: Typecheck
