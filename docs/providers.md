@@ -48,10 +48,10 @@ What was run, and by what:
 | Provider | Validator | Where it runs |
 | --- | --- | --- |
 | GitHub Actions | actionlint | the `integration` project and its CI job |
-| GitLab CI | the published `ci.json` JSON Schema | the `integration` project and its CI job |
-| Bitbucket Pipelines | the published pipelines schema | the `integration` project and its CI job |
 | CircleCI | `circleci config validate` (CLI 1.4.0, installed in CI from a pinned archive with a pinned digest), and the published JSON Schema | the `integration` project and its CI job |
+| GitLab CI | the published `ci.json` JSON Schema in CI; GitLab's own linter by hand | the schema in the `integration` project; the linter is `Gitlab::Ci::Lint` from GitLab CE 19.4.1 in a container, which reported `valid=true` for the sample output and rejected a control with a misspelt `scripts` key |
+| Bitbucket Pipelines | the published pipelines schema in CI; Atlassian's web validator by hand | the schema in the `integration` project; the validator page reported "valid" for the sample output and "Invalid configuration" for a control with a misspelt `scripts` key |
 
-Not run: GitLab's CI lint, which is an API call that needs a token for a GitLab project that nobody has supplied here, and Bitbucket's web validator, which has no documented command line or API. The schemas, which are the artefacts those products' own editors use, stand in for both, and the two remain untested against the products themselves.
+The two by-hand runs are not in CI. GitLab's linter needs a GitLab instance (the CE image and its several minutes of boot) or a token for one, and Bitbucket's validator is a web page with no command line or API, so it was driven through a browser. Neither has been run against the product's scheduler: no emitted file has been executed on its provider.
 
 `pnpm run test:integration` fetches each provider's published schema and runs actionlint over the sample pipeline's output. It is a separate vitest project from the unit tests so the unit suite stays offline, and the CI job that runs it installs actionlint first. A validator that cannot run is a failure, never a skip.
