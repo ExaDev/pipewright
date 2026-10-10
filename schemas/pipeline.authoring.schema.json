@@ -217,6 +217,7 @@
           {
             "type": "string",
             "enum": [
+              "actions",
               "contents",
               "pullRequests",
               "issues",
@@ -424,6 +425,7 @@
                 {
                   "type": "string",
                   "enum": [
+                    "actions",
                     "contents",
                     "pullRequests",
                     "issues",
@@ -606,6 +608,20 @@
                         {
                           "type": "string",
                           "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "form": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "native",
+                            "wrapper"
+                          ]
                         },
                         {
                           "$ref": "#/$defs/parameterReference"
