@@ -273,4 +273,21 @@ describe("GitLab CI import", () => {
 
     expect(pipeline.jobs.build?.steps[1]).toMatchObject({ kind: "provider" });
   });
+
+  it("keeps a job with a before_script or an image as GitLab's whole", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}deploy:\n  tags: [linux]\n  image: node:22\n  before_script:\n    - exit 1\n  script:\n    - ./deploy\n`,
+    );
+
+    expect(pipeline.jobs.deploy?.steps[1]).toMatchObject({ kind: "provider" });
+  });
+
+  it("does not read a case-sensitive comparison of two texts as the model's equality", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}deploy:\n${JOB}  rules:\n    - if: '"PROD" == "prod"'\n`,
+    );
+
+    expect(pipeline.jobs.deploy?.when).toBeUndefined();
+    expect(pipeline.jobs.deploy?.steps[1]).toMatchObject({ kind: "provider" });
+  });
 });

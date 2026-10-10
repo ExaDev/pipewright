@@ -210,13 +210,15 @@ function conditionOf(node: Node): Condition {
     case "compare": {
       const negated = node.operator === "!=" || node.operator === "!~";
       if (node.operator === "==" || node.operator === "!=") {
-        // Two literals compared are a constant the compiler writes for a comparison of two texts. A variable compared with `==` is case-sensitive, which the model's equality is not.
-        if (node.left.kind === "string" && node.right.kind === "string") {
+        // The compiler writes a comparison of two texts as the constant `"1" == "1"` or `"1" == "0"`. Any other `==` is case-sensitive, which the model's equality is not.
+        const left = node.left.kind === "string" ? node.left.value : undefined;
+        const right = node.right.kind === "string" ? node.right.value : undefined;
+        if (node.operator === "==" && left === "1" && (right === "1" || right === "0")) {
           return {
             kind: "equals",
-            left: { kind: "text", value: node.left.value },
-            right: { kind: "text", value: node.right.value },
-            negated,
+            left: { kind: "text", value: left },
+            right: { kind: "text", value: right },
+            negated: false,
           };
         }
         throw new ExpressionError("a case-sensitive comparison");
