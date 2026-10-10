@@ -2,7 +2,7 @@ import {
   UnsupportedNativeError,
   findTemplateTokens,
   jsonPointerOf,
-  slugOf,
+  uniqueJobIds,
   validateImported,
   type EmittedFile,
   type Pipeline,
@@ -363,21 +363,6 @@ function implicitNeedsOf(
   return needs;
 }
 
-function uniqueIds(names: readonly string[]): ReadonlyMap<string, string> {
-  const taken = new Set<string>();
-  const ids = new Map<string, string>();
-  for (const name of names) {
-    const slug = slugOf(name);
-    const base = /^[a-z]/.test(slug) ? slug : `job-${slug}`.replace(/-$/, "");
-    let id = base === "job" || base === "" ? "job" : base;
-    for (let counter = 2; taken.has(id); counter += 1) id = `${base}-${String(counter)}`;
-    taken.add(id);
-    ids.set(name, id);
-  }
-
-  return ids;
-}
-
 const DEFAULT_GROUP = "{{ workflow }}-{{ refName }}";
 
 function importConfiguration(file: EmittedFile): Pipeline {
@@ -409,7 +394,8 @@ function importConfiguration(file: EmittedFile): Pipeline {
   if (jobs.size === 0) return fail([], "a configuration with no jobs");
 
   const names = [...jobs.keys()];
-  const idOf = uniqueIds(names);
+  const generated = uniqueJobIds(names);
+  const idOf = new Map(names.map((name, index) => [name, generated[index] ?? name]));
   const context: JobContext = {
     comments,
     idOf,
