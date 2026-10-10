@@ -1,8 +1,21 @@
+import { readFile } from "node:fs/promises";
+
 import { describe, expect, it } from "vitest";
 
 import { pipelineSchema, samplePipeline } from "@ci-adapters/pipeline-contract";
 
 import { createGitLabCiCompiler } from "../src/index.ts";
+
+describe("GitLab CI emission", () => {
+  it("matches the golden file for the sample pipeline", async () => {
+    const [file] = await createGitLabCiCompiler().compile(samplePipeline(), {
+      source: "ci/sample.pipeline.json",
+    });
+    const golden = await readFile(new URL("./golden/sample.yml", import.meta.url), "utf8");
+
+    expect(file?.content).toBe(golden);
+  });
+});
 
 describe("GitLab CI variable references", () => {
   it("braces a variable written inside text so what follows is not read as part of its name", async () => {

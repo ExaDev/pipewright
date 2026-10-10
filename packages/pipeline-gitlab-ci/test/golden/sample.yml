@@ -34,8 +34,8 @@ Test:
           - "22"
           - "24"
   variables:
-    SHA: $CI_COMMIT_SHA
-    NODE_VERSION: $node
+    SHA: ${CI_COMMIT_SHA}
+    NODE_VERSION: ${node}
   interruptible: true
   script:
     - pnpm test
