@@ -16,19 +16,13 @@ import {
 import { commentPath, renderYaml } from "@ci-adapters/yaml-emit";
 import { dag } from "process-graph";
 
-const PROVIDER = "bitbucket-pipelines";
-const FILE = "bitbucket-pipelines.yml";
-
-/** The documented range of `max-time`, in minutes. */
-const MAX_TIME_RANGE = { min: 1, max: 720 } as const;
-
-/**
- * Bitbucket documents `runs-on` as available only for self-hosted runners, and a self-hosted runner always carries this label. Any other label set names no Bitbucket runner, so the job runs on Bitbucket's own infrastructure and the labels are not written.
- */
-const SELF_HOSTED_LABEL = "self.hosted";
-
-/** The key under `custom` a manual trigger is published as. */
-const MANUAL_PIPELINE = "manual";
+import {
+  FILE,
+  MANUAL_PIPELINE,
+  MAX_TIME_RANGE,
+  PROVIDER,
+  SELF_HOSTED_LABEL,
+} from "./vocabulary.ts";
 
 interface PlacedStep {
   readonly id: string;
