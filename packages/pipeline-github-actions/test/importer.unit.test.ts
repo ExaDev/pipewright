@@ -347,4 +347,16 @@ jobs:
     const back = await createGitHubActionsImporter().import(file ?? { path: "", content: "" });
     expect(back.jobs.a?.env).toEqual({ PAYLOAD: "${{secrets['TOKEN']}}", REF: "{{ refName }}" });
   });
+
+  it("keeps a job with GitHub's own settings, such as continue-on-error or a container, as GitHub's whole", async () => {
+    const pipeline = await importText(
+      "on: push\njobs:\n  a:\n    runs-on: x\n    continue-on-error: true\n    container: node:22\n    steps:\n      - run: ./deploy\n",
+    );
+
+    expect(pipeline.jobs.a?.steps[0]).toEqual({
+      kind: "provider",
+      provider: "github-actions",
+      native: { run: "./deploy" },
+    });
+  });
 });

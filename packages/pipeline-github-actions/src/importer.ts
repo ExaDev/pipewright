@@ -401,19 +401,6 @@ function jobAt(id: string, value: unknown, comments: Comments): Record<string, u
     docSteps.length > 1 &&
     JSON.stringify(docSteps[0]) === JSON.stringify(GATE_STEP);
   const offset = gated ? 1 : 0;
-  // A job gated by a condition the model has no form for is GitHub's as a whole: its steps would otherwise be portable and run unconditionally anywhere else.
-  const owned = condition.raw !== undefined;
-  const steps = docSteps
-    .slice(offset)
-    .map((step, index) =>
-      stepAt(
-        step,
-        [...pointer, "steps", index + offset],
-        comments.at("jobs", id, "steps", String(index + offset)),
-        { allowMatrix, owned },
-      ),
-    );
-
   // GitHub's own settings that the model has no form for stay on the job's `native` mapping, which the compiler writes back over the keys it generates.
   const native: Record<string, unknown> = {};
   if (condition.raw !== undefined) native.if = condition.raw;
@@ -435,6 +422,19 @@ function jobAt(id: string, value: unknown, comments: Comments): Record<string, u
   for (const [key, entry] of Object.entries(job)) {
     if (!JOB_KEYS.has(key)) native[key] = entry;
   }
+
+  // A job that carries settings of GitHub's own (a condition, `continue-on-error`, a container, services, outputs) is GitHub's as a whole: its steps would otherwise be portable and run without them anywhere else.
+  const owned = Object.keys(native).length > 0;
+  const steps = docSteps
+    .slice(offset)
+    .map((step, index) =>
+      stepAt(
+        step,
+        [...pointer, "steps", index + offset],
+        comments.at("jobs", id, "steps", String(index + offset)),
+        { allowMatrix, owned },
+      ),
+    );
 
   const description = comments.at("jobs", id);
   const name = job.name === undefined ? id : scalarText(job.name, [...pointer, "name"], "a name");

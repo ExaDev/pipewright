@@ -102,7 +102,9 @@ describe("Bitbucket Pipelines import", () => {
     );
 
     expect(Object.values(depth.jobs)[0]?.steps[0]).toEqual({ kind: "checkout", fetchDepth: 5 });
-    expect(Object.values(other.jobs)[0]?.steps).toEqual([{ kind: "run", run: "make" }]);
+    expect(Object.values(other.jobs)[0]?.steps).toEqual([
+      { kind: "provider", provider: "bitbucket-pipelines", native: { script: ["make"] } },
+    ]);
     expect(Object.values(other.jobs)[0]?.native).toEqual({
       "bitbucket-pipelines": { clone: { enabled: false } },
     });
@@ -215,5 +217,17 @@ describe("Bitbucket Pipelines import", () => {
     );
 
     expect(Object.values(pipeline.jobs)[0]?.steps[1]).toMatchObject({ kind: "provider" });
+  });
+
+  it("keeps a step with Bitbucket's own settings, such as an image or an after-script, as Bitbucket's whole", async () => {
+    const pipeline = await importText(
+      "pipelines:\n  default:\n    - step:\n        image: node:22\n        after-script: [cleanup]\n        script: [./deploy]\n",
+    );
+
+    expect(Object.values(pipeline.jobs)[0]?.steps[1]).toEqual({
+      kind: "provider",
+      provider: "bitbucket-pipelines",
+      native: { script: ["./deploy"] },
+    });
   });
 });
