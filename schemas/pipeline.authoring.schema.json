@@ -347,7 +347,6 @@
             ]
           },
           "runsOn": {
-            "minItems": 1,
             "type": "array",
             "items": {
               "anyOf": [

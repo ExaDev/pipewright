@@ -118,7 +118,8 @@ export const JOB_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 export const jobSchema = z.strictObject({
   name: z.string().min(1),
   description,
-  runsOn: nonEmptyList,
+  /** Runner labels. Empty means the provider's own default runner, which a provider that selects runners by label alone (GitHub) cannot express and rejects. */
+  runsOn: z.array(z.string().min(1)),
   needs: z.array(z.string().regex(JOB_ID_PATTERN)).optional(),
   /**
    * `success` (the default) runs the job only when every job it needs succeeded. `always` runs it whatever they concluded, for cleanup that must happen regardless. `gate` is a job that exists to report whether everything it needs succeeded: it fails unless they all did, so a branch can require it as the single check. Providers that already fail the pipeline when a dependency fails run it as an ordinary dependent job.
