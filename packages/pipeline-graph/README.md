@@ -1,9 +1,9 @@
-# @ci-adapters/pipeline-graph
+# @pipewright/pipeline-graph
 
 A pipeline as a process model. `toModel` maps a `Pipeline` to the `Model` of [`process-graph`](https://www.npmjs.com/package/process-graph), so the swimlane, flowchart and state projections and the readiness, blocking and critical-path queries of `process-graph` apply to it. `overlayOf` maps platform run state to the schema's `Overlay`, so those queries can answer for one run.
 
 ```ts
-import { toModel, overlayOf } from "@ci-adapters/pipeline-graph";
+import { toModel, overlayOf } from "@pipewright/pipeline-graph";
 import { readySet, toSwimlane } from "process-graph";
 
 const model = toModel(pipeline);
@@ -41,7 +41,7 @@ The steps, `needsPolicy`, permissions, environment, timeouts and provider-native
 
 ## `overlayOf`
 
-Run state is `Record<jobId, JobState>`, where a `JobState` is either `{ kind: "reported", check }` with a `Check` from `@ci-adapters/platform-contract`, or `{ kind: "unresolved" }` for a job the platform could not report on. Matching checks to job ids is the reader's work: a check's name is provider-specific, and `check-names` derives them.
+Run state is `Record<jobId, JobState>`, where a `JobState` is either `{ kind: "reported", check }` with a `Check` from `@pipewright/platform-contract`, or `{ kind: "unresolved" }` for a job the platform could not report on. Matching checks to job ids is the reader's work: a check's name is provider-specific, and `check-names` derives them.
 
 | Run state for the job                                                         | Overlay entry                                      |
 | ----------------------------------------------------------------------------- | -------------------------------------------------- |

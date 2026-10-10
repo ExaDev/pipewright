@@ -8,8 +8,8 @@ import {
   type EmittedFile,
   type Pipeline,
   type PipelineImporter,
-} from "@ci-adapters/pipeline-contract";
-import { readYaml } from "@ci-adapters/yaml-emit";
+} from "@pipewright/pipeline-contract";
+import { readYaml } from "@pipewright/yaml-emit";
 
 import { CONFIG_VERSION, CONTEXT_OF_VALUE, EXECUTOR_KEYS, PROVIDER } from "./vocabulary.ts";
 

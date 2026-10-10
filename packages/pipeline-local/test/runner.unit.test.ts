@@ -1,6 +1,6 @@
 import { describe, it } from "vitest";
 
-import { describeRunnerConformance } from "@ci-adapters/pipeline-contract";
+import { describeRunnerConformance } from "@pipewright/pipeline-contract";
 
 import { createLocalRunner } from "../src/index.ts";
 

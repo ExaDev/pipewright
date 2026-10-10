@@ -7,7 +7,7 @@ import {
   describeImporterConformance,
   when,
   type Pipeline,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 import { createGitLabCiCompiler, createGitLabCiImporter } from "../src/index.ts";
 

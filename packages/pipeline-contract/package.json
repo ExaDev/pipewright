@@ -1,5 +1,5 @@
 {
-  "name": "@ci-adapters/pipeline-contract",
+  "name": "@pipewright/pipeline-contract",
   "version": "0.0.0",
   "dependencies": {
     "@exadev/json-compose": "1.0.0",

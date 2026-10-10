@@ -1,4 +1,4 @@
-import type { Pipeline } from "@ci-adapters/pipeline-contract";
+import type { Pipeline } from "@pipewright/pipeline-contract";
 import type { Element, Model, OpenIds, Participant, Transition } from "process-graph";
 
 /** The element every job without `needs` follows. A job id never contains a colon, so none of the generated ids can collide with one. */

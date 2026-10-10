@@ -1,5 +1,5 @@
 {
-  "name": "@ci-adapters/platform-contract",
+  "name": "@pipewright/platform-contract",
   "version": "0.0.0",
   "dependencies": {
     "zod": "catalog:"

@@ -1,8 +1,8 @@
 import { deriveStatuses, type Facts } from "process-graph";
 import { describe, expect, it } from "vitest";
 
-import { samplePipeline } from "@ci-adapters/pipeline-contract";
-import type { Check } from "@ci-adapters/platform-contract";
+import { samplePipeline } from "@pipewright/pipeline-contract";
+import type { Check } from "@pipewright/platform-contract";
 
 import { overlayOf, toModel, type JobState } from "../src/index.ts";
 

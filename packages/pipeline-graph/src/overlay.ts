@@ -1,5 +1,5 @@
-import { assertNever } from "@ci-adapters/pipeline-contract";
-import type { Check } from "@ci-adapters/platform-contract";
+import { assertNever } from "@pipewright/pipeline-contract";
+import type { Check } from "@pipewright/platform-contract";
 import type { OpenIds, Overlay, OverlayStatus } from "process-graph";
 
 /**

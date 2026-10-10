@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, it } from "vitest";
 
-import { pipelineSchema, samplePipeline } from "@ci-adapters/pipeline-contract";
+import { pipelineSchema, samplePipeline } from "@pipewright/pipeline-contract";
 
 import { createGitLabCiCompiler } from "../src/index.ts";
 

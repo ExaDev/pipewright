@@ -19,8 +19,8 @@ import {
   type PredicateHandlers,
   type PredicateNode,
   type Step,
-} from "@ci-adapters/pipeline-contract";
-import { renderYaml } from "@ci-adapters/yaml-emit";
+} from "@pipewright/pipeline-contract";
+import { renderYaml } from "@pipewright/yaml-emit";
 
 import {
   CHECKOUT_ACTION,

@@ -1,16 +1,16 @@
 {
-  "name": "@ci-adapters/cli",
+  "name": "@pipewright/cli",
   "version": "0.0.0",
   "dependencies": {
-    "@ci-adapters/check-names": "0.0.0",
-    "@ci-adapters/pipeline-bitbucket": "0.0.0",
-    "@ci-adapters/pipeline-circleci": "0.0.0",
-    "@ci-adapters/pipeline-contract": "0.0.0",
-    "@ci-adapters/pipeline-github-actions": "0.0.0",
-    "@ci-adapters/pipeline-gitlab-ci": "0.0.0",
-    "@ci-adapters/pipeline-local": "0.0.0",
-    "@ci-adapters/platform-contract": "0.0.0",
-    "@ci-adapters/platform-github": "0.0.0",
+    "@pipewright/check-names": "0.0.0",
+    "@pipewright/pipeline-bitbucket": "0.0.0",
+    "@pipewright/pipeline-circleci": "0.0.0",
+    "@pipewright/pipeline-contract": "0.0.0",
+    "@pipewright/pipeline-github-actions": "0.0.0",
+    "@pipewright/pipeline-gitlab-ci": "0.0.0",
+    "@pipewright/pipeline-local": "0.0.0",
+    "@pipewright/platform-contract": "0.0.0",
+    "@pipewright/platform-github": "0.0.0",
     "zod": "catalog:"
   },
   "devDependencies": {

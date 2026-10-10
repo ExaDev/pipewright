@@ -1,9 +1,9 @@
 {
-  "name": "@ci-adapters/pipeline-graph",
+  "name": "@pipewright/pipeline-graph",
   "version": "0.0.0",
   "dependencies": {
-    "@ci-adapters/pipeline-contract": "0.0.0",
-    "@ci-adapters/platform-contract": "0.0.0",
+    "@pipewright/pipeline-contract": "0.0.0",
+    "@pipewright/platform-contract": "0.0.0",
     "process-graph": "catalog:"
   },
   "exports": {

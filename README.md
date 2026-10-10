@@ -31,7 +31,7 @@ import {
   definePipeline,
   jobsOf,
   matrixJob,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 const lint = defineJob("lint", {
   name: "Lint",

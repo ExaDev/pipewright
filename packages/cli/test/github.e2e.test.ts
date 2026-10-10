@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
-import { createGitHubController, createGitHubReader } from "@ci-adapters/platform-github";
-import type { Run } from "@ci-adapters/platform-contract";
+import { createGitHubActionsCompiler } from "@pipewright/pipeline-github-actions";
+import { createGitHubController, createGitHubReader } from "@pipewright/platform-github";
+import type { Run } from "@pipewright/platform-contract";
 
 import pipeline from "../../../ci/e2e.pipeline.ts";
 

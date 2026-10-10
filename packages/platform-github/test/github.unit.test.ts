@@ -5,7 +5,7 @@ import {
   createFakeState,
   describeReaderConformance,
   type FakeState,
-} from "@ci-adapters/platform-contract";
+} from "@pipewright/platform-contract";
 
 import { createGitHubController, createGitHubReader, runCodec } from "../src/index.ts";
 import { createGitHubServer } from "./server.ts";

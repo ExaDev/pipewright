@@ -6,8 +6,8 @@ import {
   type EmittedFile,
   type Pipeline,
   type PipelineImporter,
-} from "@ci-adapters/pipeline-contract";
-import { commentPath, readYaml } from "@ci-adapters/yaml-emit";
+} from "@pipewright/pipeline-contract";
+import { commentPath, readYaml } from "@pipewright/yaml-emit";
 
 import {
   FILE,

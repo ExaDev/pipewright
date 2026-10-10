@@ -7,7 +7,7 @@ import {
   t,
   when,
   type JobDefinition,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 /** Every job runs on the same runner label. */
 const RUNNER = "ubuntu-latest";

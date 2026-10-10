@@ -7,7 +7,7 @@ import {
   pipelineSchema,
   samplePipeline,
   type Pipeline,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
 import { createBitbucketPipelinesCompiler } from "../src/index.ts";
 

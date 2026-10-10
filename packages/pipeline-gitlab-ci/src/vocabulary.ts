@@ -1,4 +1,4 @@
-import type { ContextKey, EventKind } from "@ci-adapters/pipeline-contract";
+import type { ContextKey, EventKind } from "@pipewright/pipeline-contract";
 
 export const PROVIDER = "gitlab-ci";
 

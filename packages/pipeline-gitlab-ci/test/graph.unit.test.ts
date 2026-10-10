@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { DependencyGraphError, type Job, type Pipeline } from "@ci-adapters/pipeline-contract";
+import { DependencyGraphError, type Job, type Pipeline } from "@pipewright/pipeline-contract";
 
 import { createGitLabCiCompiler } from "../src/index.ts";
 

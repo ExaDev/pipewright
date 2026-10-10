@@ -7,9 +7,9 @@ import {
   pipelineSchema,
   when,
   type Pipeline,
-} from "@ci-adapters/pipeline-contract";
+} from "@pipewright/pipeline-contract";
 
-import { readYaml } from "@ci-adapters/yaml-emit";
+import { readYaml } from "@pipewright/yaml-emit";
 
 import { createGitHubActionsCompiler, createGitHubActionsImporter } from "../src/index.ts";
 
