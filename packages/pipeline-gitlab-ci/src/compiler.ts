@@ -2,10 +2,10 @@ import {
   UnsupportedFeatureError,
   assertNever,
   compilePredicate,
-  dependencyLevels,
   expandMatrix,
   matrixValues,
   generatedHeaderLines,
+  jobGraphOf,
   renderTemplate,
   type CompileOptions,
   type ContextKey,
@@ -20,6 +20,7 @@ import {
   type Trigger,
 } from "@ci-adapters/pipeline-contract";
 import { renderYaml } from "@ci-adapters/yaml-emit";
+import { topologicalLayers } from "@exadev/process-graph-dag";
 
 const PROVIDER = "gitlab-ci";
 
@@ -399,16 +400,20 @@ export function createGitLabCiCompiler(): PipelineCompiler {
         keyOf.set(id, job.name);
       }
 
-      const levels = dependencyLevels(pipeline.jobs);
-      const deepest = Math.max(...levels.values());
+      const { levels, layers } = topologicalLayers(jobGraphOf(pipeline.jobs));
+      const deepest = layers.length - 1;
       const comments = new Map<string, string>();
       const jobs: Record<string, unknown> = {};
       for (const [id, job] of Object.entries(pipeline.jobs)) {
+        const level = levels.get(id);
+        if (level === undefined) {
+          throw new Error(`job "${id}" has no dependency level in an acyclic graph`);
+        }
         const output = jobOf({
           id,
           job,
           pipeline,
-          level: levels.get(id) ?? 0,
+          level,
           keyOf,
           toolCommand: options.toolCommand,
           source: options.source,

@@ -1,3 +1,4 @@
+import { buildDag, findCycles } from "@exadev/process-graph-dag";
 import { JsonValueSchema, PredicateNodeSchema } from "trilean";
 import { z } from "zod";
 
@@ -174,31 +175,13 @@ function isKnownReference(key: unknown, matrixNames: ReadonlySet<string>): boole
   return contextKeySchema.safeParse(key).success;
 }
 
-function hasCycle(graph: ReadonlyMap<string, readonly string[]>): boolean {
-  const state = new Map<string, "visiting" | "done">();
-  const visit = (id: string): boolean => {
-    const current = state.get(id);
-    if (current === "visiting") return true;
-    if (current === "done") return false;
-    state.set(id, "visiting");
-    const cyclic = (graph.get(id) ?? []).some(visit);
-    state.set(id, "done");
-
-    return cyclic;
-  };
-
-  return [...graph.keys()].some(visit);
-}
-
 /**
  * The pipeline model: the single definition from which the TypeScript type, the runtime validator and the published JSON Schema all derive. The cross-field rules (job references, cycles, predicate references) are part of the schema, so a value that parses is a pipeline every adapter can compile.
  */
 export const pipelineSchema = pipelineShape.superRefine((pipeline, ctx) => {
   const ids = new Set(Object.keys(pipeline.jobs));
-  const graph = new Map<string, readonly string[]>();
 
   for (const [id, job] of Object.entries(pipeline.jobs)) {
-    graph.set(id, job.needs ?? []);
     for (const [index, needed] of (job.needs ?? []).entries()) {
       if (!ids.has(needed)) {
         ctx.addIssue({
@@ -281,8 +264,13 @@ export const pipelineSchema = pipelineShape.superRefine((pipeline, ctx) => {
     }
   }
 
-  if (hasCycle(graph)) {
-    ctx.addIssue({ code: "custom", path: ["jobs"], message: "needs form a cycle" });
+  const cycles = findCycles(buildDag(ids, (id) => pipeline.jobs[id]?.needs ?? []));
+  if (cycles.length > 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["jobs"],
+      message: `needs form a cycle: ${cycles.map((path) => path.join(" -> ")).join("; ")}`,
+    });
   }
 });
 export type Pipeline = z.infer<typeof pipelineSchema>;
