@@ -221,10 +221,9 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
   if ("extends" in job) return fail([...pointer, "extends"], "a job that extends another");
   if ("trigger" in job)
     return fail([...pointer, "trigger"], "a job that triggers another pipeline");
-  const tags = stringList(job.tags);
-  if (tags === undefined || tags.length === 0) {
-    return fail([...pointer, "tags"], "a job with no tags, because the model needs a runner label");
-  }
+  // A job with no tags runs on any runner, which the model states as no runner label.
+  const tags = job.tags === undefined ? [] : stringList(job.tags);
+  if (tags === undefined) return fail([...pointer, "tags"], "tags that are not a list of strings");
   const script = typeof job.script === "string" ? [job.script] : job.script;
   const lines = stringList(script);
   if (lines === undefined || lines.length === 0) {
@@ -477,7 +476,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
 /**
  * Reads a `.gitlab-ci.yml` into the neutral model: the inverse of `createGitLabCiCompiler`.
  *
- * Read: workflow rules that select a pipeline source with an optional branch filter, stages and `needs` (a job with no `needs` waits for the whole stage before it, as GitLab runs it), tags, matrix, timeout, environment, variables, `rules` that are one `if` over the neutral variables as anchored case-insensitive matches (and `when: always`), concurrency written as `interruptible` or a shared `resource_group`, and the script, one `run` step per line, after a `checkout` that carries `GIT_DEPTH`. What GitLab owns and the model carries verbatim is kept: any other job key, and a setting with no neutral form, go into the job's `native` mapping. What has nowhere to be carried is rejected with its JSON pointer: a job with no tags, a file with no workflow rules, a hidden job or an `extends`, a downstream trigger, top-level `default`, `include` and the like, a `needs` entry with options, and a call to this tool's runner. A gate and an ordinary dependent job are written the same, so a gate reads back as an ordinary job.
+ * Read: workflow rules that select a pipeline source with an optional branch filter, stages and `needs` (a job with no `needs` waits for the whole stage before it, as GitLab runs it), tags, matrix, timeout, environment, variables, `rules` that are one `if` over the neutral variables as anchored case-insensitive matches (and `when: always`), concurrency written as `interruptible` or a shared `resource_group`, and the script, one `run` step per line, after a `checkout` that carries `GIT_DEPTH`. What GitLab owns and the model carries verbatim is kept: any other job key, and a setting with no neutral form, go into the job's `native` mapping. What has nowhere to be carried is rejected with its JSON pointer: a file with no workflow rules, a hidden job or an `extends`, a downstream trigger, top-level `default`, `include` and the like, a `needs` entry with options, and a call to this tool's runner. A gate and an ordinary dependent job are written the same, so a gate reads back as an ordinary job.
  */
 export function createGitLabCiImporter(): PipelineImporter {
   return {
