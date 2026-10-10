@@ -1,10 +1,10 @@
+import { SETUP_STEPS } from "./actions.ts";
 import {
   context,
   defineJob,
   definePipeline,
   jobsOf,
   matrixJob,
-  type StepInput,
 } from "@ci-adapters/pipeline-contract";
 
 const RUNNER = "ubuntu-latest";
@@ -15,19 +15,6 @@ const TIMEOUT_MINUTES = 10;
 /**
  * The workflow the end-to-end test dispatches and watches. It exercises the parts of the model a GitHub run can prove: a matrix reaching a step as an environment value, a dependency, a job rendered in the wrapper form so the tool's own runner executes on GitHub, and a gate.
  */
-const setup: StepInput[] = [
-  { kind: "checkout" },
-  { kind: "provider", provider: "github-actions", native: { uses: "pnpm/action-setup@v6" } },
-  {
-    kind: "provider",
-    provider: "github-actions",
-    native: {
-      uses: "actions/setup-node@v7",
-      with: { "node-version-file": ".tool-versions", cache: "pnpm" },
-    },
-  },
-  { kind: "run", name: "Install", run: "pnpm install --frozen-lockfile", form: "native" },
-];
 
 const build = defineJob(
   "build",
@@ -57,7 +44,7 @@ const wrapped = defineJob("wrapped", {
   needs: [build],
   form: "wrapper",
   steps: [
-    ...setup,
+    ...SETUP_STEPS,
     {
       kind: "run",
       name: "Run through the tool",

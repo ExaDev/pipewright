@@ -131,7 +131,7 @@ describe("GitHub Actions emission", () => {
           ],
         }),
       );
-      expect(text).toContain("uses: actions/checkout@v7");
+      expect(text).toContain("uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1");
       expect(text).toContain(
         'run: node tool/bin.ts run --pipeline ci/sample.pipeline.json --job only --steps 1-2 --matrix "node=${{ matrix.node }}"',
       );

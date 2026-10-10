@@ -1,3 +1,4 @@
+import { SETUP_STEPS } from "./actions.ts";
 import {
   context,
   defineJob,
@@ -6,7 +7,6 @@ import {
   t,
   when,
   type JobDefinition,
-  type StepInput,
 } from "@ci-adapters/pipeline-contract";
 
 /** Every job runs on the same runner label. */
@@ -21,19 +21,6 @@ const PIPELINE_FILE = "ci/ci.pipeline.ts";
 /**
  * The steps every job starts with. Installing is native in every job: in a wrapper job the tool itself cannot run until the workspace has resolved its own packages.
  */
-const setup: StepInput[] = [
-  { kind: "checkout" },
-  { kind: "provider", provider: "github-actions", native: { uses: "pnpm/action-setup@v6" } },
-  {
-    kind: "provider",
-    provider: "github-actions",
-    native: {
-      uses: "actions/setup-node@v7",
-      with: { "node-version-file": ".tool-versions", cache: "pnpm" },
-    },
-  },
-  { kind: "run", name: "Install", run: "pnpm install --frozen-lockfile", form: "native" },
-];
 
 interface CheckJob {
   readonly name: string;
@@ -52,7 +39,7 @@ function check(options: CheckJob): JobDefinition {
     runsOn: [RUNNER],
     timeoutMinutes: options.timeoutMinutes ?? DEFAULT_TIMEOUT_MINUTES,
     ...(options.form === undefined ? {} : { form: options.form }),
-    steps: [...setup, { kind: "run", name: options.name, run: options.run }],
+    steps: [...SETUP_STEPS, { kind: "run", name: options.name, run: options.run }],
   };
 }
 
@@ -135,13 +122,24 @@ const e2e = defineJob("e2e", {
   native: {
     "github-actions": {
       env: {
-        GH_TOKEN: "${{ github.token }}",
         REPOSITORY: "${{ github.repository }}",
         E2E_REF: "${{ github.ref_name }}",
       },
     },
   },
-  steps: [...setup, { kind: "run", name: "Dispatch and watch", run: "pnpm run test:e2e" }],
+  steps: [
+    ...SETUP_STEPS,
+    {
+      // The write token goes to this one step, after setup and install have run, so no setup action ever holds it in its environment.
+      kind: "provider",
+      provider: "github-actions",
+      native: {
+        name: "Dispatch and watch",
+        run: "pnpm run test:e2e",
+        env: { GH_TOKEN: "${{ github.token }}" },
+      },
+    },
+  ],
 });
 
 const validators = defineJob("validators", {
@@ -151,7 +149,7 @@ const validators = defineJob("validators", {
   runsOn: [RUNNER],
   timeoutMinutes: DEFAULT_TIMEOUT_MINUTES,
   steps: [
-    ...setup,
+    ...SETUP_STEPS,
     {
       kind: "run",
       name: "Install actionlint",
@@ -182,7 +180,6 @@ const platformSmoke = defineJob("platform-smoke", {
   native: {
     "github-actions": {
       env: {
-        GH_TOKEN: "${{ github.token }}",
         REPOSITORY: "${{ github.repository }}",
         COMMIT: "${{ github.event.pull_request.head.sha || github.sha }}",
         RUN_ID: "${{ github.run_id }}",
@@ -190,16 +187,24 @@ const platformSmoke = defineJob("platform-smoke", {
     },
   },
   steps: [
-    ...setup,
+    ...SETUP_STEPS,
     {
-      kind: "run",
-      name: "Read this run",
-      run: `${TOOL} platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -E "queued|running|waiting"`,
+      kind: "provider",
+      provider: "github-actions",
+      native: {
+        name: "Read this run",
+        run: `${TOOL} platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -E "queued|running|waiting"`,
+        env: { GH_TOKEN: "${{ github.token }}" },
+      },
     },
     {
-      kind: "run",
-      name: "List this commit's checks",
-      run: `${TOOL} platform checks --repo "$REPOSITORY" --sha "$COMMIT"`,
+      kind: "provider",
+      provider: "github-actions",
+      native: {
+        name: "List this commit's checks",
+        run: `${TOOL} platform checks --repo "$REPOSITORY" --sha "$COMMIT"`,
+        env: { GH_TOKEN: "${{ github.token }}" },
+      },
     },
   ],
 });
