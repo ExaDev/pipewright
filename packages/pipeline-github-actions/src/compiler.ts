@@ -26,9 +26,9 @@ import { renderYaml } from "@ci-adapters/yaml-emit";
 const PROVIDER = "github-actions";
 
 /**
- * The checkout action's major version. It is pinned here, in one place, so a bump is a single reviewed change to the adapter rather than an edit to every pipeline.
+ * The checkout action, pinned to the commit its v7 tag pointed at when it was resolved, because a tag is a mutable reference and a checkout runs in every job. It is pinned here, in one place, so a bump is a single reviewed change to the adapter rather than an edit to every pipeline.
  */
-const CHECKOUT_ACTION = "actions/checkout@v7";
+const CHECKOUT_ACTION = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
 
 const CONTEXT_EXPRESSION: Readonly<Record<ContextKey, string>> = {
   event: "github.event_name",
