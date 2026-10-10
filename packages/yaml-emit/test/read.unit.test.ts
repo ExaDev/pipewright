@@ -36,6 +36,16 @@ describe("readYaml", () => {
     expect(readYaml(text).comments).toEqual(comments);
   });
 
+  it("keeps every paragraph of a comment on a key after the first", () => {
+    const comments = new Map([
+      ["first", "One."],
+      ["second", "Para one.\n\nPara two."],
+    ]);
+    const text = renderYaml({ first: 1, second: 2 }, comments, HEADER);
+
+    expect(readYaml(text).comments).toEqual(comments);
+  });
+
   it("does not read the generated header as a comment on the first key", () => {
     const text = renderYaml({ name: "CI", jobs: {} }, new Map(), HEADER);
 

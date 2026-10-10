@@ -48,10 +48,11 @@ function collect(
   into: Map<string, string>,
   position: Position,
 ): void {
-  const record = (at: readonly string[], text: string | undefined): void => {
+  const record = (at: readonly string[], text: string | undefined, first = false): void => {
     if (text === undefined || at.length === 0) return;
     const cleaned = stripComment(text);
-    const own = position === "root" && at.length === 1 ? withoutHeader(cleaned) : cleaned;
+    // The generated header is written before the document's first key and is merged into that key's comment only.
+    const own = position === "root" && at.length === 1 && first ? withoutHeader(cleaned) : cleaned;
     if (own !== undefined && own !== "") into.set(commentPath(...at), own);
   };
 
@@ -63,7 +64,7 @@ function collect(
       // The parser hangs the comment before a mapping's first key on the mapping itself, not on the key, unless the mapping is a sequence item, whose own comment it already is.
       const text =
         commentOf(pair.key) ?? (index === 0 && position !== "item" ? commentOf(node) : undefined);
-      record(at, text);
+      record(at, text, index === 0);
       collect(pair.value, at, into, "value");
     }
   } else if (isSeq(node)) {
