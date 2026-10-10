@@ -1,0 +1,27 @@
+{
+  "$schema": "../schemas/pipeline.authoring.schema.json",
+  "concurrency": {
+    "cancelInProgress": true,
+    "description": "A new push to a branch supersedes that branch's in-flight run.",
+    "group": "ci-{{ workflow }}-{{ refName }}"
+  },
+  "description": "One workflow for the whole workspace. Every check runs from the repository root.",
+  "name": "CI",
+  "permissions": {
+    "contents": "read"
+  },
+  "triggers": [
+    {
+      "branches": [
+        "main"
+      ],
+      "kind": "push"
+    },
+    {
+      "kind": "pullRequest"
+    },
+    {
+      "kind": "manual"
+    }
+  ]
+}

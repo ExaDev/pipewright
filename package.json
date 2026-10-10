@@ -1,25 +1,6 @@
 {
   "name": "ci-adapters",
-  "private": true,
   "description": "Workspace root. Never published: it holds the workspace, the shared tooling configuration and the repository's own self-hosted pipeline definition.",
-  "type": "module",
-  "license": "UNLICENSED",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ExaDev/ci-adapters.git"
-  },
-  "engines": {
-    "node": ">=22.18"
-  },
-  "packageManager": "pnpm@12.4.1",
-  "scripts": {
-    "lint": "eslint . --max-warnings 0",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run",
-    "ci:emit": "node packages/cli/src/bin.ts emit --pipeline ci/pipeline.ts --provider github-actions --out .github/workflows/ci.yml",
-    "ci:check": "node packages/cli/src/bin.ts check --pipeline ci/pipeline.ts --provider github-actions --out .github/workflows/ci.yml",
-    "prepare": "husky"
-  },
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
@@ -34,8 +15,29 @@
     "jiti": "2.7.0",
     "lint-staged": "17.6.0",
     "prettier": "3.9.9",
-    "typescript": "7.0.2",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.71.0",
     "vitest": "5.0.3"
-  }
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@12.4.1",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExaDev/ci-adapters.git"
+  },
+  "scripts": {
+    "ci:check": "node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.json --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
+    "ci:emit": "node packages/cli/src/bin.ts emit --pipeline ci/ci.pipeline.json --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
+    "ci:local": "node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.json --local --skip-provider-steps --job lint --job typecheck --job test --job drift",
+    "lint": "eslint . --max-warnings 0",
+    "prepare": "husky",
+    "schema": "node packages/cli/src/bin.ts schema > schemas/pipeline.schema.json && node packages/cli/src/bin.ts schema --authoring > schemas/pipeline.authoring.schema.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "type": "module"
 }

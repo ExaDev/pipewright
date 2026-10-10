@@ -1,0 +1,1910 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "$ref": "#/$defs/parameterReference"
+        }
+      ]
+    },
+    "name": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "$ref": "#/$defs/parameterReference"
+        }
+      ]
+    },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "$ref": "#/$defs/parameterReference"
+        }
+      ]
+    },
+    "form": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "native",
+            "wrapper"
+          ]
+        },
+        {
+          "$ref": "#/$defs/parameterReference"
+        }
+      ]
+    },
+    "triggers": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "push"
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              },
+              "branches": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                }
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "pullRequest"
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              },
+              "branches": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                }
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "schedule"
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              },
+              "cron": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "manual"
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "propertyNames": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "contents",
+              "pullRequests",
+              "issues",
+              "checks",
+              "packages",
+              "identityToken"
+            ]
+          },
+          {
+            "$ref": "#/$defs/parameterReference"
+          }
+        ]
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string",
+            "enum": [
+              "none",
+              "read",
+              "write"
+            ]
+          },
+          {
+            "$ref": "#/$defs/parameterReference"
+          }
+        ]
+      }
+    },
+    "concurrency": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/parameterReference"
+            }
+          ]
+        },
+        "cancelInProgress": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/$defs/parameterReference"
+            }
+          ]
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "$ref": "#/$defs/parameterReference"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "env": {
+      "type": "object",
+      "propertyNames": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "$ref": "#/$defs/parameterReference"
+          }
+        ]
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/$defs/parameterReference"
+          }
+        ]
+      }
+    },
+    "jobs": {
+      "type": "object",
+      "propertyNames": {
+        "anyOf": [
+          {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          {
+            "$ref": "#/$defs/parameterReference"
+          }
+        ]
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/parameterReference"
+              }
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/parameterReference"
+              }
+            ]
+          },
+          "runsOn": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            }
+          },
+          "needs": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            }
+          },
+          "needsPolicy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "success",
+                  "always"
+                ]
+              },
+              {
+                "$ref": "#/$defs/parameterReference"
+              }
+            ]
+          },
+          "form": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "native",
+                  "wrapper"
+                ]
+              },
+              {
+                "$ref": "#/$defs/parameterReference"
+              }
+            ]
+          },
+          "when": {
+            "$ref": "#/$defs/__schema0"
+          },
+          "timeoutMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "$ref": "#/$defs/parameterReference"
+              }
+            ]
+          },
+          "permissions": {
+            "type": "object",
+            "propertyNames": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "contents",
+                    "pullRequests",
+                    "issues",
+                    "checks",
+                    "packages",
+                    "identityToken"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "read",
+                    "write"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            }
+          },
+          "environment": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/parameterReference"
+              }
+            ]
+          },
+          "env": {
+            "type": "object",
+            "propertyNames": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            }
+          },
+          "matrix": {
+            "type": "object",
+            "propertyNames": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z][A-Za-z0-9_]*$"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "additionalProperties": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            }
+          },
+          "steps": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "checkout"
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "fetchDepth": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "full"
+                            },
+                            {
+                              "$ref": "#/$defs/parameterReference"
+                            }
+                          ]
+                        },
+                        {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "exclusiveMinimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "$ref": "#/$defs/parameterReference"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "when": {
+                      "$ref": "#/$defs/__schema0"
+                    },
+                    "description": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "run"
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "run": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "env": {
+                      "type": "object",
+                      "propertyNames": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          {
+                            "$ref": "#/$defs/parameterReference"
+                          }
+                        ]
+                      },
+                      "additionalProperties": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "$ref": "#/$defs/parameterReference"
+                          }
+                        ]
+                      }
+                    },
+                    "workingDirectory": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "when": {
+                      "$ref": "#/$defs/__schema0"
+                    },
+                    "description": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "const": "provider"
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "provider": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "github-actions",
+                            "gitlab-ci"
+                          ]
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "native": {
+                      "type": "object",
+                      "propertyNames": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "$ref": "#/$defs/parameterReference"
+                          }
+                        ]
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/$defs/__schema2"
+                      }
+                    },
+                    "name": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    },
+                    "when": {
+                      "$ref": "#/$defs/__schema0"
+                    },
+                    "description": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        {
+                          "$ref": "#/$defs/parameterReference"
+                        }
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "native": {
+            "type": "object",
+            "propertyNames": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "github-actions",
+                    "gitlab-ci"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "additionalProperties": {
+              "type": "object",
+              "propertyNames": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "$ref": "#/$defs/parameterReference"
+                  }
+                ]
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/__schema2"
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "extends": {
+      "description": "Fragments this document builds on, by path relative to this file. Merged in order; this file's own content is applied last.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/extendsEntry"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/extendsEntry"
+          }
+        }
+      ]
+    },
+    "parameters": {
+      "description": "Typed parameters this document accepts from the file that extends it.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "enum": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "default": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "not"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "operand": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "and"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "right": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "or"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "right": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "allOf"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "anyOf"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "operands": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema0"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "compare"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "op": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "gt",
+                    "gte",
+                    "lt",
+                    "lte",
+                    "eq",
+                    "neq"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/__schema1"
+            },
+            "right": {
+              "$ref": "#/$defs/__schema1"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "textCompare"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "op": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "equals",
+                    "notEquals",
+                    "matches",
+                    "notMatches",
+                    "portableMatches",
+                    "portableNotMatches"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "left": {
+              "$ref": "#/$defs/__schema1"
+            },
+            "right": {
+              "$ref": "#/$defs/__schema1"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "memberOf"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "op": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "in",
+                    "notIn"
+                  ]
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "operand": {
+              "$ref": "#/$defs/__schema1"
+            },
+            "candidates": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/__schema1"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "exists"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "operand": {
+              "$ref": "#/$defs/__schema1"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "some"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "collection": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "item": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "filter": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "every"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "collection": {
+              "$ref": "#/$defs/__schema2"
+            },
+            "item": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "filter": {
+              "$ref": "#/$defs/__schema0"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "treeReference"
+                },
+                {
+                  "$ref": "#/$defs/parameterReference"
+                }
+              ]
+            },
+            "key": {
+              "$ref": "#/$defs/__schema2"
+            }
+          }
+        }
+      ]
+    },
+    "__schema1": {
+      "anyOf": [
+        {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "numberLiteral"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "unit": {
+                  "type": "object",
+                  "propertyNames": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "textLiteral"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "booleanLiteral"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "instantLiteral"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "durationLiteral"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "value": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "unit": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "ms",
+                        "s",
+                        "min",
+                        "h",
+                        "d"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "reference"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "key": {
+                  "$ref": "#/$defs/__schema2"
+                },
+                "unit": {
+                  "type": "object",
+                  "propertyNames": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "arithmetic"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "op": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "add",
+                        "subtract",
+                        "multiply",
+                        "divide",
+                        "power",
+                        "modulo"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "left": {
+                  "$ref": "#/$defs/__schema1"
+                },
+                "right": {
+                  "$ref": "#/$defs/__schema1"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "negate"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "operand": {
+                  "$ref": "#/$defs/__schema1"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "call"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "fn": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "args": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema1"
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "lookup"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "table": {
+                  "$ref": "#/$defs/__schema2"
+                },
+                "keys": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/__schema1"
+                  }
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "conditional"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "hitPolicy": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "first",
+                        "unique"
+                      ]
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "cases": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "when": {
+                        "$ref": "#/$defs/__schema0"
+                      },
+                      "then": {
+                        "$ref": "#/$defs/__schema1"
+                      }
+                    }
+                  }
+                },
+                "fallback": {
+                  "$ref": "#/$defs/__schema1"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "fold"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "collection": {
+                  "$ref": "#/$defs/__schema2"
+                },
+                "filter": {
+                  "$ref": "#/$defs/__schema0"
+                },
+                "combiner": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "max"
+                            },
+                            {
+                              "$ref": "#/$defs/parameterReference"
+                            }
+                          ]
+                        },
+                        "item": {
+                          "$ref": "#/$defs/__schema1"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "min"
+                            },
+                            {
+                              "$ref": "#/$defs/parameterReference"
+                            }
+                          ]
+                        },
+                        "item": {
+                          "$ref": "#/$defs/__schema1"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "mode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "const": "reduce"
+                            },
+                            {
+                              "$ref": "#/$defs/parameterReference"
+                            }
+                          ]
+                        },
+                        "initial": {
+                          "$ref": "#/$defs/__schema1"
+                        },
+                        "combine": {
+                          "$ref": "#/$defs/__schema1"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "accumulator"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "delegate"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "system": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "payload": {
+                  "$ref": "#/$defs/__schema2"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "treeReference"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "key": {
+                  "$ref": "#/$defs/__schema2"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "complexLiteral"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "re": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "im": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "unit": {
+                  "type": "object",
+                  "propertyNames": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "const": "complexLiteral"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "magnitude": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "phase": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "$ref": "#/$defs/parameterReference"
+                    }
+                  ]
+                },
+                "unit": {
+                  "type": "object",
+                  "propertyNames": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  },
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "$ref": "#/$defs/parameterReference"
+                      }
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
+        }
+      ]
+    },
+    "__schema2": {
+      "anyOf": [
+        {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/$defs/parameterReference"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "$ref": "#/$defs/parameterReference"
+            }
+          ]
+        },
+        {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/$defs/parameterReference"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema2"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "$ref": "#/$defs/parameterReference"
+              }
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/__schema2"
+          }
+        }
+      ]
+    },
+    "parameterReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "$param"
+      ],
+      "properties": {
+        "$param": {
+          "type": "string"
+        }
+      }
+    },
+    "extendsEntry": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "with": {
+              "type": "object",
+              "additionalProperties": {
+                "type": [
+                  "string",
+                  "number",
+                  "boolean"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,297 @@
+{
+  "$schema": "../schemas/pipeline.authoring.schema.json",
+  "extends": "./base.pipeline.json",
+  "jobs": {
+    "actionlint": {
+      "description": "Validates the emitted workflow with GitHub's own linter rules.",
+      "name": "Actionlint",
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "run",
+          "name": "Install actionlint",
+          "run": "go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12"
+        },
+        {
+          "kind": "run",
+          "name": "Lint workflows",
+          "run": "\"$(go env GOPATH)/bin/actionlint\""
+        }
+      ],
+      "timeoutMinutes": 10
+    },
+    "check-names": {
+      "description": "Compares the check names this pipeline produces with the branch ruleset's required checks, through the platform adapter. Reports only: applying a ruleset change is a person's decision.",
+      "name": "Required check names",
+      "native": {
+        "github-actions": {
+          "continue-on-error": true,
+          "env": {
+            "GH_TOKEN": "${{ github.token }}",
+            "REPOSITORY": "${{ github.repository }}"
+          }
+        }
+      },
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "pnpm/action-setup@v6"
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "actions/setup-node@v7",
+            "with": {
+              "cache": "pnpm",
+              "node-version-file": ".tool-versions"
+            }
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "run",
+          "name": "Install",
+          "run": "pnpm install --frozen-lockfile"
+        },
+        {
+          "kind": "run",
+          "name": "Compare required checks",
+          "run": "node packages/cli/src/bin.ts check-names --pipeline ci/ci.pipeline.json --provider github-actions --scope gates --repo \"$REPOSITORY\" --branch main"
+        }
+      ],
+      "timeoutMinutes": 10
+    },
+    "drift": {
+      "description": "Fails when a generated file differs from what the tool emits now.",
+      "name": "Generated files",
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "pnpm/action-setup@v6"
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "actions/setup-node@v7",
+            "with": {
+              "cache": "pnpm",
+              "node-version-file": ".tool-versions"
+            }
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "run",
+          "name": "Install",
+          "run": "pnpm install --frozen-lockfile"
+        },
+        {
+          "kind": "run",
+          "name": "Generated files",
+          "run": "node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.json --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts schema | diff -u schemas/pipeline.schema.json - && node packages/cli/src/bin.ts schema --authoring | diff -u schemas/pipeline.authoring.schema.json -"
+        }
+      ],
+      "timeoutMinutes": 15
+    },
+    "lint": {
+      "description": "ESLint over the whole workspace, with no warnings allowed.",
+      "name": "Lint",
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "pnpm/action-setup@v6"
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "actions/setup-node@v7",
+            "with": {
+              "cache": "pnpm",
+              "node-version-file": ".tool-versions"
+            }
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "run",
+          "name": "Install",
+          "run": "pnpm install --frozen-lockfile"
+        },
+        {
+          "kind": "run",
+          "name": "Lint",
+          "run": "pnpm run lint"
+        }
+      ],
+      "timeoutMinutes": 15
+    },
+    "required-checks": {
+      "description": "The single branch-protection target. It runs whatever the other jobs concluded and fails unless all succeeded.",
+      "name": "Required checks",
+      "needs": [
+        "lint",
+        "typecheck",
+        "test",
+        "drift",
+        "actionlint"
+      ],
+      "needsPolicy": "always",
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "provider",
+          "native": {
+            "if": "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')",
+            "name": "Fail when a required job did not succeed",
+            "run": "exit 1"
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "run",
+          "name": "Report",
+          "run": "echo all required jobs succeeded"
+        }
+      ],
+      "timeoutMinutes": 5
+    },
+    "test": {
+      "description": "Unit tests, including each adapter's conformance kit. Rendered in the wrapper form, so this job runs through the tool's own runner.",
+      "form": "wrapper",
+      "name": "Test",
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "pnpm/action-setup@v6"
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "actions/setup-node@v7",
+            "with": {
+              "cache": "pnpm",
+              "node-version-file": ".tool-versions"
+            }
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "run",
+          "name": "Install",
+          "run": "pnpm install --frozen-lockfile"
+        },
+        {
+          "kind": "run",
+          "name": "Test",
+          "run": "pnpm run test"
+        }
+      ],
+      "timeoutMinutes": 15
+    },
+    "typecheck": {
+      "description": "One TypeScript program for every package.",
+      "name": "Typecheck",
+      "runsOn": [
+        {
+          "$param": "runner"
+        }
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "pnpm/action-setup@v6"
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "provider",
+          "native": {
+            "uses": "actions/setup-node@v7",
+            "with": {
+              "cache": "pnpm",
+              "node-version-file": ".tool-versions"
+            }
+          },
+          "provider": "github-actions"
+        },
+        {
+          "kind": "run",
+          "name": "Install",
+          "run": "pnpm install --frozen-lockfile"
+        },
+        {
+          "kind": "run",
+          "name": "Typecheck",
+          "run": "pnpm run typecheck"
+        }
+      ],
+      "timeoutMinutes": 15
+    }
+  },
+  "parameters": {
+    "runner": {
+      "default": "ubuntu-latest",
+      "description": "Runner label every job runs on.",
+      "type": "string"
+    }
+  }
+}
