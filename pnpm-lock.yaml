@@ -164,6 +164,9 @@ settings:
 
 catalogs:
   default:
+    '@exadev/process-graph-dag':
+      specifier: 1.0.0
+      version: 1.0.0
     ajv:
       specifier: 8.20.0
       version: 8.20.0
@@ -291,6 +294,9 @@ importers:
       '@ci-adapters/yaml-emit':
         specifier: 0.0.0
         version: link:../yaml-emit
+      '@exadev/process-graph-dag':
+        specifier: 'catalog:'
+        version: 1.0.0
 
   packages/pipeline-circleci:
     dependencies:
@@ -305,6 +311,9 @@ importers:
     dependencies:
       '@exadev/json-compose':
         specifier: 1.0.0
+        version: 1.0.0
+      '@exadev/process-graph-dag':
+        specifier: 'catalog:'
         version: 1.0.0
       trilean:
         specifier: 1.7.1
@@ -334,6 +343,9 @@ importers:
       '@ci-adapters/yaml-emit':
         specifier: 0.0.0
         version: link:../yaml-emit
+      '@exadev/process-graph-dag':
+        specifier: 'catalog:'
+        version: 1.0.0
 
   packages/pipeline-local:
     dependencies:
@@ -550,6 +562,9 @@ packages:
   '@exadev/json-compose@1.0.0':
     resolution: {integrity: sha512-Ur66Pij1nDyNo75Yakq+k9K9IigMuk+Pq8Lsa8DqdW35rFigdcun5hCe0bexaOTC86ChwAqXAp0NSaeeEV0FXQ==}
     engines: {node: '>=22'}
+
+  '@exadev/process-graph-dag@1.0.0':
+    resolution: {integrity: sha512-2KoGmoxAZ3M+I8cWbe2IuezIdQg6b9yyrO8gyCPGphgiT/xDLZ58qkp3gIgPYgZqa3bcWMb7ffmsnwHAty5DlQ==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1921,6 +1936,8 @@ snapshots:
       - supports-color
 
   '@exadev/json-compose@1.0.0': {}
+
+  '@exadev/process-graph-dag@1.0.0': {}
 
   '@humanfs/core@0.19.2':
     dependencies:

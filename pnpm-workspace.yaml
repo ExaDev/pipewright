@@ -13,6 +13,10 @@ minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - "@exadev/eslint-config"
   - "@exadev/json-compose"
+  - "@exadev/process-graph-dag"
+  - "@exadev/process-graph-domain"
+  - "@exadev/process-graph-projection"
+  - "@exadev/process-graph-schema"
   - "trilean"
   - "eslint-plugin-json-canonical"
 
@@ -23,6 +27,7 @@ allowBuilds:
 # One version of each third-party package that more than one workspace package depends on, so they cannot drift. A zod mismatch in particular would split `instanceof` checks and codecs across package boundaries. `prefer` makes `pnpm add` use an entry here when one exists.
 catalogMode: prefer
 catalog:
+  "@exadev/process-graph-dag": 1.0.0
   ajv: 8.20.0
   yaml: 2.9.1
   zod: 4.6.5

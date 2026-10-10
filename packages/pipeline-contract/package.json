@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@exadev/json-compose": "1.0.0",
+    "@exadev/process-graph-dag": "catalog:",
     "trilean": "1.7.1",
     "zod": "catalog:"
   },
