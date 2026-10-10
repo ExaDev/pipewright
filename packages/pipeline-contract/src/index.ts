@@ -10,7 +10,7 @@ export {
   type EventKind,
   type TemplateToken,
 } from "./context.ts";
-export { UnsupportedFeatureError, assertNever } from "./errors.ts";
+export { DependencyGraphError, UnsupportedFeatureError, assertNever } from "./errors.ts";
 export {
   JOB_ID_PATTERN,
   formSchema,
@@ -49,7 +49,8 @@ export { PipelineLoadError, jsonPointerOf, loadPipeline, type LoadedPipeline } f
 export type { FileReader, LoadIssue } from "@exadev/json-compose";
 export { pipelineAuthoringJsonSchema, pipelineJsonSchema } from "./json-schema.ts";
 export { definePipeline, type JobInput, type PipelineInput, type StepInput } from "./define.ts";
-export { ancestorsOf, dependencyLevels, slugOf } from "./graph.ts";
+export { jobGraphOf } from "./graph.ts";
+export { slugOf } from "./slug.ts";
 export { expandMatrix, matrixValues, type MatrixCombination } from "./matrix.ts";
 export {
   type CommandExecution,
