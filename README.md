@@ -41,7 +41,9 @@ export default definePipeline({
 
 [`ci/ci.pipeline.ts`](ci/ci.pipeline.ts) is this repository's own pipeline and is the fuller example.
 
-The same model can be written as a `*.pipeline.json` document, which suits generated pipelines and editors without a TypeScript toolchain. [`examples/basic.pipeline.json`](examples/basic.pipeline.json) is a checked example. A JSON document gets two things a module does not need:
+JSON is an alternative way to write the same model, and its serialisation. `export` prints any pipeline, whichever format it was written in, as a JSON document, and loading that document gives the same model back; a test holds this repository's own pipeline to that. [`examples/basic.pipeline.json`](examples/basic.pipeline.json) is a pipeline authored directly as JSON.
+
+JSON has no functions, so a JSON document composes with two mechanisms a TypeScript module does not need:
 
 - `extends` pulls in fragments by relative path, in order, with the document's own content applied last. Objects deep-merge, `steps` arrays concatenate, every other array and scalar is replaced, and `{"$replace": ...}` replaces an inherited value outright.
 - Typed `parameters` are supplied by the extending document's `with`, and `{"$param": "name"}` is replaced by the value. A load error names the source file and JSON pointer of the offending node, including across `extends`.
@@ -69,6 +71,7 @@ A pipeline or a job can set `form: "wrapper"`. Orchestration (triggers, `needs`,
 node packages/cli/src/bin.ts emit --pipeline ci/ci.pipeline.ts --provider github-actions
 node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions
 node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.ts --local --skip-provider-steps --job lint
+node packages/cli/src/bin.ts export --pipeline ci/ci.pipeline.ts --schema ../schemas/pipeline.schema.json
 node packages/cli/src/bin.ts schema --authoring
 node packages/cli/src/bin.ts check-names --pipeline ci/ci.pipeline.ts --provider github-actions --scope gates
 node packages/cli/src/bin.ts platform runs --repo OWNER/REPO --sha SHA

@@ -49,6 +49,9 @@ const COMPILERS: Readonly<Record<string, () => PipelineCompiler>> = {
   "gitlab-ci": createGitLabCiCompiler,
 };
 
+/** Where an exported document says its JSON Schema is, relative to the file it is written to. */
+const DEFAULT_SCHEMA_REFERENCE = "pipeline.schema.json";
+
 const USAGE = `ci-adapters <command> [options]
 
 Commands
@@ -57,6 +60,7 @@ Commands
   run          --pipeline <file> [--job <id>]... [--steps <from>-<to>] [--matrix <axis>=<value>]... [--context <key>=<value>]...
                [--local] [--skip-provider-steps]
                                                                           execute the pipeline directly, no emitted files
+  export       --pipeline <file> [--schema <reference>]                   print the resolved pipeline as a JSON document
   schema       [--authoring]                                              print the JSON Schema
   check-names  --pipeline <file> --provider <id> --scope gates|all
                [--repo <owner>/<repo> --branch <name>]                    derive required check names, and compare with the platform
@@ -256,6 +260,18 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
         }
 
         return report.ok ? 0 : 1;
+      }
+
+      case "export": {
+        const { values } = parseArgs({
+          args: [...rest],
+          options: { pipeline: { type: "string" }, schema: { type: "string" } },
+        });
+        const { pipeline } = await load(io, required(values.pipeline, "--pipeline"));
+        const document = { ...pipeline, $schema: values.schema ?? DEFAULT_SCHEMA_REFERENCE };
+        io.stdout(`${JSON.stringify(document, null, 2)}\n`);
+
+        return 0;
       }
 
       case "schema": {

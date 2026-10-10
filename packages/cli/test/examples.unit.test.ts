@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { loadPipeline } from "@ci-adapters/pipeline-contract";
+import { loadPipeline, pipelineSchema } from "@ci-adapters/pipeline-contract";
 import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
 import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
 
@@ -19,5 +19,42 @@ describe("the JSON example", () => {
     const gitlab = await createGitLabCiCompiler().compile(pipeline, options);
     expect(github[0]?.content).toContain("NODE_VERSION: ${{ matrix.node }}");
     expect(gitlab[0]?.content).toContain("NODE_VERSION: $node");
+  });
+});
+
+describe("JSON as the serialisation of a pipeline", () => {
+  it("loads back to the same model that was exported, for this repository's own pipeline", async () => {
+    const module: unknown = await import(resolve(ROOT, "ci/ci.pipeline.ts"));
+    const authored = pipelineSchema.parse(
+      typeof module === "object" && module !== null && "default" in module
+        ? module.default
+        : undefined,
+    );
+    const exported = JSON.stringify({ ...authored, $schema: "pipeline.schema.json" });
+
+    const { pipeline } = await loadPipeline("exported.pipeline.json", {
+      read: async () => Promise.resolve(exported),
+    });
+
+    expect(pipeline).toEqual({ ...authored, $schema: "pipeline.schema.json" });
+  });
+
+  it("emits the same workflow from the exported document as from the module", async () => {
+    const module: unknown = await import(resolve(ROOT, "ci/ci.pipeline.ts"));
+    const authored = pipelineSchema.parse(
+      typeof module === "object" && module !== null && "default" in module
+        ? module.default
+        : undefined,
+    );
+    const { pipeline } = await loadPipeline("exported.pipeline.json", {
+      read: async () =>
+        Promise.resolve(JSON.stringify({ ...authored, $schema: "pipeline.schema.json" })),
+    });
+    const options = { source: "ci/ci.pipeline.ts", toolCommand: "tool" };
+    const compiler = createGitHubActionsCompiler();
+
+    expect(await compiler.compile(pipeline, options)).toEqual(
+      await compiler.compile(authored, options),
+    );
   });
 });
