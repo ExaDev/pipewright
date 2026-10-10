@@ -34,12 +34,18 @@ interface Harness {
 
 interface HarnessOptions {
   readonly files?: Record<string, unknown>;
+  readonly modules?: Record<string, unknown>;
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly failing?: (command: string) => boolean;
 }
 
 function harness(options: HarnessOptions = {}): Harness {
-  const { files = { "ci/ci.pipeline.json": pipeline }, env = {}, failing = () => false } = options;
+  const {
+    files = { "ci/ci.pipeline.json": pipeline },
+    env = {},
+    failing = () => false,
+    modules = {},
+  } = options;
   const store = new Map(
     Object.entries(files).map(([path, value]) => [
       path,
@@ -79,6 +85,12 @@ function harness(options: HarnessOptions = {}): Harness {
 
         return Promise.resolve({ exitCode: failing(execution.command) ? 1 : 0 });
       },
+    },
+    async importModule(path) {
+      const exports = modules[path];
+      if (exports === undefined) throw new Error(`no such module ${path}`);
+
+      return Promise.resolve(exports);
     },
     fetch: async () => Promise.reject(new Error("network is not available in this test")),
   };
@@ -139,6 +151,49 @@ describe("emit and check", () => {
     expect(h.files.get(".github/workflows/ci.yml")).toContain(
       "node tool/bin.ts run --pipeline ci/ci.pipeline.json --job lint --steps 0-0",
     );
+  });
+});
+
+describe("TypeScript pipelines", () => {
+  const definition = {
+    name: "CI",
+    triggers: [{ kind: "push" }],
+    jobs: {
+      lint: {
+        name: "Lint",
+        runsOn: ["ubuntu-latest"],
+        steps: [{ kind: "run", run: "pnpm run lint" }],
+      },
+    },
+  };
+
+  it("emits from the default export of a TypeScript module", async () => {
+    const h = harness({ modules: { "ci/ci.pipeline.ts": { default: definition } } });
+    expect(
+      await main(["emit", "--pipeline", "ci/ci.pipeline.ts", "--provider", "github-actions"], h.io),
+    ).toBe(0);
+    expect(h.files.get(".github/workflows/ci.yml")).toContain(
+      "# Generated from ci/ci.pipeline.ts by ci-adapters.",
+    );
+  });
+
+  it("locates a violation by module and pointer", async () => {
+    const h = harness({
+      modules: {
+        "ci/ci.pipeline.ts": { default: { ...definition, jobs: { lint: { name: "Lint" } } } },
+      },
+    });
+    expect(
+      await main(["emit", "--pipeline", "ci/ci.pipeline.ts", "--provider", "github-actions"], h.io),
+    ).toBe(1);
+    expect(h.err.join("")).toContain("ci/ci.pipeline.ts#/jobs/lint/runsOn");
+  });
+
+  it("rejects a module with no default export", async () => {
+    const h = harness({ modules: { "ci/ci.pipeline.ts": {} } });
+    expect(
+      await main(["emit", "--pipeline", "ci/ci.pipeline.ts", "--provider", "github-actions"], h.io),
+    ).toBe(1);
   });
 });
 

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { main, type Io } from "./main.ts";
 
@@ -49,6 +50,11 @@ const io: Io = {
         });
       });
     },
+  },
+  async importModule(path): Promise<unknown> {
+    const loaded: unknown = await import(pathToFileURL(resolve(cwd, path)).href);
+
+    return loaded;
   },
   fetch,
 };

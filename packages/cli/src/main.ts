@@ -10,6 +10,8 @@ import {
   contextKeySchema,
   diffEmitted,
   loadPipeline,
+  pipelineSchema,
+  type LoadedPipeline,
   pipelineAuthoringJsonSchema,
   pipelineJsonSchema,
   type CommandExecutor,
@@ -37,6 +39,8 @@ export interface Io {
   readonly readOptional: (path: string) => Promise<string | undefined>;
   readonly writeFile: (path: string, content: string) => Promise<void>;
   readonly executor: CommandExecutor;
+  /** Loads a TypeScript pipeline module and returns its exports. Injected because importing code is a runtime effect the CLI's tests must not perform. */
+  readonly importModule: (path: string) => Promise<unknown>;
   readonly fetch: typeof fetch;
 }
 
@@ -150,8 +154,37 @@ function token(io: Io): () => Promise<string> {
   };
 }
 
-async function load(io: Io, path: string): ReturnType<typeof loadPipeline> {
-  return loadPipeline(path, io.reader);
+function isTypeScript(path: string): boolean {
+  return path.endsWith(".ts") || path.endsWith(".mts");
+}
+
+function pointerOf(path: readonly PropertyKey[]): string {
+  return path.map((segment) => `/${String(segment)}`).join("");
+}
+
+/**
+ * Loads a pipeline from either authoring format. A `.json` document goes through the composing loader; a `.ts` module's default export is validated against the same schema, with each violation located by file and JSON pointer into the resolved pipeline.
+ */
+async function load(io: Io, path: string): Promise<LoadedPipeline> {
+  if (!isTypeScript(path)) return loadPipeline(path, io.reader);
+
+  const exports = await io.importModule(path);
+  const candidate =
+    typeof exports === "object" && exports !== null && "default" in exports
+      ? exports.default
+      : undefined;
+  const result = pipelineSchema.safeParse(candidate);
+  if (!result.success) {
+    throw new PipelineLoadError(
+      result.error.issues.map((issue) => ({
+        message: issue.message,
+        file: path,
+        pointer: pointerOf(issue.path),
+      })),
+    );
+  }
+
+  return { pipeline: result.data, files: [path] };
 }
 
 /**

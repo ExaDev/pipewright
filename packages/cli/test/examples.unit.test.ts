@@ -1,0 +1,23 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import { loadPipeline } from "@ci-adapters/pipeline-contract";
+import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
+import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
+
+const ROOT = resolve(import.meta.dirname, "../../..");
+
+describe("the JSON example", () => {
+  it("loads from disk and compiles for each provider", async () => {
+    const { pipeline } = await loadPipeline("examples/basic.pipeline.json", {
+      read: async (path) => readFile(resolve(ROOT, path), "utf8"),
+    });
+    const options = { source: "examples/basic.pipeline.json" };
+    const github = await createGitHubActionsCompiler().compile(pipeline, options);
+    const gitlab = await createGitLabCiCompiler().compile(pipeline, options);
+    expect(github[0]?.content).toContain("NODE_VERSION: ${{ matrix.node }}");
+    expect(gitlab[0]?.content).toContain("NODE_VERSION: $node");
+  });
+});
