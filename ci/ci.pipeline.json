@@ -174,7 +174,7 @@
         {
           "kind": "run",
           "name": "List this commit's checks",
-          "run": "node packages/cli/src/bin.ts platform checks --sha \"$COMMIT\""
+          "run": "node packages/cli/src/bin.ts platform checks --repo \"$REPOSITORY\" --sha \"$COMMIT\""
         }
       ],
       "timeoutMinutes": 10

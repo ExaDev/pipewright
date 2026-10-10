@@ -80,7 +80,7 @@ jobs:
       - name: Read this run
         run: node packages/cli/src/bin.ts platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -F running
       - name: List this commit's checks
-        run: node packages/cli/src/bin.ts platform checks --sha "$COMMIT"
+        run: node packages/cli/src/bin.ts platform checks --repo "$REPOSITORY" --sha "$COMMIT"
     env:
       COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       GH_TOKEN: ${{ github.token }}
