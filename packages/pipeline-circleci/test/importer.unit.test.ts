@@ -124,4 +124,57 @@ describe("CircleCI import", () => {
     expect(error.pointer).toBe("/workflows/build_and_test");
     expect(error.provider).toBe("circleci");
   });
+
+  it("carries a command CircleCI substitutes into as a provider step", async () => {
+    const pipeline = await importText(
+      `version: 2.1\njobs:\n  build:\n    docker:\n      - image: x\n    steps:\n      - run: echo << pipeline.git.revision >>\n${WORKFLOW}`,
+    );
+
+    expect(pipeline.jobs.build?.steps[0]).toEqual({
+      kind: "provider",
+      provider: "circleci",
+      native: { run: "echo << pipeline.git.revision >>" },
+    });
+  });
+
+  it("carries a command that reads a CircleCI variable as a provider step", async () => {
+    const pipeline = await importText(
+      `version: 2.1\njobs:\n  build:\n    docker:\n      - image: x\n    steps:\n      - run: echo $CIRCLE_SHA1\n${WORKFLOW}`,
+    );
+
+    expect(pipeline.jobs.build?.steps[0]).toMatchObject({ kind: "provider" });
+  });
+
+  it("rejects a job parameter that the matrix does not supply", async () => {
+    const error = await rejection(
+      `version: 2.1\njobs:\n  test:\n    parameters:\n      node:\n        type: string\n      cache:\n        type: boolean\n        default: true\n    docker:\n      - image: x\n    steps:\n      - run: t\nworkflows:\n  ci:\n    jobs:\n      - test:\n          name: Test (<< matrix.node >>)\n          matrix:\n            alias: test\n            parameters:\n              node: ["22"]\n`,
+    );
+
+    expect(error.pointer).toBe("/jobs/test/parameters/cache");
+  });
+
+  it("rejects an axis declaration with settings beyond its type", async () => {
+    const error = await rejection(
+      `version: 2.1\njobs:\n  test:\n    parameters:\n      node:\n        type: string\n        default: "22"\n    docker:\n      - image: x\n    steps:\n      - run: t\nworkflows:\n  ci:\n    jobs:\n      - test:\n          name: Test (<< matrix.node >>)\n          matrix:\n            alias: test\n            parameters:\n              node: ["22"]\n`,
+    );
+
+    expect(error.pointer).toBe("/jobs/test/parameters/node");
+  });
+
+  it("reads a branch equality with its operands either way round", async () => {
+    const pipeline = await importText(
+      `version: 2.1\njobs:\n${JOB}workflows:\n  ci:\n    when:\n      equal: [<< pipeline.git.branch >>, main]\n    jobs: [build]\n`,
+    );
+
+    expect(pipeline.triggers).toEqual([{ kind: "push", branches: ["main"] }]);
+  });
+
+  it("expands a merge key before reading a job", async () => {
+    const pipeline = await importText(
+      `version: 2.1\ndefaults: &defaults\n  docker:\n    - image: x\njobs:\n  build:\n    <<: *defaults\n    steps:\n      - run: make\n${WORKFLOW}`,
+    ).catch((error: unknown) => error);
+
+    // A top-level anchor holder is a setting the model has no place for, which is rejected by name.
+    expect(pipeline).toBeInstanceOf(UnsupportedNativeError);
+  });
 });
