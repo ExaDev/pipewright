@@ -45,6 +45,7 @@ function check(options: CheckJob): JobDefinition {
 
 const READ_BACK_TIMEOUT_MINUTES = 10;
 const E2E_TIMEOUT_MINUTES = 20;
+const CONTAINER_TIMEOUT_MINUTES = 45;
 const GATE_TIMEOUT_MINUTES = 5;
 
 const lint = defineJob(
@@ -110,6 +111,32 @@ const actionlint = defineJob("actionlint", {
 const CIRCLECI_CLI_URL =
   "https://github.com/CircleCI-Public/circleci-cli/releases/download/v1.4.0/circleci-cli_1.4.0_linux_amd64.tar.gz";
 const CIRCLECI_CLI_SHA256 = "96c3de64d815b076725f5f05aa626d83eaf39b1332a6b1f7e5dbaf46af43f169";
+
+const bitbucketValidator = defineJob("bitbucket-validator", {
+  name: "Bitbucket validator",
+  description:
+    "Pastes the emitted Bitbucket sample into Atlassian's own validator page in a headless browser and requires its verdict, with a misspelt control that it must reject. The page validates in the browser with logic of its own, so this is the product's validator and not the published JSON Schema.",
+  runsOn: [RUNNER],
+  timeoutMinutes: DEFAULT_TIMEOUT_MINUTES,
+  steps: [
+    ...SETUP_STEPS,
+    {
+      kind: "run",
+      name: "Install chromium",
+      run: "pnpm --dir packages/cli exec playwright-core install --with-deps chromium",
+    },
+    { kind: "run", name: "Validate", run: "pnpm run test:browser" },
+  ],
+});
+
+const gitlabLint = defineJob("gitlab-lint", {
+  name: "GitLab linter",
+  description:
+    "Boots a pinned GitLab CE container and runs its own CI linter over the emitted GitLab sample, with a misspelt control that it must reject. It is the product's own validator; the published JSON Schema is checked separately.",
+  runsOn: [RUNNER],
+  timeoutMinutes: CONTAINER_TIMEOUT_MINUTES,
+  steps: [...SETUP_STEPS, { kind: "run", name: "Lint", run: "pnpm run test:container" }],
+});
 
 const e2e = defineJob("e2e", {
   name: "End to end on GitHub",
@@ -216,7 +243,17 @@ const requiredChecks = defineJob("required-checks", {
   runsOn: [RUNNER],
   timeoutMinutes: GATE_TIMEOUT_MINUTES,
   needsPolicy: "gate",
-  needs: [lint, typecheck, test, drift, actionlint, validators, platformSmoke],
+  needs: [
+    lint,
+    typecheck,
+    test,
+    drift,
+    actionlint,
+    validators,
+    bitbucketValidator,
+    gitlabLint,
+    platformSmoke,
+  ],
   steps: [{ kind: "run", name: "Report", run: "echo all required jobs succeeded" }],
 });
 
@@ -237,6 +274,8 @@ export default definePipeline({
     drift,
     actionlint,
     validators,
+    bitbucketValidator,
+    gitlabLint,
     platformSmoke,
     e2e,
     requiredChecks,

@@ -111,6 +111,40 @@ jobs:
         run: curl -fsSL -o "$RUNNER_TEMP/circleci.tgz" https://github.com/CircleCI-Public/circleci-cli/releases/download/v1.4.0/circleci-cli_1.4.0_linux_amd64.tar.gz && echo "96c3de64d815b076725f5f05aa626d83eaf39b1332a6b1f7e5dbaf46af43f169  $RUNNER_TEMP/circleci.tgz" | sha256sum -c - && mkdir -p "$HOME/.local/bin" && tar -xzf "$RUNNER_TEMP/circleci.tgz" -C "$HOME/.local/bin" circleci && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Validate
         run: pnpm run test:integration
+  # Pastes the emitted Bitbucket sample into Atlassian's own validator page in a headless browser and requires its verdict, with a misspelt control that it must reject. The page validates in the browser with logic of its own, so this is the product's validator and not the published JSON Schema.
+  bitbucket-validator:
+    name: Bitbucket validator
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Install chromium
+        run: pnpm --dir packages/cli exec playwright-core install --with-deps chromium
+      - name: Validate
+        run: pnpm run test:browser
+  # Boots a pinned GitLab CE container and runs its own CI linter over the emitted GitLab sample, with a misspelt control that it must reject. It is the product's own validator; the published JSON Schema is checked separately.
+  gitlab-lint:
+    name: GitLab linter
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm run test:container
   # Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. A required-check comparison is not possible here: rulesets are unavailable to a private repository on this organisation's plan, and the API answers 403.
   platform-smoke:
     name: Platform read path
@@ -178,6 +212,8 @@ jobs:
       - drift
       - actionlint
       - validators
+      - bitbucket-validator
+      - gitlab-lint
       - platform-smoke
     if: always()
     timeout-minutes: 5

@@ -13,7 +13,7 @@ What each adapter compiles, what it rejects, and how it is validated. An adapter
 | Schedule trigger | yes | no, a project setting | no, a repository setting | no, it needs a branch filter the neutral trigger lacks |
 | `needs` graph | any DAG | any DAG, stages derived by level | only a sequence of parallel groups | any DAG, through `requires` |
 | `gate` job | always-run plus an explicit failing step | ordinary dependent job | ordinary step | ordinary dependent job |
-| `always` job | `if: always()` | `when: always` | one trailing `final`, not in a custom pipeline | `requires` with `terminal` |
+| `always` job | `if: always()` | `when: always` | one trailing `final` | `requires` with `terminal` |
 | Matrix | `strategy.matrix` | `parallel: matrix` | expanded into parallel steps | parameterised jobs with `matrix` |
 | Job environment | yes | yes | no | yes, over sha, ref and run id |
 | Step environment | yes | no | no | yes |
@@ -30,7 +30,7 @@ What each adapter compiles, what it rejects, and how it is validated. An adapter
 - **Text equality is case-insensitive.** GitHub's `==` cannot be made case-sensitive, so the neutral model defines the weaker meaning and every adapter renders it exactly or rejects the condition. GitLab renders an anchored case-insensitive regular expression match. Bitbucket's equality is case-sensitive with no case-insensitive form, so it accepts no conditions.
 - **Context values are a closed set** (`event`, `refName`, `baseRefName`, `sha`, `repository`, `workflow`, `runId`), each mapped by the adapter onto the provider's own context. A provider that has no equivalent rejects the use. CircleCI has pipeline values for `sha`, `refName` and `runId` only.
 - **Runner labels select a runner.** GitHub uses them as `runs-on` and GitLab as `tags`. Bitbucket documents `runs-on` as available only for self-hosted runners, so labels are written only when they include `self.hosted`; any other set runs on Bitbucket's own infrastructure. CircleCI cannot run a job without exactly one executor (`docker`, `machine`, `macos` or `executor`), so the executor comes from `native.circleci` and labels are not used there.
-- **Final steps in custom Bitbucket pipelines.** The step-options page documents final steps in custom pipelines, but the published pipelines schema, which the integration tests validate against, rejects one, so the adapter refuses the combination. If the documentation is right the refusal is conservative, not wrong; the schema is what is checked.
+- **Final steps in custom Bitbucket pipelines.** The step-options page documents them and Atlassian's validator accepts one, but the published pipelines JSON Schema rejects it. The schema lags the product, so the adapter emits the file the validator accepts and the schema test never contains that case.
 - **`native`** on a job is merged verbatim into that provider's job, and a `provider` step is accepted only by the provider that owns it. This is how non-portable parts stay visible in the file.
 
 ## Wrapper form
@@ -43,18 +43,20 @@ Every adapter can render a job in the wrapper form: orchestration stays native a
 
 ## Validation
 
-What was run, and by what:
+What runs, and where:
 
-| Provider | Validator | Where it runs |
+| Provider | Validator | Runs in |
 | --- | --- | --- |
-| GitHub Actions | actionlint | the `integration` project and its CI job |
-| CircleCI | `circleci config validate` (CLI 1.4.0, installed in CI from a pinned archive with a pinned digest), and the published JSON Schema | the `integration` project and its CI job |
-| GitLab CI | the published `ci.json` JSON Schema in CI; GitLab's own linter by hand | the schema in the `integration` project; the linter is `Gitlab::Ci::Lint` from GitLab CE 19.4.1 in a container, which reported `valid=true` for the sample output and rejected a control with a misspelt `scripts` key |
-| Bitbucket Pipelines | the published pipelines schema in CI; Atlassian's web validator by hand | the schema in the `integration` project; the validator page reported "valid" for the sample output and "Invalid configuration" for a control with a misspelt `scripts` key |
+| GitHub Actions | actionlint | the `integration` project, CI job `Provider validators` |
+| CircleCI | `circleci config validate` (CLI 1.4.0, pinned archive and digest), and the published JSON Schema | the `integration` project, CI job `Provider validators` |
+| GitLab CI | `Gitlab::Ci::Lint` from a pinned GitLab CE 19.4.1 container, and the published `ci.json` JSON Schema | the `container` project (CI job `GitLab linter`) and the `integration` project |
+| Bitbucket Pipelines | Atlassian's own validator page, driven in headless chromium, and the published pipelines JSON Schema | the `browser` project (CI job `Bitbucket validator`) and the `integration` project |
 
-The two by-hand runs are not in CI. GitLab's linter needs a GitLab instance (the CE image and its several minutes of boot) or a token for one, and Bitbucket's validator is a web page with no command line or API, so it was driven through a browser. Neither has been run against the product's scheduler: no emitted file has been executed on its provider.
+Each product validator test also feeds its validator a control with a misspelt keyword and requires it to say invalid, so a validator that stopped checking would fail the suite rather than keep passing. Bitbucket's page validates in the browser with logic of its own (its bundle embeds no JSON Schema), which is why it can disagree with the published schema, as it does for a final step in a custom pipeline.
 
-`pnpm run test:integration` fetches each provider's published schema and runs actionlint and `circleci config validate` over the sample pipeline's output. It is a separate vitest project from the unit tests so the unit suite stays offline, and the CI job that runs it installs both tools first. A validator that cannot run is a failure, never a skip.
+No emitted file has been executed on Bitbucket, GitLab or CircleCI: nothing here holds an account on them.
+
+`pnpm run test:integration` fetches each provider's published schema and runs actionlint and `circleci config validate` over the sample pipeline's output. `test:browser` needs chromium (`pnpm --dir packages/cli exec playwright-core install chromium`) and `test:container` needs Docker and several minutes. Each is a separate vitest project from the unit tests so the unit suite stays offline, and each CI job installs what its project needs. A validator that cannot run is a failure, never a skip.
 
 ## Execution on the provider
 
