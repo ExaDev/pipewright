@@ -54,4 +54,4 @@ What was run, and by what:
 
 The two by-hand runs are not in CI. GitLab's linter needs a GitLab instance (the CE image and its several minutes of boot) or a token for one, and Bitbucket's validator is a web page with no command line or API, so it was driven through a browser. Neither has been run against the product's scheduler: no emitted file has been executed on its provider.
 
-`pnpm run test:integration` fetches each provider's published schema and runs actionlint over the sample pipeline's output. It is a separate vitest project from the unit tests so the unit suite stays offline, and the CI job that runs it installs actionlint first. A validator that cannot run is a failure, never a skip.
+`pnpm run test:integration` fetches each provider's published schema and runs actionlint and `circleci config validate` over the sample pipeline's output. It is a separate vitest project from the unit tests so the unit suite stays offline, and the CI job that runs it installs both tools first. A validator that cannot run is a failure, never a skip.
