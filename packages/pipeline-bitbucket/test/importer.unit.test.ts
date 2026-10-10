@@ -193,12 +193,20 @@ describe("Bitbucket Pipelines import", () => {
     expect(error.pointer).toBe("/pipelines/branches/feature~1*");
   });
 
-  it("rejects a step that waits for a person to start it", async () => {
-    const error = await rejection(
+  it("keeps a step that waits for a person or has a condition as Bitbucket's whole", async () => {
+    const manual = await importText(
       "pipelines:\n  default:\n    - step:\n        name: Deploy\n        trigger: manual\n        script: [deploy]\n",
     );
+    const conditional = await importText(
+      "pipelines:\n  default:\n    - step:\n        condition:\n          changesets:\n            includePaths: [src/**]\n        script: [build]\n",
+    );
 
-    expect(error.pointer).toBe("/pipelines/default/0/step/trigger");
+    for (const pipeline of [manual, conditional]) {
+      expect(Object.values(pipeline.jobs)[0]?.steps[1]).toMatchObject({ kind: "provider" });
+    }
+    expect(Object.values(manual.jobs)[0]?.native).toEqual({
+      "bitbucket-pipelines": { trigger: "manual" },
+    });
   });
 
   it("carries a script containing a GitHub expression as a provider step", async () => {

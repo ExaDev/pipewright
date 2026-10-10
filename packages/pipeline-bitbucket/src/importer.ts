@@ -117,13 +117,8 @@ function stepOf(
   comments: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   const { body, pointer } = placed;
-  // A step that waits for a person is an approval gate, which the model has no form for and another provider would run unattended.
-  if (body.trigger === "manual") {
-    return fail(
-      [...pointer, "trigger"],
-      "a step that waits for manual start, which the model has no approval gate for",
-    );
-  }
+  // A step that waits for a person (`trigger`) or runs only when a rule holds (`condition`) is Bitbucket's as a whole, so another provider cannot run its script unconditionally.
+  const gated = body.trigger !== undefined || body.condition !== undefined;
   const script = arrayAt(body.script, [...pointer, "script"], "a script");
   if (script.length === 0) return fail([...pointer, "script"], "a step with an empty script");
 
@@ -173,7 +168,7 @@ function stepOf(
     commands = [];
     steps.push(
       // GitHub evaluates `${{ }}` in a command before the shell, so a command carrying one must not reach a GitHub workflow as portable text.
-      lines.some((line) => RUNTIME_VARIABLE.test(line) || line.includes("${{"))
+      gated || lines.some((line) => RUNTIME_VARIABLE.test(line) || line.includes("${{"))
         ? { kind: "provider", provider: PROVIDER, native: { script: lines } }
         : { kind: "run", run: lines.join("\n") },
     );
