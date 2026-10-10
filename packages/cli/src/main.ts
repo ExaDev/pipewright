@@ -8,7 +8,9 @@ import {
   type RequiredScope,
 } from "@ci-adapters/check-names";
 import {
+  ImportedPipelineError,
   PipelineLoadError,
+  UnsupportedNativeError,
   contextKeySchema,
   diffEmitted,
   jsonPointerOf,
@@ -21,12 +23,20 @@ import {
   type ContextKey,
   type FileReader,
   type MatrixCombination,
+  type Pipeline,
   type PipelineCompiler,
+  type PipelineImporter,
 } from "@ci-adapters/pipeline-contract";
-import { createBitbucketPipelinesCompiler } from "@ci-adapters/pipeline-bitbucket";
-import { createCircleCiCompiler } from "@ci-adapters/pipeline-circleci";
-import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
-import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
+import {
+  createBitbucketPipelinesCompiler,
+  createBitbucketPipelinesImporter,
+} from "@ci-adapters/pipeline-bitbucket";
+import { createCircleCiCompiler, createCircleCiImporter } from "@ci-adapters/pipeline-circleci";
+import {
+  createGitHubActionsCompiler,
+  createGitHubActionsImporter,
+} from "@ci-adapters/pipeline-github-actions";
+import { createGitLabCiCompiler, createGitLabCiImporter } from "@ci-adapters/pipeline-gitlab-ci";
 import { createLocalRunner } from "@ci-adapters/pipeline-local";
 import { createGitHubReader } from "@ci-adapters/platform-github";
 
@@ -56,6 +66,13 @@ const COMPILERS: Readonly<Record<string, () => PipelineCompiler>> = {
   "gitlab-ci": createGitLabCiCompiler,
 };
 
+const IMPORTERS: Readonly<Record<string, () => PipelineImporter>> = {
+  "bitbucket-pipelines": createBitbucketPipelinesImporter,
+  circleci: createCircleCiImporter,
+  "github-actions": createGitHubActionsImporter,
+  "gitlab-ci": createGitLabCiImporter,
+};
+
 /** Where an exported document says its JSON Schema is, relative to the file it is written to. */
 const DEFAULT_SCHEMA_REFERENCE = "pipeline.schema.json";
 
@@ -67,6 +84,10 @@ Commands
   run          --pipeline <file> [--job <id>]... [--steps <from>-<to>] [--matrix <axis>=<value>]... [--context <key>=<value>]...
                [--local] [--skip-provider-steps]
                                                                           execute the pipeline directly, no emitted files
+  import       --provider <id> --file <native> [--output <file>]
+               [--format ts|json] [--schema <reference>]                   read a provider's native file into a pipeline
+  convert      --from <id> --file <native> --to <id> [--tool-command <cmd>]
+                                                                          write another provider's files from a native file
   export       --pipeline <file> [--schema <reference>]                   print the resolved pipeline as a JSON document
   schema       [--authoring]                                              print the JSON Schema
   check-names  --pipeline <file> --provider <id> --scope gates|all
@@ -85,6 +106,65 @@ function compilerFor(name: string | undefined): PipelineCompiler {
   }
 
   return make();
+}
+
+function importerFor(name: string | undefined, flag: string): PipelineImporter {
+  const make = name === undefined ? undefined : IMPORTERS[name];
+  if (make === undefined) {
+    throw new Error(
+      `${flag} expects one of ${Object.keys(IMPORTERS).join(", ")}, got ${String(name)}`,
+    );
+  }
+
+  return make();
+}
+
+/**
+ * The TypeScript module an imported pipeline is written as: its default export is the model's own input, so it is edited and composed like any pipeline authored by hand.
+ */
+function moduleOf(pipeline: Pipeline): string {
+  return `import { definePipeline } from "@ci-adapters/pipeline-contract";\n\nexport default definePipeline(${JSON.stringify(pipeline, null, 2)});\n`;
+}
+
+/**
+ * Reads a native file through the provider's importer. A construct the model cannot express is reported with the file and the JSON pointer of the node in it, as a load error is.
+ */
+async function importNative(
+  io: Io,
+  provider: string,
+  flag: string,
+  path: string,
+): Promise<Pipeline> {
+  const importer = importerFor(provider, flag);
+  const content = await io.reader.read(path);
+  try {
+    return await importer.import({ path, content });
+  } catch (error) {
+    if (error instanceof UnsupportedNativeError) {
+      throw new PipelineLoadError([
+        { file: path, pointer: error.pointer, message: `${error.provider} ${error.construct}` },
+      ]);
+    }
+    if (error instanceof ImportedPipelineError) {
+      throw new PipelineLoadError(
+        error.issues.map((issue) => ({
+          file: path,
+          pointer: issue.pointer,
+          message: issue.message,
+        })),
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * The jobs that carry settings written for `provider`, which another provider's compiler ignores. Converting such a pipeline would drop them without a word, so it is refused instead.
+ */
+function providerOwnedJobs(pipeline: Pipeline, provider: string): string[] {
+  return Object.entries(pipeline.jobs).flatMap(([id, job]) =>
+    job.native !== undefined && Object.keys(job.native).includes(provider) ? [id] : [],
+  );
 }
 
 function required(value: string | undefined, flag: string): string {
@@ -272,6 +352,73 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
         }
 
         return report.ok ? 0 : 1;
+      }
+
+      case "import": {
+        const { values } = parseArgs({
+          args: [...rest],
+          options: {
+            provider: { type: "string" },
+            file: { type: "string" },
+            output: { type: "string" },
+            format: { type: "string" },
+            schema: { type: "string" },
+          },
+        });
+        const format = values.format ?? "ts";
+        if (format !== "ts" && format !== "json") throw new Error("--format expects ts or json");
+        const pipeline = await importNative(
+          io,
+          required(values.provider, "--provider"),
+          "--provider",
+          required(values.file, "--file"),
+        );
+        const text =
+          format === "json"
+            ? `${JSON.stringify({ ...pipeline, $schema: values.schema ?? DEFAULT_SCHEMA_REFERENCE }, null, 2)}\n`
+            : moduleOf(pipeline);
+        if (values.output === undefined) {
+          io.stdout(text);
+        } else {
+          await io.writeFile(values.output, text);
+          io.stdout(`wrote ${values.output}\n`);
+        }
+
+        return 0;
+      }
+
+      case "convert": {
+        const { values } = parseArgs({
+          args: [...rest],
+          options: {
+            from: { type: "string" },
+            file: { type: "string" },
+            to: { type: "string" },
+            "tool-command": { type: "string" },
+          },
+        });
+        const from = required(values.from, "--from");
+        const source = required(values.file, "--file");
+        const compiler = compilerFor(required(values.to, "--to"));
+        const pipeline = await importNative(io, from, "--from", source);
+        const owned = from === compiler.provider ? [] : providerOwnedJobs(pipeline, from);
+        if (owned.length > 0) {
+          throw new PipelineLoadError(
+            owned.map((id) => ({
+              file: source,
+              pointer: `/jobs/${id}/native/${from}`,
+              message: `${from}-specific settings that ${compiler.provider} would drop`,
+            })),
+          );
+        }
+        const files = await compiler.compile(pipeline, {
+          source,
+          ...(values["tool-command"] === undefined ? {} : { toolCommand: values["tool-command"] }),
+        });
+        await Promise.all(files.map(async (file) => io.writeFile(file.path, file.content)));
+        for (const file of files) io.stdout(`wrote ${file.path}\n`);
+
+        return 0;
       }
 
       case "export": {
