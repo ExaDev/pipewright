@@ -125,8 +125,6 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Install chromium
-        run: pnpm --dir packages/cli exec playwright-core install --with-deps chromium
       - name: Validate
         run: pnpm run test:browser
   # Boots a pinned GitLab CE container and runs its own CI linter over the emitted GitLab sample, with a misspelt control that it must reject. It is the product's own validator; the published JSON Schema is checked separately.

@@ -133,7 +133,7 @@ pnpm run lint
 pnpm run typecheck
 pnpm run test               # unit tests, offline
 pnpm run test:integration   # published schemas, actionlint and circleci config validate over the emitted sample
-pnpm run test:browser       # Atlassian's own Bitbucket validator in headless chromium
+pnpm run test:browser       # Atlassian's own Bitbucket validator in Google Chrome
 pnpm run test:container     # GitLab's own CI linter from a pinned GitLab CE container
 pnpm run test:e2e           # dispatch an emitted workflow on GitHub and watch it (needs GH_TOKEN, REPOSITORY, E2E_REF)
 pnpm run ci:local   # this repository's own pipeline, through its own runner
