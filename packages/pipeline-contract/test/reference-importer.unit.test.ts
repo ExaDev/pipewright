@@ -12,7 +12,7 @@ describeImporterConformance(
   { describe, it },
   () => createReferenceCompiler(),
   () => createReferenceImporter(),
-  { rejects: [], wrapperForm: false },
+  { rejects: [], wrapperForm: false, distinguishesGate: true },
 );
 
 describe("the reference importer", () => {
