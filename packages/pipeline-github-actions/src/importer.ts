@@ -1,4 +1,5 @@
 import {
+  JOB_ID_PATTERN,
   UnsupportedNativeError,
   findTemplateTokens,
   jsonPointerOf,
@@ -67,7 +68,8 @@ function scalarText(value: unknown, pointer: Pointer, what: string): string {
   return isScalar(value) ? String(value) : fail(pointer, `${what} that is not text`);
 }
 
-const EXPRESSION = /\$\{\{\s*([^}]*?)\s*\}\}/g;
+/** A `${{ }}` expression. A `}` inside a quoted string, as in `format('v{0}', x)`, does not end it. */
+const EXPRESSION = /\$\{\{\s*((?:[^}']|'[^']*')*?)\s*\}\}/g;
 const AXIS = /^[A-Za-z][A-Za-z0-9_]*$/;
 const MATRIX_PREFIX = "matrix.";
 
@@ -94,7 +96,8 @@ function neutralText(value: unknown, allowMatrix: boolean): string | undefined {
     return whole;
   });
 
-  return foreign === 0 ? neutral : undefined;
+  // Anything of an expression that the pattern did not consume is one it could not read, so it is not neutral.
+  return foreign === 0 && !neutral.includes("${{") ? neutral : undefined;
 }
 
 /**
@@ -150,10 +153,16 @@ function triggersAt(on: unknown, comments: Comments): Record<string, unknown>[] 
       case "push":
       case "pull_request": {
         onlyKeys(settings, new Set(["branches"]), at, `a ${event} filter`);
-        const branches =
+        const names =
           settings.branches === undefined
-            ? {}
-            : { branches: stringsAt(settings.branches, [...at, "branches"], "branches") };
+            ? undefined
+            : stringsAt(settings.branches, [...at, "branches"], "branches");
+        // GitHub reads a branch as a glob, which the model's branch names are not, so another provider would take it literally.
+        const pattern = names?.findIndex((name) => /[*?+[\]!]/.test(name));
+        if (pattern !== undefined && pattern !== -1) {
+          fail([...at, "branches", pattern], "a branch pattern, which the model has no form for");
+        }
+        const branches = names === undefined ? {} : { branches: names };
 
         return [{ kind: event === "push" ? "push" : "pullRequest", ...branches, ...described }];
       }
@@ -213,6 +222,9 @@ function ifAt(
  */
 const WRAPPER_CALL = /\srun --pipeline \S+ --job \S+ --steps \d+-\d+/;
 
+/** A shell reference to a variable the runner defines, which another provider's runner does not. */
+const RUNTIME_VARIABLE = /\$\{?(GITHUB|RUNNER|ACTIONS)_[A-Z_]+/;
+
 const RUN_STEP_KEYS = new Set(["name", "if", "run", "env", "working-directory"]);
 
 function checkoutDepthOf(
@@ -234,7 +246,7 @@ function checkoutDepthOf(
 }
 
 /**
- * A step. A `run` with only the keys, values and condition the model has, and no `${{ }}` in its command, becomes a `run` step and the pinned checkout becomes a `checkout`; every other step is GitHub's and is carried whole as a `provider` step, so nothing in it is dropped or reinterpreted.
+ * A step. A `run` with only the keys, values and condition the model has, and no `${{ }}` or runner variable in its command, becomes a `run` step and the pinned checkout becomes a `checkout`; every other step is GitHub's and is carried whole as a `provider` step, so nothing in it is dropped or reinterpreted.
  */
 function stepAt(
   value: unknown,
@@ -265,7 +277,8 @@ function stepAt(
   const env = step.env === undefined ? undefined : neutralEnv(step.env, allowMatrix);
   const directory = step["working-directory"];
   // GitHub evaluates `${{ }}` in a command before the shell sees it, which a command the model carries verbatim cannot say.
-  const evaluated = (text: unknown): boolean => typeof text === "string" && text.includes("${{");
+  const evaluated = (text: unknown): boolean =>
+    typeof text === "string" && (text.includes("${{") || RUNTIME_VARIABLE.test(text));
   const portable =
     hasRun &&
     typeof step.run === "string" &&
@@ -328,6 +341,7 @@ function neutralMatrix(strategy: unknown): Record<string, unknown> | undefined {
   const axes = Object.entries(strategy.matrix);
   const expressible = axes.every(
     ([axis, values]) =>
+      AXIS.test(axis) &&
       axis !== "include" &&
       axis !== "exclude" &&
       Array.isArray(values) &&
@@ -340,6 +354,12 @@ function neutralMatrix(strategy: unknown): Record<string, unknown> | undefined {
 
 function jobAt(id: string, value: unknown, comments: Comments): Record<string, unknown> {
   const pointer: Pointer = ["jobs", id];
+  if (!JOB_ID_PATTERN.test(id)) {
+    return fail(
+      pointer,
+      "a job id outside lower-case letters, digits and hyphens starting with a letter, which other jobs and expressions refer to by name",
+    );
+  }
   const job = recordAt(value, pointer, "a job");
   if ("uses" in job) return fail([...pointer, "uses"], "a job that calls a reusable workflow");
   if (job["runs-on"] === undefined) return fail(pointer, "a job with no runs-on");
@@ -383,9 +403,9 @@ function jobAt(id: string, value: unknown, comments: Comments): Record<string, u
   if (job.permissions !== undefined && permissions === undefined) {
     native.permissions = job.permissions;
   }
-  if (job.environment !== undefined && typeof job.environment !== "string") {
-    native.environment = job.environment;
-  }
+  const environmentPortable =
+    typeof job.environment === "string" && !job.environment.includes("${{");
+  if (job.environment !== undefined && !environmentPortable) native.environment = job.environment;
   const env = job.env === undefined ? undefined : neutralEnv(job.env, allowMatrix);
   if (job.env !== undefined && env === undefined) native.env = job.env;
   if (job.strategy !== undefined && matrix === undefined) native.strategy = job.strategy;
@@ -407,7 +427,9 @@ function jobAt(id: string, value: unknown, comments: Comments): Record<string, u
     ...(condition.when === undefined ? {} : { when: condition.when }),
     ...(timeout !== undefined && timeoutPortable ? { timeoutMinutes: timeout } : {}),
     ...(permissions === undefined ? {} : { permissions }),
-    ...(typeof job.environment === "string" ? { environment: job.environment } : {}),
+    ...(environmentPortable && typeof job.environment === "string"
+      ? { environment: job.environment }
+      : {}),
     ...(env === undefined ? {} : { env }),
     ...(matrix === undefined ? {} : { matrix }),
     steps,
