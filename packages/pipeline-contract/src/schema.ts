@@ -42,6 +42,7 @@ export const triggerSchema = z.discriminatedUnion("kind", [
 export type Trigger = z.infer<typeof triggerSchema>;
 
 export const PERMISSION_SCOPES = [
+  "actions",
   "contents",
   "pullRequests",
   "issues",
@@ -57,6 +58,12 @@ const providerIdSchema = z.enum(["github-actions", "gitlab-ci"]);
 export type ProviderId = z.infer<typeof providerIdSchema>;
 
 const envSchema = z.record(z.string().min(1), templateString);
+
+/**
+ * How a provider adapter that supports both renders steps. `native` writes every step in the provider's own syntax; `wrapper` keeps the orchestration native and collapses runs of portable steps into one invocation of the tool's runner, so editing step logic changes no emitted file. A job's `form` overrides the pipeline's.
+ */
+export const formSchema = z.enum(["native", "wrapper"]);
+export type Form = z.infer<typeof formSchema>;
 
 const stepCommon = {
   name: z.string().min(1).optional(),
@@ -76,6 +83,8 @@ export const stepSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("run"),
     run: z.string().min(1),
+    /** `native` keeps this step in the provider's own syntax even when its job renders in the wrapper form, which a step that must run before the tool itself can (installing its dependencies) requires. */
+    form: formSchema.optional(),
     env: envSchema.optional(),
     workingDirectory: z.string().min(1).optional(),
     ...stepCommon,
@@ -93,12 +102,6 @@ const matrixSchema = z.record(
   z.string().regex(/^[A-Za-z][A-Za-z0-9_]*$/),
   z.array(z.union([z.string(), z.number(), z.boolean()])).min(1),
 );
-
-/**
- * How a provider adapter that supports both renders steps. `native` writes every step in the provider's own syntax; `wrapper` keeps the orchestration native and collapses runs of portable steps into one invocation of the tool's runner, so editing step logic changes no emitted file. A job's `form` overrides the pipeline's.
- */
-export const formSchema = z.enum(["native", "wrapper"]);
-export type Form = z.infer<typeof formSchema>;
 
 export const JOB_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 
