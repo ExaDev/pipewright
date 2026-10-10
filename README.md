@@ -70,11 +70,14 @@ Conditions are [trilean](https://github.com/ExaDev/trilean) predicate trees. Eac
 
 ## Providers
 
-| Provider | Emit | Wrapper form |
+| Provider | Output | Wrapper form |
 | --- | --- | --- |
-| GitHub Actions | yes | yes |
-| GitLab CI | yes | no |
+| GitHub Actions | `.github/workflows/<name>.yml` | yes |
+| GitLab CI | `.gitlab-ci.yml` | yes |
+| Bitbucket Pipelines | `bitbucket-pipelines.yml` | yes |
+| CircleCI | `.circleci/config.yml` | yes |
 
+[`docs/providers.md`](docs/providers.md) has the support matrix and the semantics every adapter shares.
 An adapter never drops or approximates something it cannot express. It throws `UnsupportedFeatureError` carrying the JSON pointer of the node: a schedule trigger on GitLab, where schedules are project settings, or a matrix reference in a job-level condition on GitHub, which evaluates it before the matrix expands.
 
 ### Native and wrapper forms
@@ -104,6 +107,8 @@ packages/
   pipeline-contract         model, loaders, JSON Schema, predicate compiler, conformance kits, reference fake
   pipeline-github-actions   compiler
   pipeline-gitlab-ci        compiler
+  pipeline-bitbucket        compiler
+  pipeline-circleci         compiler
   pipeline-local            in-process runner
   platform-contract         read and control interfaces, reference fake, conformance kit, wait helper
   platform-github           read-only reader, controller, Zod codecs for the wire format
@@ -115,6 +120,8 @@ examples/                   a pipeline authored as JSON
 schemas/                    JSON Schemas derived from the model
 ```
 
+Research and sources are in [`docs/research.md`](docs/research.md).
+
 The structure is one contract package per concern with adapters beside it. Each contract ships a reference fake and a conformance kit that every adapter runs, so adapters cannot drift from the spec. The pipeline half and the platform half share nothing; `check-names` is the only package that imports both.
 
 ## Development
@@ -123,7 +130,8 @@ The structure is one contract package per concern with adapters beside it. Each 
 pnpm install
 pnpm run lint
 pnpm run typecheck
-pnpm run test
+pnpm run test               # unit tests, offline
+pnpm run test:integration   # each provider's own validator over the emitted sample
 pnpm run ci:local   # this repository's own pipeline, through its own runner
 pnpm run ci:check   # fails if the generated workflow has drifted
 pnpm run schema     # regenerate the JSON Schemas
