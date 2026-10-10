@@ -234,7 +234,7 @@ function checkoutDepthOf(
 }
 
 /**
- * A step. A `run` with only the keys, values and condition the model has becomes a `run` step and the pinned checkout becomes a `checkout`; every other step is GitHub's and is carried whole as a `provider` step, so nothing in it is dropped or reinterpreted.
+ * A step. A `run` with only the keys, values and condition the model has, and no `${{ }}` in its command, becomes a `run` step and the pinned checkout becomes a `checkout`; every other step is GitHub's and is carried whole as a `provider` step, so nothing in it is dropped or reinterpreted.
  */
 function stepAt(
   value: unknown,
@@ -264,9 +264,13 @@ function stepAt(
 
   const env = step.env === undefined ? undefined : neutralEnv(step.env, allowMatrix);
   const directory = step["working-directory"];
+  // GitHub evaluates `${{ }}` in a command before the shell sees it, which a command the model carries verbatim cannot say.
+  const evaluated = (text: unknown): boolean => typeof text === "string" && text.includes("${{");
   const portable =
     hasRun &&
     typeof step.run === "string" &&
+    !evaluated(step.run) &&
+    !evaluated(directory) &&
     Object.keys(step).every((key) => RUN_STEP_KEYS.has(key)) &&
     condition.raw === undefined &&
     (step.env === undefined || env !== undefined) &&

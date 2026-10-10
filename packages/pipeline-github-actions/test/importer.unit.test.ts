@@ -125,6 +125,18 @@ jobs:
     expect(pipeline.jobs.a?.steps[0]).toMatchObject({ kind: "provider" });
   });
 
+  it("carries a command that GitHub evaluates expressions in as a provider step", async () => {
+    const pipeline = await importText(
+      "on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: echo ${{ github.sha }}\n",
+    );
+
+    expect(pipeline.jobs.a?.steps[0]).toEqual({
+      kind: "provider",
+      provider: "github-actions",
+      native: { run: "echo ${{ github.sha }}" },
+    });
+  });
+
   it("names a workflow with no name for its file", async () => {
     const pipeline = await importText(
       "on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
