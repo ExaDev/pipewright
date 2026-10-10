@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   UnsupportedNativeError,
   context,
+  pipelineSchema,
   describeImporterConformance,
   when,
   type Pipeline,
@@ -233,14 +234,36 @@ describe("GitLab CI import", () => {
     expect(pipeline.jobs.deploy?.needs).toEqual(["build-a", "check"]);
   });
 
-  it("rejects a job that waits for a person to start it", async () => {
-    const jobGate = await rejection(`${WORKFLOW}deploy:\n${JOB}  when: manual\n`);
-    const ruleGate = await rejection(
-      `${WORKFLOW}deploy:\n${JOB}  rules:\n    - if: $CI_COMMIT_TAG\n      when: manual\n`,
+  it("keeps a job that waits for a person, or that rules cannot be read for, as GitLab's whole", async () => {
+    const manual = await importText(`${WORKFLOW}deploy:\n${JOB}  when: manual\n`);
+    const never = await importText(`${WORKFLOW}deploy:\n${JOB}  rules:\n    - when: never\n`);
+
+    for (const pipeline of [manual, never]) {
+      expect(pipeline.jobs.deploy?.steps[1]).toMatchObject({ kind: "provider" });
+    }
+    expect(manual.jobs.deploy?.native).toEqual({ "gitlab-ci": { when: "manual" } });
+  });
+
+  it("writes a dollar sign from another provider as $$ and reads $$ back as one", async () => {
+    const [file] = await createGitLabCiCompiler().compile(
+      pipelineSchema.parse({
+        name: "CI",
+        triggers: [{ kind: "push" }],
+        jobs: {
+          a: {
+            name: "A",
+            runsOn: [],
+            env: { PAYLOAD: "$CI_JOB_TOKEN" },
+            steps: [{ kind: "run", run: "true" }],
+          },
+        },
+      }),
+      { source: "s" },
     );
 
-    expect(jobGate.pointer).toBe("/deploy/when");
-    expect(ruleGate.pointer).toBe("/deploy/rules");
+    expect(file?.content).toContain("PAYLOAD: $$CI_JOB_TOKEN");
+    const back = await createGitLabCiImporter().import(file ?? { path: "", content: "" });
+    expect(back.jobs.a?.env).toEqual({ PAYLOAD: "$CI_JOB_TOKEN" });
   });
 
   it("carries a script containing a GitHub expression as a provider step", async () => {

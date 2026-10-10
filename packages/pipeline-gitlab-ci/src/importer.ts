@@ -52,6 +52,9 @@ function stringList(value: unknown): string[] | undefined {
  */
 const WRAPPER_CALL = /\srun --pipeline \S+ --job \S+ --steps \d+-\d+/;
 
+/** Private-use characters that stand for an escaped dollar sign while a value's references are read. */
+const DOLLAR_OPEN = "\uE000";
+const DOLLAR_CLOSE = "\uE001";
 const VARIABLE_REFERENCE = /\$(\{[^}]*\}|[A-Za-z0-9_]+|\$)/g;
 const AXIS = /^[A-Za-z][A-Za-z0-9_]*$/;
 
@@ -64,6 +67,8 @@ function neutralText(value: unknown, axes: ReadonlySet<string>): string | undefi
   if (findTemplateTokens(text).length > 0) return undefined;
   let foreign = 0;
   const neutral = text.replace(VARIABLE_REFERENCE, (whole, name: string) => {
+    // `$$` is how GitLab writes a literal dollar sign.
+    if (name === "$") return `${DOLLAR_OPEN}${DOLLAR_CLOSE}`;
     const bare = name.startsWith("{") ? name.slice(1, -1) : name;
     const key = CONTEXT_OF_VARIABLE.get(`$${bare}`);
     if (key !== undefined) return `{{ ${key} }}`;
@@ -73,7 +78,9 @@ function neutralText(value: unknown, axes: ReadonlySet<string>): string | undefi
     return whole;
   });
 
-  return foreign === 0 ? neutral : undefined;
+  if (foreign !== 0) return undefined;
+
+  return neutral.replaceAll(`${DOLLAR_OPEN}${DOLLAR_CLOSE}`, "$");
 }
 
 function neutralVariables(
@@ -249,18 +256,6 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
     );
   }
 
-  // A job that waits for a person to start it is an approval gate, which the model has no form for and another provider would run unattended.
-  const gate = job.when === "manual" || job.when === "delayed";
-  const ruleGate =
-    Array.isArray(job.rules) &&
-    job.rules.some((rule) => isRecord(rule) && (rule.when === "manual" || rule.when === "delayed"));
-  if (gate || ruleGate) {
-    return fail(
-      [...pointer, gate ? "when" : "rules"],
-      "a job that waits for manual start, which the model has no approval gate for",
-    );
-  }
-
   const native: Record<string, unknown> = {};
   const matrix = job.parallel === undefined ? undefined : matrixOf(job.parallel);
   if (job.parallel !== undefined && matrix === undefined) native.parallel = job.parallel;
@@ -324,7 +319,10 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
     return label === undefined ? [] : [label];
   });
   const described = labels.length === 0 ? {} : { description: labels.join("\n") };
-  const portable = !lines.some((line) => readsRuntimeVariable(line, axes));
+  // A job with a start condition the model has no form for (`when`, `only`, `except`, or `rules` it cannot read) is GitLab's as a whole, so another provider cannot run its script unconditionally.
+  const gated =
+    rules.carried || job.when !== undefined || job.only !== undefined || job.except !== undefined;
+  const portable = !gated && !lines.some((line) => readsRuntimeVariable(line, axes));
   const steps = [
     ...(checksOut
       ? [{ kind: "checkout", ...(fetchDepth === undefined ? {} : { fetchDepth }) }]
