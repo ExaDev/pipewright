@@ -319,9 +319,10 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
     return label === undefined ? [] : [label];
   });
   const described = labels.length === 0 ? {} : { description: labels.join("\n") };
-  // A job with a start condition the model has no form for (`when`, `only`, `except`, or `rules` it cannot read) is GitLab's as a whole, so another provider cannot run its script unconditionally.
-  const gated =
-    rules.carried || job.when !== undefined || job.only !== undefined || job.except !== undefined;
+  // A job that carries settings of GitLab's own (an image, services, a before_script, an unreadable `rules`, a start condition) is GitLab's as a whole, because another provider would run its script without them. The concurrency keys are read back at the pipeline level and are not among these.
+  const gated = Object.keys(native).some(
+    (key) => key !== "interruptible" && key !== "resource_group",
+  );
   const portable = !gated && !lines.some((line) => readsRuntimeVariable(line, axes));
   const steps = [
     ...(checksOut
