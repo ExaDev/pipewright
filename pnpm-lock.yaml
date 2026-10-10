@@ -262,6 +262,9 @@ importers:
       '@ci-adapters/pipeline-contract':
         specifier: 0.0.0
         version: link:../pipeline-contract
+      '@ci-adapters/yaml-emit':
+        specifier: 0.0.0
+        version: link:../yaml-emit
       yaml:
         specifier: 2.9.1
         version: 2.9.1
@@ -271,6 +274,9 @@ importers:
       '@ci-adapters/pipeline-contract':
         specifier: 0.0.0
         version: link:../pipeline-contract
+      '@ci-adapters/yaml-emit':
+        specifier: 0.0.0
+        version: link:../yaml-emit
       yaml:
         specifier: 2.9.1
         version: 2.9.1
@@ -292,6 +298,12 @@ importers:
       '@ci-adapters/platform-contract':
         specifier: 0.0.0
         version: link:../platform-contract
+
+  packages/yaml-emit:
+    dependencies:
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
 packages:
 

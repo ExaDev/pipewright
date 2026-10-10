@@ -1,0 +1,310 @@
+import {
+  UnsupportedFeatureError,
+  compilePredicate,
+  generatedHeaderLines,
+  renderTemplate,
+  type CompileOptions,
+  type ContextKey,
+  type EmittedFile,
+  type EventKind,
+  type Job,
+  type Operand,
+  type Permissions,
+  type Pipeline,
+  type PipelineCompiler,
+  type PredicateHandlers,
+  type PredicateNode,
+  type Step,
+} from "@ci-adapters/pipeline-contract";
+import { renderYaml } from "@ci-adapters/yaml-emit";
+
+const PROVIDER = "github-actions";
+
+/**
+ * The checkout action's major version. It is pinned here, in one place, so a bump is a single reviewed change to the adapter rather than an edit to every pipeline.
+ */
+const CHECKOUT_ACTION = "actions/checkout@v7";
+
+const CONTEXT_EXPRESSION: Readonly<Record<ContextKey, string>> = {
+  event: "github.event_name",
+  refName: "github.ref_name",
+  baseRefName: "github.base_ref",
+  sha: "github.sha",
+  repository: "github.repository",
+  workflow: "github.workflow",
+  runId: "github.run_id",
+};
+
+const EVENT_NAME: Readonly<Record<EventKind, string>> = {
+  push: "push",
+  pullRequest: "pull_request",
+  schedule: "schedule",
+  manual: "workflow_dispatch",
+};
+
+const PERMISSION_SCOPE: Readonly<Record<keyof Permissions, string>> = {
+  contents: "contents",
+  pullRequests: "pull-requests",
+  issues: "issues",
+  checks: "checks",
+  packages: "packages",
+  identityToken: "id-token",
+};
+
+function quote(text: string): string {
+  return `'${text.replaceAll("'", "''")}'`;
+}
+
+function isEventKind(value: string): value is EventKind {
+  return value in EVENT_NAME;
+}
+
+/**
+ * GitHub's `==` is case-insensitive, which is the neutral model's equality, so it renders directly. A matrix reference is rejected in a job-level condition because GitHub evaluates that before the matrix expands.
+ */
+function conditionHandlers(pointer: string, allowMatrix: boolean): PredicateHandlers<string> {
+  const unsupported = (feature: string): never => {
+    throw new UnsupportedFeatureError(PROVIDER, pointer, feature);
+  };
+  const render = (operand: Operand, other: Operand): string => {
+    switch (operand.kind) {
+      case "context":
+        return CONTEXT_EXPRESSION[operand.key];
+      case "matrix":
+        if (!allowMatrix) {
+          return unsupported(
+            "a matrix reference in a job-level condition, which GitHub evaluates before the matrix expands",
+          );
+        }
+        return `matrix.${operand.name}`;
+      case "text": {
+        if (other.kind === "context" && other.key === "event") {
+          if (!isEventKind(operand.value)) {
+            return unsupported(`the event value ${JSON.stringify(operand.value)}`);
+          }
+          return quote(EVENT_NAME[operand.value]);
+        }
+        return quote(operand.value);
+      }
+    }
+  };
+  const equals = (left: Operand, right: Operand, negated: boolean): string =>
+    `(${render(left, right)} ${negated ? "!=" : "=="} ${render(right, left)})`;
+
+  return {
+    not: (operand) => `!${operand}`,
+    and: (left, right) => `(${left} && ${right})`,
+    or: (left, right) => `(${left} || ${right})`,
+    allOf: (operands) => (operands.length === 0 ? "true" : `(${operands.join(" && ")})`),
+    anyOf: (operands) => (operands.length === 0 ? "false" : `(${operands.join(" || ")})`),
+    equals,
+    memberOf: (operand, candidates, negated) => {
+      const any =
+        candidates.length === 0
+          ? "false"
+          : `(${candidates.map((candidate) => equals(operand, candidate, false)).join(" || ")})`;
+      return negated ? `!${any}` : any;
+    },
+  };
+}
+
+function conditionOf(
+  predicate: PredicateNode,
+  pointer: string,
+  allowMatrix: boolean,
+): string {
+  return compilePredicate(predicate, conditionHandlers(pointer, allowMatrix), {
+    provider: PROVIDER,
+    pointer,
+  });
+}
+
+function permissionsOf(permissions: Permissions): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(permissions).flatMap(([scope, level]) => {
+      const key = PERMISSION_SCOPE[scope as keyof Permissions];
+      return level === undefined ? [] : [[key, level]];
+    }),
+  );
+}
+
+function envOf(env: Readonly<Record<string, string>>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(env).map(([key, value]) => [
+      key,
+      renderTemplate(value, (token) =>
+        token.kind === "context"
+          ? `\${{ ${CONTEXT_EXPRESSION[token.key]} }}`
+          : `\${{ matrix.${token.name} }}`,
+      ),
+    ]),
+  );
+}
+
+function stepOf(step: Step, pointer: string): Record<string, unknown> {
+  const common: Record<string, unknown> = {};
+  if (step.name !== undefined) common["name"] = step.name;
+  if (step.when !== undefined) {
+    common["if"] = conditionOf(step.when, `${pointer}/when`, true);
+  }
+  switch (step.kind) {
+    case "checkout":
+      return {
+        ...common,
+        uses: CHECKOUT_ACTION,
+        ...(step.fetchDepth === undefined
+          ? {}
+          : { with: { "fetch-depth": step.fetchDepth === "full" ? 0 : step.fetchDepth } }),
+      };
+    case "run":
+      return {
+        ...common,
+        run: step.run,
+        ...(step.env === undefined ? {} : { env: envOf(step.env) }),
+        ...(step.workingDirectory === undefined
+          ? {}
+          : { "working-directory": step.workingDirectory }),
+      };
+    case "provider":
+      if (step.provider !== PROVIDER) {
+        throw new UnsupportedFeatureError(
+          PROVIDER,
+          pointer,
+          `a step owned by ${step.provider}`,
+        );
+      }
+      return { ...common, ...step.native };
+  }
+}
+
+function jobOf(id: string, job: Job): Record<string, unknown> {
+  const pointer = `/jobs/${id}`;
+  const conditions: string[] = [];
+  if (job.needsPolicy === "always") conditions.push("always()");
+  if (job.when !== undefined) {
+    conditions.push(conditionOf(job.when, `${pointer}/when`, false));
+  }
+  const condition =
+    conditions.length === 0
+      ? undefined
+      : job.needsPolicy === "always" && job.when !== undefined
+        ? `always() && ${conditions[1] ?? ""}`
+        : (conditions[0] ?? "");
+
+  return {
+    name: job.name,
+    "runs-on": job.runsOn.length === 1 ? job.runsOn[0] : job.runsOn,
+    ...(job.needs === undefined ? {} : { needs: job.needs }),
+    ...(condition === undefined ? {} : { if: condition }),
+    ...(job.timeoutMinutes === undefined ? {} : { "timeout-minutes": job.timeoutMinutes }),
+    ...(job.permissions === undefined ? {} : { permissions: permissionsOf(job.permissions) }),
+    ...(job.environment === undefined ? {} : { environment: job.environment }),
+    ...(job.env === undefined ? {} : { env: envOf(job.env) }),
+    ...(job.matrix === undefined ? {} : { strategy: { matrix: job.matrix } }),
+    steps: job.steps.map((step, index) => stepOf(step, `${pointer}/steps/${index}`)),
+    ...(job.native?.["github-actions"] ?? {}),
+  };
+}
+
+function slug(text: string): string {
+  return text
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/^-+|-+$/g, "");
+}
+
+function triggersOf(
+  pipeline: Pipeline,
+  comments: Map<string, string>,
+): Record<string, unknown> {
+  const on: Record<string, unknown> = {};
+  const schedules: { cron: string }[] = [];
+  const claim = (key: string, index: number, description: string | undefined): void => {
+    if (key in on) {
+      throw new UnsupportedFeatureError(
+        PROVIDER,
+        `/triggers/${index}`,
+        `a second ${key} trigger, which GitHub merges into one`,
+      );
+    }
+    if (description !== undefined) comments.set(`on/${key}`, description);
+  };
+
+  for (const [index, trigger] of pipeline.triggers.entries()) {
+    switch (trigger.kind) {
+      case "push":
+        claim("push", index, trigger.description);
+        on["push"] = trigger.branches === undefined ? {} : { branches: trigger.branches };
+        break;
+      case "pullRequest":
+        claim("pull_request", index, trigger.description);
+        on["pull_request"] =
+          trigger.branches === undefined ? {} : { branches: trigger.branches };
+        break;
+      case "manual":
+        claim("workflow_dispatch", index, trigger.description);
+        on["workflow_dispatch"] = {};
+        break;
+      case "schedule":
+        schedules.push({ cron: trigger.cron });
+        break;
+    }
+  }
+  if (schedules.length > 0) on["schedule"] = schedules;
+  return on;
+}
+
+/**
+ * Compiles a pipeline to one GitHub Actions workflow file, `.github/workflows/<name>.yml`.
+ *
+ * Support matrix: every trigger kind; permissions; concurrency; matrix; `checkout`, `run` and GitHub-owned `provider` steps; job and step conditions over `not`, `and`, `or`, `allOf`, `anyOf`, text equality and membership. Not supported: regular-expression text comparisons, ordering comparisons, arithmetic and collection quantifiers, none of which GitHub's expression language can render with the neutral model's meaning. A matrix reference is rejected in a job-level condition.
+ */
+export function createGitHubActionsCompiler(): PipelineCompiler {
+  return {
+    provider: PROVIDER,
+    compile(pipeline: Pipeline, options: CompileOptions): Promise<readonly EmittedFile[]> {
+      options.signal?.throwIfAborted();
+      const comments = new Map<string, string>();
+      if (pipeline.description !== undefined) comments.set("name", pipeline.description);
+
+      const document: Record<string, unknown> = {
+        name: pipeline.name,
+        on: triggersOf(pipeline, comments),
+        ...(pipeline.permissions === undefined
+          ? {}
+          : { permissions: permissionsOf(pipeline.permissions) }),
+        ...(pipeline.concurrency === undefined
+          ? {}
+          : {
+              concurrency: {
+                group: renderTemplate(pipeline.concurrency.group, (token) =>
+                  token.kind === "context"
+                    ? `\${{ ${CONTEXT_EXPRESSION[token.key]} }}`
+                    : `\${{ matrix.${token.name} }}`,
+                ),
+                "cancel-in-progress": pipeline.concurrency.cancelInProgress,
+              },
+            }),
+        ...(pipeline.env === undefined ? {} : { env: envOf(pipeline.env) }),
+        jobs: Object.fromEntries(
+          Object.entries(pipeline.jobs).map(([id, job]) => {
+            if (job.description !== undefined) comments.set(`jobs/${id}`, job.description);
+            for (const [index, step] of job.steps.entries()) {
+              if (step.description !== undefined) {
+                comments.set(`jobs/${id}/steps/${index}`, step.description);
+              }
+            }
+            return [id, jobOf(id, job)];
+          }),
+        ),
+      };
+
+      return Promise.resolve([
+        {
+          path: `.github/workflows/${slug(pipeline.name)}.yml`,
+          content: renderYaml(document, comments, generatedHeaderLines(options.source)),
+        },
+      ]);
+    },
+  };
+}
