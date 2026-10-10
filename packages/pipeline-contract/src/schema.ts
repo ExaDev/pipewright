@@ -120,9 +120,9 @@ export const jobSchema = z.strictObject({
   runsOn: nonEmptyList,
   needs: z.array(z.string().regex(JOB_ID_PATTERN)).optional(),
   /**
-   * `success` (the default) runs the job only when every job it needs succeeded; `always` runs it whatever they concluded, which is how a fan-in gate job reports on failures.
+   * `success` (the default) runs the job only when every job it needs succeeded. `always` runs it whatever they concluded, for cleanup that must happen regardless. `gate` is a job that exists to report whether everything it needs succeeded: it fails unless they all did, so a branch can require it as the single check. Providers that already fail the pipeline when a dependency fails run it as an ordinary dependent job.
    */
-  needsPolicy: z.enum(["success", "always"]).optional(),
+  needsPolicy: z.enum(["success", "always", "gate"]).optional(),
   form: formSchema.optional(),
   when: PredicateNodeSchema.optional(),
   timeoutMinutes: z.number().int().positive().optional(),
@@ -268,6 +268,16 @@ export const pipelineSchema = pipelineShape.superRefine((pipeline, ctx) => {
           message: `uses {{ ${name} }}, but a matrix axis exists only inside a job`,
         });
       }
+    }
+  }
+
+  for (const [id, job] of Object.entries(pipeline.jobs)) {
+    if (job.needsPolicy === "gate" && (job.needs ?? []).length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["jobs", id, "needsPolicy"],
+        message: "a gate reports on the jobs it needs, so it needs at least one",
+      });
     }
   }
 

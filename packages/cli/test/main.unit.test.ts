@@ -18,7 +18,7 @@ const pipeline = {
       name: "Required checks",
       runsOn: ["ubuntu-latest"],
       needs: ["lint"],
-      needsPolicy: "always",
+      needsPolicy: "gate",
       steps: [{ kind: "run", run: "echo gate" }],
     },
   },
@@ -222,10 +222,10 @@ describe("run", () => {
     expect(h.files.has(".github/workflows/ci.yml")).toBe(false);
   });
 
-  it("exits non-zero when a step fails and still runs the always job", async () => {
+  it("exits non-zero when a step fails and reports the gate failed without running it", async () => {
     const h = harness({ failing: (command: string) => command === "pnpm run lint" });
     expect(await main(["run", "--pipeline", "ci/ci.pipeline.json", ...context], h.io)).toBe(1);
-    expect(h.commands).toEqual(["pnpm run lint", "echo gate"]);
+    expect(h.commands).toEqual(["pnpm run lint"]);
   });
 
   it("runs one job and one step range as the wrapper form asks", async () => {

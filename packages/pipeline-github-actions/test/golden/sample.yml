@@ -44,4 +44,7 @@ jobs:
       - test
     if: always()
     steps:
+      - name: Fail unless every needed job succeeded
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
       - run: echo gate

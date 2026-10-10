@@ -46,8 +46,6 @@ Required checks:
   needs:
     - Lint
     - Test
-  rules:
-    - when: always
   interruptible: true
   script:
     - echo gate

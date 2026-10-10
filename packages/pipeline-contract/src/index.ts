@@ -38,7 +38,13 @@ export {
   type PipelineCompiler,
 } from "./compiler.ts";
 export { createReferenceCompiler } from "./fake.ts";
-export { describeCompilerConformance, samplePipeline, type TestApi } from "./conformance.ts";
+export {
+  ALL_FEATURES,
+  describeCompilerConformance,
+  samplePipeline,
+  type SampleFeatures,
+  type TestApi,
+} from "./conformance.ts";
 export {
   PipelineLoadError,
   loadPipeline,

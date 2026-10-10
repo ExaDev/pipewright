@@ -71,8 +71,12 @@ export function describeRunnerConformance(api: TestApi, makeRunner: () => Pipeli
     });
 
     api.it("skips dependants of a failed job but still runs an always job", async () => {
+      const pipeline = samplePipeline();
+      const gate = pipeline.jobs.gate;
+      if (gate === undefined) throw new Error("sample pipeline lost its gate job");
+      gate.needsPolicy = "always";
       const executor = recordingExecutor((command) => command === "pnpm run lint");
-      const report = await makeRunner().run(samplePipeline(), { executor, context: CONTEXT });
+      const report = await makeRunner().run(pipeline, { executor, context: CONTEXT });
       const commands = executor.executed.map((entry) => entry.command);
       check(!report.ok, "a failing run was reported as ok");
       check(!commands.includes("pnpm test"), "a dependant of a failed job ran");
@@ -182,6 +186,21 @@ export function describeRunnerConformance(api: TestApi, makeRunner: () => Pipeli
       check(
         executor.executed.some((entry) => entry.command === "pnpm run lint"),
         "the portable step did not run",
+      );
+    });
+
+    api.it("reports a gate as failed, without running it, when a job it needs failed", async () => {
+      const pipeline = samplePipeline();
+      const executor = recordingExecutor((command) => command === "pnpm run lint");
+      const report = await makeRunner().run(pipeline, { executor, context: CONTEXT });
+      const reported = report.jobs.find((job) => job.id === "gate");
+      check(
+        reported?.outcome === "failure",
+        `the gate was reported as ${String(reported?.outcome)}`,
+      );
+      check(
+        !executor.executed.some((entry) => entry.command === "echo gate"),
+        "a failed gate ran its steps",
       );
     });
 

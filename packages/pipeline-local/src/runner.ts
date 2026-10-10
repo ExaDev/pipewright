@@ -118,6 +118,8 @@ interface JobPlan {
   readonly stepConditions: readonly Condition[];
   /** False when an earlier job failed or was skipped and this job does not run regardless. */
   readonly mayRun: boolean;
+  /** A gate reports failure when a job it needs did not succeed, rather than being skipped. */
+  readonly failsGate: boolean;
 }
 
 function inRange(options: RunOptions, index: number): boolean {
@@ -150,6 +152,15 @@ async function runStep(plan: JobPlan, scope: Scope, step: Step, index: number): 
 async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise<JobReport> {
   const scope: Scope = { context: plan.options.context, matrix };
   const { job, id } = plan;
+  if (plan.failsGate) {
+    return {
+      id,
+      name: job.name,
+      matrix,
+      outcome: "failure",
+      steps: job.steps.map((step) => ({ name: stepName(step), outcome: "skipped" })),
+    };
+  }
   if (!plan.mayRun || !plan.jobCondition(scope)) {
     return {
       id,
@@ -242,6 +253,7 @@ export function createLocalRunner(): PipelineRunner {
             conditionOf(step.when, `/jobs/${id}/steps/${String(index)}/when`),
           ),
           mayRun: job.needsPolicy === "always" || needsSatisfied,
+          failsGate: job.needsPolicy === "gate" && !needsSatisfied,
         };
         const reports = await inSequence(combinationsOf(job, id, options), async (matrix) =>
           runCombination(plan, matrix),

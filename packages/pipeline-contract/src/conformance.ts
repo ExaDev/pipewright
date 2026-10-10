@@ -23,12 +23,15 @@ export interface SampleFeatures {
   readonly concurrency: boolean;
   /** Per-job timeouts. */
   readonly timeouts: boolean;
+  /** A manual trigger, which some providers cannot declare in the file. */
+  readonly manualTrigger: boolean;
 }
 
 export const ALL_FEATURES: SampleFeatures = {
   environment: true,
   concurrency: true,
   timeouts: true,
+  manualTrigger: true,
 };
 
 /**
@@ -39,7 +42,10 @@ export function samplePipeline(features: SampleFeatures = ALL_FEATURES): Pipelin
 
   return pipelineSchema.parse({
     name: "CI",
-    triggers: [{ kind: "push", branches: ["main"] }, { kind: "manual" }],
+    triggers: [
+      { kind: "push", branches: ["main"] },
+      ...(features.manualTrigger ? [{ kind: "manual" }] : []),
+    ],
     ...(features.concurrency
       ? { concurrency: { group: "ci-{{ workflow }}-{{ refName }}", cancelInProgress: true } }
       : {}),
@@ -67,7 +73,7 @@ export function samplePipeline(features: SampleFeatures = ALL_FEATURES): Pipelin
         name: "Required checks",
         runsOn: ["ubuntu-latest"],
         needs: ["lint", "test"],
-        needsPolicy: "always",
+        needsPolicy: "gate",
         native: executor,
         steps: [{ kind: "run", run: "echo gate" }],
       },

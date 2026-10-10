@@ -47,6 +47,16 @@ const EVENT_NAME: Readonly<Record<EventKind, string>> = {
   manual: "workflow_dispatch",
 };
 
+/**
+ * The step a gate job starts with. GitHub reports a job skipped because a dependency failed as successful, and a skipped job does not block a required check, so a gate has to run regardless and fail explicitly when any job it needs did not succeed.
+ * @see https://docs.github.com/en/actions/using-jobs/using-conditions-to-control-job-execution
+ */
+const GATE_STEP = {
+  name: "Fail unless every needed job succeeded",
+  if: "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')",
+  run: "exit 1",
+} as const;
+
 const PERMISSION_SCOPE: Readonly<Record<keyof Permissions, string>> = {
   actions: "actions",
   contents: "contents",
@@ -226,14 +236,15 @@ function wrapperStepsOf(id: string, job: Job, context: WrapperContext): Record<s
 function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): Record<string, unknown> {
   const pointer = `/jobs/${id}`;
   const conditions: string[] = [];
-  if (job.needsPolicy === "always") conditions.push("always()");
+  const runsRegardless = job.needsPolicy === "always" || job.needsPolicy === "gate";
+  if (runsRegardless) conditions.push("always()");
   if (job.when !== undefined) {
     conditions.push(conditionOf(job.when, `${pointer}/when`, false));
   }
   const condition =
     conditions.length === 0
       ? undefined
-      : job.needsPolicy === "always" && job.when !== undefined
+      : runsRegardless && job.when !== undefined
         ? `always() && ${conditions[1] ?? ""}`
         : (conditions[0] ?? "");
 
@@ -247,10 +258,12 @@ function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): Recor
     ...(job.environment === undefined ? {} : { environment: job.environment }),
     ...(job.env === undefined ? {} : { env: envOf(job.env) }),
     ...(job.matrix === undefined ? {} : { strategy: { matrix: job.matrix } }),
-    steps:
-      wrapper === undefined
+    steps: [
+      ...(job.needsPolicy === "gate" ? [GATE_STEP] : []),
+      ...(wrapper === undefined
         ? job.steps.map((step, index) => stepOf(step, `${pointer}/steps/${String(index)}`))
-        : wrapperStepsOf(id, job, wrapper),
+        : wrapperStepsOf(id, job, wrapper)),
+    ],
     ...(job.native?.["github-actions"] ?? {}),
   };
 }

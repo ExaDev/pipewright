@@ -79,6 +79,16 @@ describe("GitHub Actions emission", () => {
     expect(text).toContain("if: ((github.ref_name == 'main') || (github.ref_name == 'release'))");
   });
 
+  it("emits the explicit failing step a gate needs, once, before its own steps", async () => {
+    const text = await emit(samplePipeline());
+    expect(text).toContain("if: always()");
+    expect(text).toContain("name: Fail unless every needed job succeeded");
+    expect(text).toContain("contains(needs.*.result, 'skipped')");
+    expect(text.indexOf("Fail unless every needed job succeeded")).toBeLessThan(
+      text.indexOf("run: echo gate"),
+    );
+  });
+
   it("combines always() with a condition", async () => {
     const text = await emit(
       pipelineWith({ needsPolicy: "always", when: textEquals("refName", "main") }),
