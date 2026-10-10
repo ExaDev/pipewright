@@ -50,13 +50,13 @@ What runs, and where:
 | GitHub Actions | actionlint | the `integration` project, CI job `Provider validators` |
 | CircleCI | `circleci config validate` (CLI 1.4.0, pinned archive and digest), and the published JSON Schema | the `integration` project, CI job `Provider validators` |
 | GitLab CI | `Gitlab::Ci::Lint` from a pinned GitLab CE 19.4.1 container, and the published `ci.json` JSON Schema | the `container` project (CI job `GitLab linter`) and the `integration` project |
-| Bitbucket Pipelines | Atlassian's own validator page, driven in headless chromium, and the published pipelines JSON Schema | the `browser` project (CI job `Bitbucket validator`) and the `integration` project |
+| Bitbucket Pipelines | Atlassian's own validator page, driven in the installed Google Chrome, and the published pipelines JSON Schema | the `browser` project (CI job `Bitbucket validator`) and the `integration` project |
 
 Each product validator test also feeds its validator a control with a misspelt keyword and requires it to say invalid, so a validator that stopped checking would fail the suite rather than keep passing. Bitbucket's page validates in the browser with logic of its own (its bundle embeds no JSON Schema), which is why it can disagree with the published schema, as it does for a final step in a custom pipeline.
 
 No emitted file has been executed on Bitbucket, GitLab or CircleCI: nothing here holds an account on them.
 
-`pnpm run test:integration` fetches each provider's published schema and runs actionlint and `circleci config validate` over the sample pipeline's output. `test:browser` needs chromium (`pnpm --dir packages/cli exec playwright-core install chromium`) and `test:container` needs Docker and several minutes. Each is a separate vitest project from the unit tests so the unit suite stays offline, and each CI job installs what its project needs. A validator that cannot run is a failure, never a skip.
+`pnpm run test:integration` fetches each provider's published schema and runs actionlint and `circleci config validate` over the sample pipeline's output. `test:browser` drives the installed Google Chrome (GitHub's runner image has it; nothing is downloaded, because a browser fetched at test time is bytes this repository cannot verify) and `test:container` needs Docker and several minutes. Each is a separate vitest project from the unit tests so the unit suite stays offline, and each CI job installs what its project needs. A validator that cannot run is a failure, never a skip.
 
 ## Execution on the provider
 

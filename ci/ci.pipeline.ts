@@ -118,15 +118,7 @@ const bitbucketValidator = defineJob("bitbucket-validator", {
     "Pastes the emitted Bitbucket sample into Atlassian's own validator page in a headless browser and requires its verdict, with a misspelt control that it must reject. The page validates in the browser with logic of its own, so this is the product's validator and not the published JSON Schema.",
   runsOn: [RUNNER],
   timeoutMinutes: DEFAULT_TIMEOUT_MINUTES,
-  steps: [
-    ...SETUP_STEPS,
-    {
-      kind: "run",
-      name: "Install chromium",
-      run: "pnpm --dir packages/cli exec playwright-core install --with-deps chromium",
-    },
-    { kind: "run", name: "Validate", run: "pnpm run test:browser" },
-  ],
+  steps: [...SETUP_STEPS, { kind: "run", name: "Validate", run: "pnpm run test:browser" }],
 });
 
 const gitlabLint = defineJob("gitlab-lint", {

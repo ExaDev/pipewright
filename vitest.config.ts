@@ -18,7 +18,7 @@ export default defineConfig({
         },
       },
       {
-        // Drives Atlassian's validator page in a headless browser. Needs chromium (`playwright-core install chromium`) and the network.
+        // Drives Atlassian's validator page in a headless browser. Needs Google Chrome installed and the network.
         test: {
           name: "browser",
           include: ["packages/*/test/browser/*.integration.test.ts"],

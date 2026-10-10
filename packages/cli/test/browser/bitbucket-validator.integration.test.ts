@@ -22,7 +22,8 @@ const FEATURES = { environment: false, concurrency: false, timeouts: true, manua
 let browser: Browser | undefined;
 
 beforeAll(async () => {
-  browser = await chromium.launch();
+  // The installed Google Chrome, not a browser downloaded at test time: a download is bytes this repository cannot verify, and GitHub's runner image already carries Chrome.
+  browser = await chromium.launch({ channel: "chrome" });
 });
 
 afterAll(async () => {
