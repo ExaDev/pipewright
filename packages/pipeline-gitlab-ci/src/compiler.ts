@@ -22,46 +22,16 @@ import {
 import { renderYaml } from "@ci-adapters/yaml-emit";
 import { dag } from "process-graph";
 
-const PROVIDER = "gitlab-ci";
-
-const CONTEXT_VARIABLE: Readonly<Record<ContextKey, string>> = {
-  event: "$CI_PIPELINE_SOURCE",
-  refName: "$CI_COMMIT_REF_NAME",
-  baseRefName: "$CI_MERGE_REQUEST_TARGET_BRANCH_NAME",
-  sha: "$CI_COMMIT_SHA",
-  repository: "$CI_PROJECT_PATH",
-  workflow: "$CI_PIPELINE_NAME",
-  runId: "$CI_PIPELINE_ID",
-};
-
-const PIPELINE_SOURCE: Readonly<Record<EventKind, string>> = {
-  push: "push",
-  pullRequest: "merge_request_event",
-  schedule: "schedule",
-  manual: "web",
-};
-
-/** Top-level keys that are configuration rather than job names, so a job cannot be called one of them. */
-const RESERVED_NAMES: ReadonlySet<string> = new Set([
-  "image",
-  "services",
-  "stages",
-  "types",
-  "before_script",
-  "after_script",
-  "variables",
-  "cache",
-  "include",
-  "default",
-  "workflow",
-]);
+import {
+  CONTEXT_VARIABLE,
+  PIPELINE_SOURCE,
+  PROVIDER,
+  RESERVED_NAMES,
+  escapeRegex,
+} from "./vocabulary.ts";
 
 function isEventKind(value: string): value is EventKind {
   return value in PIPELINE_SOURCE;
-}
-
-function escapeRegex(text: string): string {
-  return text.replaceAll(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 }
 
 /**
