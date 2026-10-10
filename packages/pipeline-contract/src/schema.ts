@@ -2,6 +2,7 @@ import { JsonValueSchema, PredicateNodeSchema } from "trilean";
 import { z } from "zod";
 
 import { contextKeySchema, findTemplateTokens, parseTemplateToken } from "./context.ts";
+import { Ref } from "./reference.ts";
 
 const MATRIX_PREFIX = "matrix.";
 
@@ -10,7 +11,7 @@ const MATRIX_PREFIX = "matrix.";
  */
 const description = z.string().min(1).optional();
 
-const templateString = z
+const tokenString = z
   .string()
   .refine(
     (text) => findTemplateTokens(text).every((token) => parseTemplateToken(token) !== undefined),
@@ -18,6 +19,14 @@ const templateString = z
       message: "contains a {{ token }} that is neither a neutral context key nor a matrix.<axis>",
     },
   );
+
+/**
+ * A string that may carry run-time values. A TypeScript author passes a `Ref` or a string built with `t`; the model stores the `{{ name }}` token text either way, so the serialised form and a JSON document are plain strings.
+ */
+const templateString = z.codec(z.union([z.string(), z.instanceof(Ref)]), tokenString, {
+  decode: (value) => (value instanceof Ref ? value.token : value),
+  encode: (value) => value,
+});
 
 const nonEmptyList = z.array(z.string().min(1)).min(1);
 

@@ -20,22 +20,38 @@ A workflow file mixes two things. The orchestration (triggers, job graph, matrix
 
 A pipeline is a TypeScript module whose default export comes from `definePipeline`. The type is the model's input type, so an editor completes and checks it, and composition is ordinary TypeScript: functions, spreads and shared constants.
 
+References are values, not strings. `context.sha` and the `axes` a `matrixJob` callback receives are typed, so a misspelt name is a compile error, and `needs` takes the job handles that `defineJob` returns, so a dependency on a job that does not exist is an undefined variable and a cycle cannot be written. ``t`ci-${context.refName}` `` builds a string from references, and `when.event`, `when.equals` and `when.oneOf` build conditions. The model stores the `{{ name }}` token text, which is what a JSON document writes by hand.
+
 ```ts
-import { definePipeline } from "@ci-adapters/pipeline-contract";
+import {
+  context,
+  defineJob,
+  definePipeline,
+  jobsOf,
+  matrixJob,
+} from "@ci-adapters/pipeline-contract";
+
+const lint = defineJob("lint", {
+  name: "Lint",
+  runsOn: ["ubuntu-latest"],
+  steps: [{ kind: "checkout" }, { kind: "run", run: "pnpm run lint" }],
+});
+
+const test = defineJob(
+  "test",
+  matrixJob({ node: ["22", "24"] }, (axes) => ({
+    name: "Test",
+    runsOn: ["ubuntu-latest"],
+    needs: [lint],
+    env: { NODE_VERSION: axes.node, COMMIT: context.sha },
+    steps: [{ kind: "checkout" }, { kind: "run", run: "pnpm test" }],
+  })),
+);
 
 export default definePipeline({
   name: "CI",
   triggers: [{ kind: "push", branches: ["main"] }, { kind: "pullRequest" }],
-  jobs: {
-    test: {
-      name: "Test",
-      description: "Unit tests.",
-      runsOn: ["ubuntu-latest"],
-      matrix: { node: ["22", "24"] },
-      env: { NODE_VERSION: "{{ matrix.node }}" },
-      steps: [{ kind: "checkout" }, { kind: "run", run: "pnpm test" }],
-    },
-  },
+  jobs: jobsOf(lint, test),
 });
 ```
 

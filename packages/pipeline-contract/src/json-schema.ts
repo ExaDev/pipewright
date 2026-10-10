@@ -14,7 +14,8 @@ const PRIMITIVE_TYPES: ReadonlySet<unknown> = new Set(["string", "number", "inte
  * JSON Schema for the resolved model: exactly what `pipelineSchema` accepts, with every required field required.
  */
 export function pipelineJsonSchema(): JsonObject {
-  return z.toJSONSchema(pipelineSchema, { target: "draft-2020-12", io: "input" });
+  // The output side: a TypeScript author may pass a typed reference where the model stores a string, and a JSON document only ever holds the string.
+  return z.toJSONSchema(pipelineSchema, { target: "draft-2020-12", io: "output" });
 }
 
 function relax(node: unknown): unknown {

@@ -65,3 +65,15 @@ export {
 } from "./runner.ts";
 export { describeRunnerConformance } from "./runner-conformance.ts";
 export type { PredicateNode } from "trilean";
+export {
+  Ref,
+  context,
+  defineJob,
+  jobsOf,
+  matrixJob,
+  t,
+  when,
+  type JobDefinition,
+  type JobHandle,
+  type MatrixAxes,
+} from "./reference.ts";
