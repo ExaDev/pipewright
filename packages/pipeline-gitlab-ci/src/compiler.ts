@@ -16,6 +16,7 @@ import {
   type Pipeline,
   type PipelineCompiler,
   type PredicateHandlers,
+  type Step,
   type Trigger,
 } from "@ci-adapters/pipeline-contract";
 import { renderYaml } from "@ci-adapters/yaml-emit";
@@ -189,9 +190,36 @@ interface JobInput {
   readonly pipeline: Pipeline;
   readonly level: number;
   readonly keyOf: ReadonlyMap<string, string>;
+  readonly toolCommand: string | undefined;
+  readonly source: string;
 }
 
-function jobOf({ id, job, pipeline, level, keyOf }: JobInput): JobOutput {
+function isCollapsible(step: Step | undefined): boolean {
+  return step?.kind === "run" && step.form !== "native";
+}
+
+/**
+ * Builds the one script line that stands for a collapsed group of steps: a call to this tool's runner for exactly those step indexes, with each matrix axis passed through the job's variable of the same name.
+ */
+function wrapperOf(
+  id: string,
+  toolCommand: string | undefined,
+  source: string,
+): (from: number, to: number, axes: readonly string[]) => string {
+  if (toolCommand === undefined) {
+    throw new Error(
+      `job ${id} renders in the wrapper form, which needs CompileOptions.toolCommand`,
+    );
+  }
+
+  return (from, to, axes) =>
+    `${toolCommand} run --pipeline ${source} --job ${id} --steps ${String(from)}-${String(to)}${axes
+      .map((axis) => ` --matrix ${axis}=$${axis}`)
+      .join("")}`;
+}
+
+function jobOf(input: JobInput): JobOutput {
+  const { id, job, pipeline, level, keyOf } = input;
   const pointer = `/jobs/${id}`;
   const unsupported = (path: string, feature: string): never => {
     throw new UnsupportedFeatureError(PROVIDER, `${pointer}${path}`, feature);
@@ -199,15 +227,19 @@ function jobOf({ id, job, pipeline, level, keyOf }: JobInput): JobOutput {
   if (job.permissions !== undefined) {
     unsupported("/permissions", "job permissions, which GitLab configures per project");
   }
-  if ((job.form ?? pipeline.form) === "wrapper") {
-    unsupported("/form", "the wrapper form, which only github-actions implements");
-  }
+  const wrapper =
+    (job.form ?? pipeline.form) === "wrapper"
+      ? wrapperOf(id, input.toolCommand, input.source)
+      : undefined;
   const key = keyOf.get(id) ?? job.name;
   const comments = new Map<string, string>();
   const script: string[] = [];
   let gitDepth: string | undefined;
 
-  for (const [index, step] of job.steps.entries()) {
+  let index = 0;
+  while (index < job.steps.length) {
+    const step = job.steps[index];
+    if (step === undefined) break;
     const at = `/steps/${String(index)}`;
     if (step.when !== undefined) {
       unsupported(
@@ -231,6 +263,12 @@ function jobOf({ id, job, pipeline, level, keyOf }: JobInput): JobOutput {
         if (step.workingDirectory !== undefined) {
           unsupported(`${at}/workingDirectory`, "a step working directory");
         }
+        if (wrapper !== undefined && step.form !== "native") {
+          const from = index;
+          while (isCollapsible(job.steps[index])) index += 1;
+          script.push(wrapper(from, index - 1, Object.keys(job.matrix ?? {})));
+          continue;
+        }
         const label = step.description ?? step.name;
         if (label !== undefined) comments.set(`${key}/script/${String(script.length)}`, label);
         script.push(step.run);
@@ -253,6 +291,7 @@ function jobOf({ id, job, pipeline, level, keyOf }: JobInput): JobOutput {
         break;
       }
     }
+    index += 1;
   }
 
   const condition =
@@ -363,7 +402,15 @@ export function createGitLabCiCompiler(): PipelineCompiler {
       const comments = new Map<string, string>();
       const jobs: Record<string, unknown> = {};
       for (const [id, job] of Object.entries(pipeline.jobs)) {
-        const output = jobOf({ id, job, pipeline, level: levels.get(id) ?? 0, keyOf });
+        const output = jobOf({
+          id,
+          job,
+          pipeline,
+          level: levels.get(id) ?? 0,
+          keyOf,
+          toolCommand: options.toolCommand,
+          source: options.source,
+        });
         jobs[output.key] = output.value;
         for (const [path, text] of output.comments) comments.set(path, text);
       }

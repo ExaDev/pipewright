@@ -3,8 +3,7 @@
   "version": "0.0.0",
   "dependencies": {
     "@ci-adapters/pipeline-contract": "0.0.0",
-    "@ci-adapters/yaml-emit": "0.0.0",
-    "yaml": "2.9.1"
+    "@ci-adapters/yaml-emit": "0.0.0"
   },
   "exports": {
     ".": "./src/index.ts"
