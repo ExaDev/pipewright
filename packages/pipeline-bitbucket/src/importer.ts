@@ -117,6 +117,13 @@ function stepOf(
   comments: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   const { body, pointer } = placed;
+  // A step that waits for a person is an approval gate, which the model has no form for and another provider would run unattended.
+  if (body.trigger === "manual") {
+    return fail(
+      [...pointer, "trigger"],
+      "a step that waits for manual start, which the model has no approval gate for",
+    );
+  }
   const script = arrayAt(body.script, [...pointer, "script"], "a script");
   if (script.length === 0) return fail([...pointer, "script"], "a step with an empty script");
 
@@ -165,7 +172,8 @@ function stepOf(
     const lines = commands;
     commands = [];
     steps.push(
-      lines.some((line) => RUNTIME_VARIABLE.test(line))
+      // GitHub evaluates `${{ }}` in a command before the shell, so a command carrying one must not reach a GitHub workflow as portable text.
+      lines.some((line) => RUNTIME_VARIABLE.test(line) || line.includes("${{"))
         ? { kind: "provider", provider: PROVIDER, native: { script: lines } }
         : { kind: "run", run: lines.join("\n") },
     );
