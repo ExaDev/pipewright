@@ -38,6 +38,9 @@ function recordAt(value: unknown, pointer: Pointer, what: string): Record<string
  */
 const WRAPPER_CALL = /\srun --pipeline \S+ --job \S+ --steps \d+-\d+/;
 
+/** A shell reference to a variable CircleCI defines, which another provider's runner does not. */
+const RUNTIME_VARIABLE = /\$\{?CIRCLE_[A-Z0-9_]+/;
+
 const SUBSTITUTION = /<<\s*([^>]*?)\s*>>/g;
 const PARAMETER_PREFIX = "parameters.";
 const AXIS = /^[A-Za-z][A-Za-z0-9_]*$/;
@@ -106,7 +109,14 @@ function stepAt(
                 Object.entries(environment).map(([name, text]) => [name, neutralText(text, axes)]),
               )
             : null;
+      // CircleCI fills `<< >>` in before the shell sees a command, which a command the model carries verbatim cannot say.
+      const substituted = [settings.command, settings.name, settings.working_directory].some(
+        (text) =>
+          typeof text === "string" &&
+          (new RegExp(SUBSTITUTION.source).test(text) || RUNTIME_VARIABLE.test(text)),
+      );
       const portable =
+        !substituted &&
         Object.keys(settings).every((name) => known.has(name)) &&
         (settings.name === undefined || typeof settings.name === "string") &&
         (settings.working_directory === undefined ||
@@ -238,7 +248,9 @@ function branchesOf(condition: unknown, pointer: Pointer): string[] {
     const name: unknown = pair[0];
     const subject: unknown = pair[1];
 
-    return typeof name === "string" && subject === PUSH_BRANCH ? name : undefined;
+    if (typeof name === "string" && subject === PUSH_BRANCH) return name;
+
+    return typeof subject === "string" && name === PUSH_BRANCH ? subject : undefined;
   };
   const single = equal(condition);
   if (single !== undefined) return [single];
@@ -323,11 +335,15 @@ function importConfiguration(file: EmittedFile): Pipeline {
     if (entry.matrix !== undefined && parameters === undefined) {
       return fail([...entry.pointer, "matrix"], "a matrix with no parameters");
     }
-    if (entry.matrix === undefined && definition.parameters !== undefined) {
-      return fail(
-        ["jobs", entry.key, "parameters"],
-        "a job with parameters that no matrix supplies",
-      );
+    for (const [name, declaration] of Object.entries(definition.parameters ?? {})) {
+      const at: Pointer = ["jobs", entry.key, "parameters", name];
+      if (!axes.has(name)) {
+        return fail(at, "a job parameter that no matrix supplies");
+      }
+      // The compiler declares each axis by its type alone, so anything more would be lost when it writes the job back.
+      if (!isRecord(declaration) || Object.keys(declaration).join() !== "type") {
+        return fail(at, "a parameter declaration with settings beyond its type");
+      }
     }
     const matrix =
       parameters === undefined
