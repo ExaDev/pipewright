@@ -44,6 +44,14 @@ async function emit(pipeline: Pipeline): Promise<string> {
   return file.content;
 }
 
+describe("GitHub Actions runner labels", () => {
+  it("rejects a job with no runner label, which GitHub cannot select by anything else", async () => {
+    await expect(emit(pipelineWith({ runsOn: [] }))).rejects.toMatchObject({
+      pointer: "/jobs/only/runsOn",
+    });
+  });
+});
+
 describe("GitHub Actions step descriptions", () => {
   const steps = [
     { kind: "checkout", description: "Get the sources." },

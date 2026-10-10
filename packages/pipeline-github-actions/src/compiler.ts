@@ -227,6 +227,13 @@ interface RenderedJob {
 
 function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): RenderedJob {
   const pointer = `/jobs/${id}`;
+  if (job.runsOn.length === 0) {
+    throw new UnsupportedFeatureError(
+      PROVIDER,
+      `${pointer}/runsOn`,
+      "a job with no runner label, because GitHub selects a runner only by label",
+    );
+  }
   const conditions: string[] = [];
   const runsRegardless = job.needsPolicy === "always" || job.needsPolicy === "gate";
   if (runsRegardless) conditions.push("always()");
