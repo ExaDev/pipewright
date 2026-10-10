@@ -1,6 +1,9 @@
 {
   "name": "@pipewright/cli",
   "version": "0.0.0",
+  "bin": {
+    "pipewright": "./src/bin.ts"
+  },
   "dependencies": {
     "@pipewright/check-names": "0.0.0",
     "@pipewright/pipeline-bitbucket": "0.0.0",
@@ -21,6 +24,25 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "private": true,
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    },
+    "bin": {
+      "pipewright": "./dist/bin.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExaDev/pipewright.git",
+    "directory": "packages/cli"
+  },
   "type": "module"
 }

@@ -31,6 +31,7 @@
     "url": "git+https://github.com/ExaDev/pipewright.git"
   },
   "scripts": {
+    "build": "node scripts/build.ts",
     "ci:check": "node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
     "ci:emit": "node packages/cli/src/bin.ts emit --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts emit --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
     "ci:local": "node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.ts --local --skip-provider-steps --job lint --job typecheck --job test --job drift",
@@ -42,6 +43,7 @@
     "test:container": "vitest run --project container",
     "test:e2e": "vitest run --project e2e",
     "test:integration": "vitest run --project integration",
+    "test:pack": "vitest run --project pack",
     "typecheck": "tsc -p tsconfig.json"
   },
   "type": "module"

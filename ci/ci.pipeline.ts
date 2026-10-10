@@ -121,6 +121,15 @@ const bitbucketValidator = defineJob("bitbucket-validator", {
   steps: [...SETUP_STEPS, { kind: "run", name: "Validate", run: "pnpm run test:browser" }],
 });
 
+const packages = defineJob("packages", {
+  name: "Packed packages",
+  description:
+    "Builds every package to dist, packs it as a release would, installs the tarballs into an empty directory, and uses the contract and the pipewright binary from there. A package whose dist or exports are wrong passes every test that runs from source and fails here.",
+  runsOn: [RUNNER],
+  timeoutMinutes: DEFAULT_TIMEOUT_MINUTES,
+  steps: [...SETUP_STEPS, { kind: "run", name: "Pack and install", run: "pnpm run test:pack" }],
+});
+
 const gitlabLint = defineJob("gitlab-lint", {
   name: "GitLab linter",
   description:
@@ -245,6 +254,7 @@ const requiredChecks = defineJob("required-checks", {
     bitbucketValidator,
     gitlabLint,
     platformSmoke,
+    packages,
   ],
   steps: [{ kind: "run", name: "Report", run: "echo all required jobs succeeded" }],
 });
@@ -269,6 +279,7 @@ export default definePipeline({
     bitbucketValidator,
     gitlabLint,
     platformSmoke,
+    packages,
     e2e,
     requiredChecks,
   ),
