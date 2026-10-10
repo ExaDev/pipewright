@@ -207,33 +207,61 @@ function isCollapsible(step: Step | undefined): boolean {
   return step?.kind === "run" && step.form !== "native";
 }
 
-function wrapperStepsOf(id: string, job: Job, context: WrapperContext): Record<string, unknown>[] {
+/**
+ * A job's emitted steps, and for each of the job's own steps the index of the emitted step that carries it, or `undefined` when it was collapsed into a call of the runner and so has no step of its own to annotate.
+ */
+interface RenderedSteps {
+  readonly steps: Record<string, unknown>[];
+  readonly emittedIndexOf: readonly (number | undefined)[];
+}
+
+function wrapperStepsOf(id: string, job: Job, context: WrapperContext): RenderedSteps {
   const pointer = `/jobs/${id}`;
   const matrixFlags = Object.keys(job.matrix ?? {})
     .map((axis) => ` --matrix "${axis}=\${{ matrix.${axis} }}"`)
     .join("");
   const steps: Record<string, unknown>[] = [];
+  const emittedIndexOf: (number | undefined)[] = [];
   let index = 0;
   while (index < job.steps.length) {
     const step = job.steps[index];
     if (step?.kind !== "run" || step.form === "native") {
       if (step === undefined) break;
+      emittedIndexOf.push(steps.length);
       steps.push(stepOf(step, `${pointer}/steps/${String(index)}`));
       index += 1;
       continue;
     }
     const from = index;
-    while (isCollapsible(job.steps[index])) index += 1;
+    while (isCollapsible(job.steps[index])) {
+      emittedIndexOf.push(undefined);
+      index += 1;
+    }
     steps.push({
       name: `Run ${job.name}`,
       run: `${context.toolCommand} run --pipeline ${context.source} --job ${id} --steps ${String(from)}-${String(index - 1)}${matrixFlags}`,
     });
   }
 
-  return steps;
+  return { steps, emittedIndexOf };
 }
 
-function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): Record<string, unknown> {
+function nativeStepsOf(id: string, job: Job): RenderedSteps {
+  return {
+    steps: job.steps.map((step, index) => stepOf(step, `/jobs/${id}/steps/${String(index)}`)),
+    emittedIndexOf: job.steps.map((_step, index) => index),
+  };
+}
+
+/**
+ * A job as the workflow writes it, and the emitted step each of its steps became (see `RenderedSteps`), counting a gate's leading failure step.
+ */
+interface RenderedJob {
+  readonly job: Record<string, unknown>;
+  readonly emittedIndexOf: readonly (number | undefined)[];
+}
+
+function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): RenderedJob {
   const pointer = `/jobs/${id}`;
   const conditions: string[] = [];
   const runsRegardless = job.needsPolicy === "always" || job.needsPolicy === "gate";
@@ -248,7 +276,11 @@ function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): Recor
         ? `always() && ${conditions[1] ?? ""}`
         : (conditions[0] ?? "");
 
-  return {
+  const rendered =
+    wrapper === undefined ? nativeStepsOf(id, job) : wrapperStepsOf(id, job, wrapper);
+  const gateSteps = job.needsPolicy === "gate" ? [GATE_STEP] : [];
+
+  const emitted = {
     name: job.name,
     "runs-on": job.runsOn.length === 1 ? job.runsOn[0] : job.runsOn,
     ...(job.needs === undefined ? {} : { needs: job.needs }),
@@ -258,13 +290,15 @@ function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): Recor
     ...(job.environment === undefined ? {} : { environment: job.environment }),
     ...(job.env === undefined ? {} : { env: envOf(job.env) }),
     ...(job.matrix === undefined ? {} : { strategy: { matrix: job.matrix } }),
-    steps: [
-      ...(job.needsPolicy === "gate" ? [GATE_STEP] : []),
-      ...(wrapper === undefined
-        ? job.steps.map((step, index) => stepOf(step, `${pointer}/steps/${String(index)}`))
-        : wrapperStepsOf(id, job, wrapper)),
-    ],
+    steps: [...gateSteps, ...rendered.steps],
     ...(job.native?.["github-actions"] ?? {}),
+  };
+
+  return {
+    job: emitted,
+    emittedIndexOf: rendered.emittedIndexOf.map((index) =>
+      index === undefined ? undefined : index + gateSteps.length,
+    ),
   };
 }
 
@@ -357,11 +391,6 @@ export function createGitHubActionsCompiler(): PipelineCompiler {
         jobs: Object.fromEntries(
           Object.entries(pipeline.jobs).map(([id, job]) => {
             if (job.description !== undefined) comments.set(`jobs/${id}`, job.description);
-            for (const [index, step] of job.steps.entries()) {
-              if (step.description !== undefined) {
-                comments.set(`jobs/${id}/steps/${String(index)}`, step.description);
-              }
-            }
             const form = job.form ?? pipeline.form ?? "native";
             if (form === "wrapper" && options.toolCommand === undefined) {
               throw new Error(
@@ -373,7 +402,15 @@ export function createGitHubActionsCompiler(): PipelineCompiler {
                 ? { source: options.source, toolCommand: options.toolCommand }
                 : undefined;
 
-            return [id, jobOf(id, job, wrapper)];
+            const rendered = jobOf(id, job, wrapper);
+            for (const [index, step] of job.steps.entries()) {
+              const emittedIndex = rendered.emittedIndexOf[index];
+              if (step.description !== undefined && emittedIndex !== undefined) {
+                comments.set(`jobs/${id}/steps/${String(emittedIndex)}`, step.description);
+              }
+            }
+
+            return [id, rendered.job];
           }),
         ),
       };
