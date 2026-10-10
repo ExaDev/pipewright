@@ -16,7 +16,7 @@ export interface CommandResult {
 }
 
 export interface CommandExecutor {
-  execute(command: CommandExecution, signal?: AbortSignal): Promise<CommandResult>;
+  execute: (command: CommandExecution, signal?: AbortSignal) => Promise<CommandResult>;
 }
 
 /**
@@ -55,6 +55,8 @@ export interface RunOptions {
   readonly matrix?: MatrixCombination;
   /** Run only the steps with these inclusive indexes, reporting the rest as skipped. Only steps inside the range are checked for being portable. */
   readonly steps?: { readonly from: number; readonly to: number };
+  /** Report steps owned by a provider as skipped instead of rejecting them, for a host that has supplied the toolchain those steps would install. */
+  readonly skipProviderSteps?: boolean;
   readonly signal?: AbortSignal;
 }
 
@@ -64,5 +66,5 @@ export interface RunOptions {
  * Pre: `pipeline` has passed `pipelineSchema`. Post: jobs run in `needs` order; a job runs only when its needs succeeded (or `needsPolicy` is `always`) and its `when` holds; the first failing step skips the rest of its job. Errors: throws `UnsupportedFeatureError` for a `provider` step, which has no meaning outside its provider.
  */
 export interface PipelineRunner {
-  run(pipeline: Pipeline, options: RunOptions): Promise<RunReport>;
+  run: (pipeline: Pipeline, options: RunOptions) => Promise<RunReport>;
 }

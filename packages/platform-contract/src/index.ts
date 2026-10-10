@@ -15,15 +15,6 @@ export {
   type Run,
   type RunQuery,
 } from "./schema.ts";
-export {
-  WaitExhaustedError,
-  waitForChecks,
-  type Clock,
-  type WaitOptions,
-} from "./wait.ts";
+export { WaitExhaustedError, waitForChecks, type Clock, type WaitOptions } from "./wait.ts";
 export { createFakePlatform, createFakeState, type FakeState } from "./fake.ts";
-export {
-  describeReaderConformance,
-  type ReaderFactory,
-  type TestApi,
-} from "./conformance.ts";
+export { describeReaderConformance, type ReaderFactory, type TestApi } from "./conformance.ts";

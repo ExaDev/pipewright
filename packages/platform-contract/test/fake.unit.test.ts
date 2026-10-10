@@ -13,8 +13,9 @@ describeReaderConformance({ describe, it }, (state) => createFakePlatform(state)
 
 function clock(onSleep: () => void): Clock {
   return {
-    sleep() {
+    async sleep() {
       onSleep();
+
       return Promise.resolve();
     },
   };
@@ -43,23 +44,31 @@ describe("waitForChecks", () => {
   it("treats a required check that is not yet reported as pending", async () => {
     const { reader } = createFakePlatform(createFakeState());
     await expect(
-      waitForChecks(reader, clock(() => undefined), {
-        sha: "sha",
-        required: ["Lint"],
-        pollIntervalMs: 1,
-        maxPolls: 2,
-      }),
+      waitForChecks(
+        reader,
+        clock(() => undefined),
+        {
+          sha: "sha",
+          required: ["Lint"],
+          pollIntervalMs: 1,
+          maxPolls: 2,
+        },
+      ),
     ).rejects.toBeInstanceOf(WaitExhaustedError);
   });
 
   it("does not return on an empty listing when nothing is named", async () => {
     const { reader } = createFakePlatform(createFakeState());
     await expect(
-      waitForChecks(reader, clock(() => undefined), {
-        sha: "sha",
-        pollIntervalMs: 1,
-        maxPolls: 2,
-      }),
+      waitForChecks(
+        reader,
+        clock(() => undefined),
+        {
+          sha: "sha",
+          pollIntervalMs: 1,
+          maxPolls: 2,
+        },
+      ),
     ).rejects.toBeInstanceOf(WaitExhaustedError);
   });
 });

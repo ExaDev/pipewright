@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { renderYaml } from "../src/index.ts";
 
+/** Well beyond any default line width, so a folding serialiser would split it. */
+const LONG_VALUE = 200;
+
 describe("renderYaml", () => {
   it("keeps insertion order, never folds and puts the header first", () => {
-    const text = renderYaml({ z: 1, a: { longer: "x".repeat(200) } }, new Map(), [
+    const text = renderYaml({ z: 1, a: { longer: "x".repeat(LONG_VALUE) } }, new Map(), [
       "Generated.",
     ]);
     expect(text.startsWith("# Generated.\n")).toBe(true);
     expect(text.indexOf("z:")).toBeLessThan(text.indexOf("a:"));
-    expect(text).toContain("x".repeat(200));
+    expect(text).toContain("x".repeat(LONG_VALUE));
   });
 
   it("attaches a comment before a mapping key and before a sequence item", () => {
@@ -26,8 +29,6 @@ describe("renderYaml", () => {
   });
 
   it("throws for a comment path that matches nothing", () => {
-    expect(() => renderYaml({ a: 1 }, new Map([["b", "x"]]), ["h"])).toThrow(
-      "no node at b",
-    );
+    expect(() => renderYaml({ a: 1 }, new Map([["b", "x"]]), ["h"])).toThrow("no node at b");
   });
 });

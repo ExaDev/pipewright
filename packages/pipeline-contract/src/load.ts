@@ -7,7 +7,7 @@ import { pipelineSchema, type Pipeline } from "./schema.ts";
  * The only I/O the loader performs, injected so it runs in any runtime. `path` is a normalised POSIX path relative to whatever root the caller chose.
  */
 export interface FileReader {
-  read(path: string): Promise<string>;
+  read: (path: string) => Promise<string>;
 }
 
 export interface LoadIssue {
@@ -25,9 +25,7 @@ export class PipelineLoadError extends Error {
   readonly issues: readonly LoadIssue[];
 
   constructor(issues: readonly LoadIssue[]) {
-    super(
-      issues.map((issue) => `${issue.file}#${issue.pointer}: ${issue.message}`).join("\n"),
-    );
+    super(issues.map((issue) => `${issue.file}#${issue.pointer}: ${issue.message}`).join("\n"));
     this.name = "PipelineLoadError";
     this.issues = issues;
   }
@@ -95,6 +93,7 @@ export function resolveRelative(from: string, relative: string): string {
     if (segment === "..") segments.pop();
     else segments.push(segment);
   }
+
   return segments.join("/");
 }
 
@@ -104,7 +103,7 @@ function buildTree(value: JsonValue, origin: Origin): TreeNode {
       origin,
       kind: "array",
       items: value.map((item, index) =>
-        buildTree(item, { file: origin.file, pointer: `${origin.pointer}/${index}` }),
+        buildTree(item, { file: origin.file, pointer: `${origin.pointer}/${String(index)}` }),
       ),
     };
   }
@@ -119,28 +118,25 @@ function buildTree(value: JsonValue, origin: Origin): TreeNode {
         }),
       );
     }
+
     return { origin, kind: "object", entries };
   }
+
   return { origin, kind: "leaf", value };
 }
 
 function toJson(node: TreeNode): JsonValue {
-  switch (node.kind) {
-    case "leaf":
-      return node.value;
-    case "array":
-      return node.items.map(toJson);
-    case "object":
-      return Object.fromEntries(
-        [...node.entries].map(([key, child]) => [key, toJson(child)]),
-      );
-  }
+  if (node.kind === "leaf") return node.value;
+  if (node.kind === "array") return node.items.map(toJson);
+
+  return Object.fromEntries([...node.entries].map(([key, child]) => [key, toJson(child)]));
 }
 
 function replaceMarkerTarget(node: TreeNode): TreeNode | undefined {
   if (node.kind === "object" && node.entries.size === 1) {
     return node.entries.get(REPLACE_KEY);
   }
+
   return undefined;
 }
 
@@ -153,11 +149,13 @@ function merge(base: TreeNode | undefined, over: TreeNode, key: string): TreeNod
     for (const [childKey, child] of over.entries) {
       entries.set(childKey, merge(base.entries.get(childKey), child, childKey));
     }
+
     return { origin: over.origin, kind: "object", entries };
   }
   if (base.kind === "array" && over.kind === "array" && CONCATENATED_KEYS.has(key)) {
     return { origin: over.origin, kind: "array", items: [...base.items, ...over.items] };
   }
+
   return over;
 }
 
@@ -175,14 +173,16 @@ function unwrapReplace(node: TreeNode): TreeNode {
   if (node.kind === "array") {
     return { origin: node.origin, kind: "array", items: node.items.map(unwrapReplace) };
   }
+
   return node;
 }
 
 class Loader {
   readonly files: string[] = [];
+
   readonly #reader: FileReader;
 
-  constructor(reader: FileReader) {
+  constructor(reader: Readonly<FileReader>) {
     this.#reader = reader;
   }
 
@@ -234,6 +234,17 @@ class Loader {
       ]);
     }
 
+    if (typeof json.$schema !== "string") {
+      throw new PipelineLoadError([
+        {
+          message:
+            "a pipeline document must declare $schema, which is what gives an editor completion and validation",
+          file,
+          pointer: "/$schema",
+        },
+      ]);
+    }
+
     const header = documentHeaderSchema.safeParse(json);
     if (!header.success) {
       throw new PipelineLoadError(
@@ -250,23 +261,22 @@ class Loader {
     );
     const resolved = this.#resolveParameters(file, header.data.parameters ?? {}, supplied);
 
-    let merged: TreeNode | undefined;
     const entries = Array.isArray(header.data.extends)
       ? header.data.extends
       : header.data.extends === undefined
         ? []
         : [header.data.extends];
-    for (const entry of entries) {
+    const merged = await entries.reduce<Promise<TreeNode | undefined>>(async (previous, entry) => {
+      const inherited = await previous;
       const path = typeof entry === "string" ? entry : entry.path;
       const parentWith = typeof entry === "string" ? {} : (entry.with ?? {});
-      const parent = await this.load(resolveRelative(file, path), parentWith, [
-        ...stack,
-        file,
-      ]);
-      merged = merge(merged, parent, "");
-    }
+      const parent = await this.load(resolveRelative(file, path), parentWith, [...stack, file]);
+
+      return merge(inherited, parent, "");
+    }, Promise.resolve(undefined));
 
     const own = this.#substitute(buildTree(body, { file, pointer: "" }), resolved, file);
+
     return merge(merged, own, "");
   }
 
@@ -305,14 +315,11 @@ class Loader {
       }
     }
     if (issues.length > 0) throw new PipelineLoadError(issues);
+
     return values;
   }
 
-  #substitute(
-    node: TreeNode,
-    values: Readonly<Record<string, Scalar>>,
-    file: string,
-  ): TreeNode {
+  #substitute(node: TreeNode, values: Readonly<Record<string, Scalar>>, file: string): TreeNode {
     if (node.kind === "object") {
       const reference = node.entries.get(PARAM_KEY);
       if (reference !== undefined && node.entries.size === 1) {
@@ -327,8 +334,10 @@ class Loader {
             },
           ]);
         }
+
         return { origin: node.origin, kind: "leaf", value };
       }
+
       return {
         origin: node.origin,
         kind: "object",
@@ -344,6 +353,7 @@ class Loader {
         items: node.items.map((item) => this.#substitute(item, values, file)),
       };
     }
+
     return node;
   }
 }
@@ -363,6 +373,7 @@ function nodeAt(root: TreeNode, path: readonly PropertyKey[]): TreeNode {
       return current;
     }
   }
+
   return current;
 }
 
@@ -373,7 +384,7 @@ function nodeAt(root: TreeNode, path: readonly PropertyKey[]): TreeNode {
  */
 export async function loadPipeline(
   entry: string,
-  reader: FileReader,
+  reader: Readonly<FileReader>,
 ): Promise<LoadedPipeline> {
   const loader = new Loader(reader);
   const merged = unwrapReplace(await loader.load(entry, {}, []));
@@ -385,6 +396,7 @@ export async function loadPipeline(
         if (issue.code === "unrecognized_keys") {
           return issue.keys.map((key) => {
             const origin = nodeAt(merged, [...issue.path, key]).origin;
+
             return {
               message: `unrecognised key "${key}"`,
               file: origin.file,
@@ -393,9 +405,11 @@ export async function loadPipeline(
           });
         }
         const origin = nodeAt(merged, issue.path).origin;
+
         return [{ message: issue.message, file: origin.file, pointer: origin.pointer }];
       }),
     );
   }
+
   return { pipeline: result.data, files: loader.files };
 }

@@ -1,10 +1,5 @@
 import { UnsupportedFeatureError } from "./errors.ts";
-import type {
-  CommandExecution,
-  CommandExecutor,
-  PipelineRunner,
-  RunContext,
-} from "./runner.ts";
+import type { CommandExecution, CommandExecutor, PipelineRunner, RunContext } from "./runner.ts";
 import { pipelineSchema } from "./schema.ts";
 import { samplePipeline, type TestApi } from "./conformance.ts";
 
@@ -24,10 +19,12 @@ interface RecordingExecutor extends CommandExecutor {
 
 function recordingExecutor(failing: (command: string) => boolean = () => false): RecordingExecutor {
   const executed: CommandExecution[] = [];
+
   return {
     executed,
-    execute(command) {
+    async execute(command) {
       executed.push(command);
+
       return Promise.resolve({ exitCode: failing(command.command) ? 1 : 0 });
     },
   };
@@ -40,10 +37,7 @@ function check(condition: boolean, message: string): void {
 /**
  * Registers the behavioural spec every `PipelineRunner` must meet, driven through a recording executor so no process is spawned.
  */
-export function describeRunnerConformance(
-  api: TestApi,
-  makeRunner: () => PipelineRunner,
-): void {
+export function describeRunnerConformance(api: TestApi, makeRunner: () => PipelineRunner): void {
   api.describe("PipelineRunner conformance", () => {
     api.it("runs jobs in needs order", async () => {
       const executor = recordingExecutor();
@@ -62,7 +56,7 @@ export function describeRunnerConformance(
       await makeRunner().run(samplePipeline(), { executor, context: CONTEXT });
       const versions = executor.executed
         .filter((entry) => entry.command === "pnpm test")
-        .map((entry) => entry.env["NODE_VERSION"]);
+        .map((entry) => entry.env.NODE_VERSION);
       check(
         versions.length === 2 && versions.includes("22") && versions.includes("24"),
         `matrix values were ${JSON.stringify(versions)}`,
@@ -73,7 +67,7 @@ export function describeRunnerConformance(
       const executor = recordingExecutor();
       await makeRunner().run(samplePipeline(), { executor, context: CONTEXT });
       const test = executor.executed.find((entry) => entry.command === "pnpm test");
-      check(test?.env["SHA"] === "abc123", "the sha token was not resolved");
+      check(test?.env.SHA === "abc123", "the sha token was not resolved");
     });
 
     api.it("skips dependants of a failed job but still runs an always job", async () => {
@@ -111,7 +105,7 @@ export function describeRunnerConformance(
 
     api.it("rejects a provider step", async () => {
       const pipeline = samplePipeline();
-      pipeline.jobs["lint"]?.steps.push({
+      pipeline.jobs.lint?.steps.push({
         kind: "provider",
         provider: "github-actions",
         native: { uses: "example/action@v1" },
@@ -133,7 +127,7 @@ export function describeRunnerConformance(
         only: ["test"],
         matrix: { node: "24" },
       });
-      const versions = executor.executed.map((entry) => entry.env["NODE_VERSION"]);
+      const versions = executor.executed.map((entry) => entry.env.NODE_VERSION);
       check(
         versions.length === 1 && versions[0] === "24",
         `ran matrix values ${JSON.stringify(versions)}`,
@@ -167,6 +161,27 @@ export function describeRunnerConformance(
       check(
         commands.length === 1 && commands[0] === "echo two",
         `ran ${commands.join(", ")} instead of only step 1`,
+      );
+    });
+
+    api.it("reports provider steps as skipped when told to, and still runs the rest", async () => {
+      const pipeline = samplePipeline();
+      pipeline.jobs.lint?.steps.unshift({
+        kind: "provider",
+        provider: "github-actions",
+        native: { uses: "example/action@v1" },
+      });
+      const executor = recordingExecutor();
+      const report = await makeRunner().run(pipeline, {
+        executor,
+        context: CONTEXT,
+        skipProviderSteps: true,
+      });
+      const lint = report.jobs.find((job) => job.id === "lint");
+      check(lint?.steps[0]?.outcome === "skipped", "the provider step was not reported as skipped");
+      check(
+        executor.executed.some((entry) => entry.command === "pnpm run lint"),
+        "the portable step did not run",
       );
     });
 

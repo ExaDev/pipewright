@@ -41,6 +41,7 @@ export function parseTemplateToken(text: string): TemplateToken | undefined {
     return { kind: "matrix", name: text.slice(MATRIX_TOKEN_PREFIX.length) };
   }
   const context = contextKeySchema.safeParse(text);
+
   return context.success ? { kind: "context", key: context.data } : undefined;
 }
 
@@ -56,13 +57,11 @@ export function findTemplateTokens(text: string): string[] {
 /**
  * Replaces each `{{ token }}` in `text` with what the adapter's `resolve` returns for it. A token outside the vocabulary throws, because the schema already rejects those and reaching here with one is a defect in the caller.
  */
-export function renderTemplate(
-  text: string,
-  resolve: (token: TemplateToken) => string,
-): string {
-  return text.replace(TOKEN_PATTERN, (_whole, text: string) => {
-    const token = parseTemplateToken(text);
-    if (token === undefined) throw new Error(`unknown template token "${text}"`);
+export function renderTemplate(text: string, resolve: (token: TemplateToken) => string): string {
+  return text.replace(TOKEN_PATTERN, (_whole, name: string) => {
+    const token = parseTemplateToken(name);
+    if (token === undefined) throw new Error(`unknown template token "${name}"`);
+
     return resolve(token);
   });
 }

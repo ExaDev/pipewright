@@ -5,7 +5,7 @@ import type { Check } from "./schema.ts";
  * Time is an injected port so waiting is deterministic under test and never reads a wall clock.
  */
 export interface Clock {
-  sleep(milliseconds: number, signal?: AbortSignal): Promise<void>;
+  sleep: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
 }
 
 export interface WaitOptions {
@@ -29,12 +29,10 @@ export class WaitExhaustedError extends Error {
   }
 }
 
-function pendingNames(
-  checks: readonly Check[],
-  required: readonly string[] | undefined,
-): string[] {
+function pendingNames(checks: readonly Check[], required: readonly string[] | undefined): string[] {
   const byName = new Map(checks.map((check) => [check.name, check]));
   const names = required ?? checks.map((check) => check.name);
+
   return names.filter((name) => byName.get(name)?.status !== "completed");
 }
 
@@ -43,17 +41,20 @@ function pendingNames(
  */
 export async function waitForChecks(
   reader: CiPlatformReader,
-  clock: Clock,
+  clock: Readonly<Clock>,
   options: WaitOptions,
 ): Promise<readonly Check[]> {
-  let pending: readonly string[] = [];
-  for (let poll = 0; poll < options.maxPolls; poll += 1) {
+  const poll = async (remaining: number, pending: readonly string[]): Promise<readonly Check[]> => {
+    if (remaining === 0) throw new WaitExhaustedError(pending);
     const checks = await reader.listChecks(options.sha, options.signal);
-    pending = pendingNames(checks, options.required);
-    if (pending.length === 0 && (options.required !== undefined || checks.length > 0)) {
+    const stillPending = pendingNames(checks, options.required);
+    if (stillPending.length === 0 && (options.required !== undefined || checks.length > 0)) {
       return checks;
     }
     await clock.sleep(options.pollIntervalMs, options.signal);
-  }
-  throw new WaitExhaustedError(pending);
+
+    return poll(remaining - 1, stillPending);
+  };
+
+  return poll(options.maxPolls, []);
 }

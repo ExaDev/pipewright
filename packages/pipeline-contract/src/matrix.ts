@@ -5,10 +5,7 @@ export type MatrixCombination = Readonly<Record<string, string | number | boolea
 /**
  * The axis values of a combination in declared axis order, which is how providers label a matrix job.
  */
-export function matrixValues(
-  matrix: Job["matrix"],
-  combination: MatrixCombination,
-): string[] {
+export function matrixValues(matrix: Job["matrix"], combination: MatrixCombination): string[] {
   return Object.keys(matrix ?? {}).map((axis) => String(combination[axis]));
 }
 
@@ -22,5 +19,6 @@ export function expandMatrix(matrix: Job["matrix"]): MatrixCombination[] {
       values.map((value) => ({ ...partial, [axis]: value })),
     );
   }
+
   return combinations;
 }

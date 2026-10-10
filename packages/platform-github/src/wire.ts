@@ -1,4 +1,9 @@
-import { conclusionSchema, runSchema, type Conclusion, type Run } from "@ci-adapters/platform-contract";
+import {
+  conclusionSchema,
+  runSchema,
+  type Conclusion,
+  type Run,
+} from "@ci-adapters/platform-contract";
 import { z } from "zod";
 
 const STATUS_TO_WIRE = {
@@ -50,6 +55,7 @@ export function conclusionFromWire(wire: string): Conclusion {
   if (conclusion === undefined) {
     throw new Error(`GitHub reported the conclusion "${wire}", which has no neutral meaning`);
   }
+
   return conclusion;
 }
 
@@ -99,8 +105,9 @@ export const runCodec = z.codec(wireRunSchema, runSchema, {
     const status = statusFromWire(wire.status);
     if (status !== "completed") return { ...common, status };
     if (wire.conclusion === null) {
-      throw new Error(`GitHub run ${wire.id} is completed but reports no conclusion`);
+      throw new Error(`GitHub run ${String(wire.id)} is completed but reports no conclusion`);
     }
+
     return { ...common, status, conclusion: conclusionFromWire(wire.conclusion) };
   },
   encode: (run): WireRun => ({
@@ -140,6 +147,7 @@ export const checkCodec = z.codec(
       if (wire.conclusion === null) {
         throw new Error(`GitHub check ${wire.name} is completed but reports no conclusion`);
       }
+
       return {
         name: wire.name,
         status,

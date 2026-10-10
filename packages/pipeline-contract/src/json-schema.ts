@@ -27,9 +27,10 @@ function relax(node: unknown): unknown {
     if (key === "required") continue;
     relaxed[key] = relax(value);
   }
-  if (PRIMITIVE_TYPES.has(relaxed["type"]) || "enum" in relaxed || "const" in relaxed) {
+  if (PRIMITIVE_TYPES.has(relaxed.type) || "enum" in relaxed || "const" in relaxed) {
     return { anyOf: [relaxed, { $ref: "#/$defs/parameterReference" }] };
   }
+
   return relaxed;
 }
 
@@ -39,15 +40,16 @@ function relax(node: unknown): unknown {
 export function pipelineAuthoringJsonSchema(): JsonObject {
   const base = relax(pipelineJsonSchema());
   if (!isObject(base)) throw new Error("derived JSON Schema is not an object");
-  const properties = isObject(base["properties"]) ? base["properties"] : {};
-  const defs = isObject(base["$defs"]) ? base["$defs"] : {};
+  const properties = isObject(base.properties) ? base.properties : {};
+  const defs = isObject(base.$defs) ? base.$defs : {};
 
   return {
     ...base,
     properties: {
       ...properties,
       extends: {
-        description: "Fragments this document builds on, by path relative to this file. Merged in order; this file's own content is applied last.",
+        description:
+          "Fragments this document builds on, by path relative to this file. Merged in order; this file's own content is applied last.",
         anyOf: [
           { $ref: "#/$defs/extendsEntry" },
           { type: "array", items: { $ref: "#/$defs/extendsEntry" } },

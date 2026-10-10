@@ -40,6 +40,7 @@ function pipelineWith(job: Record<string, unknown>): Pipeline {
 async function emit(pipeline: Pipeline): Promise<string> {
   const [file] = await createGitHubActionsCompiler().compile(pipeline, { source: SOURCE });
   if (file === undefined) throw new Error("no file emitted");
+
   return file.content;
 }
 
@@ -57,9 +58,7 @@ describe("GitHub Actions emission", () => {
   });
 
   it("maps neutral event names to GitHub's", async () => {
-    const text = await emit(
-      pipelineWith({ when: textEquals("event", "pullRequest") }),
-    );
+    const text = await emit(pipelineWith({ when: textEquals("event", "pullRequest") }));
     expect(text).toContain("if: (github.event_name == 'pull_request')");
   });
 
@@ -77,9 +76,7 @@ describe("GitHub Actions emission", () => {
         },
       }),
     );
-    expect(text).toContain(
-      "if: ((github.ref_name == 'main') || (github.ref_name == 'release'))",
-    );
+    expect(text).toContain("if: ((github.ref_name == 'main') || (github.ref_name == 'release'))");
   });
 
   it("combines always() with a condition", async () => {
@@ -93,9 +90,7 @@ describe("GitHub Actions emission", () => {
     const text = await emit(
       pipelineWith({
         matrix: { node: ["22"] },
-        steps: [
-          { kind: "run", run: "echo", when: textEquals("matrix.node", "22") },
-        ],
+        steps: [{ kind: "run", run: "echo", when: textEquals("matrix.node", "22") }],
       }),
     );
     expect(text).toContain("if: (matrix.node == '22')");
@@ -108,6 +103,7 @@ describe("GitHub Actions emission", () => {
         toolCommand: "node tool/bin.ts",
       });
       if (file === undefined) throw new Error("no file emitted");
+
       return file.content;
     }
 
@@ -139,7 +135,7 @@ describe("GitHub Actions emission", () => {
     it("applies a pipeline-level form to every job unless a job overrides it", async () => {
       const pipeline = samplePipeline();
       pipeline.form = "wrapper";
-      const gate = pipeline.jobs["gate"];
+      const gate = pipeline.jobs.gate;
       if (gate === undefined) throw new Error("sample pipeline lost its gate job");
       gate.form = "native";
       const text = await emitWrapper(pipeline);

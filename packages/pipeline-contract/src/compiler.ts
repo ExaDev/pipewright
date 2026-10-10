@@ -23,14 +23,11 @@ export interface CompileOptions {
  */
 export interface PipelineCompiler {
   readonly provider: ProviderId;
-  compile(
-    pipeline: Pipeline,
-    options: CompileOptions,
-  ): Promise<readonly EmittedFile[]>;
+  compile: (pipeline: Pipeline, options: CompileOptions) => Promise<readonly EmittedFile[]>;
   /**
    * For each job id, the names under which this provider reports it as a check, one per matrix combination. A branch ruleset's required checks are matched against these, so they are what check-name derivation is built from. Throws `UnsupportedFeatureError` where `compile` would.
    */
-  checkNames(pipeline: Pipeline): ReadonlyMap<string, readonly string[]>;
+  checkNames: (pipeline: Pipeline) => ReadonlyMap<string, readonly string[]>;
 }
 
 /**
@@ -55,14 +52,14 @@ export async function diffEmitted(
   expected: readonly EmittedFile[],
   read: (path: string) => Promise<string | undefined>,
 ): Promise<Drift[]> {
-  const drift: Drift[] = [];
-  for (const file of expected) {
-    const actual = await read(file.path);
-    if (actual === undefined) {
-      drift.push({ path: file.path, kind: "missing" });
-    } else if (actual !== file.content) {
-      drift.push({ path: file.path, kind: "changed" });
-    }
-  }
-  return drift;
+  const found = await Promise.all(
+    expected.map(async (file): Promise<Drift | undefined> => {
+      const actual = await read(file.path);
+      if (actual === undefined) return { path: file.path, kind: "missing" };
+
+      return actual === file.content ? undefined : { path: file.path, kind: "changed" };
+    }),
+  );
+
+  return found.filter((entry): entry is Drift => entry !== undefined);
 }

@@ -16,13 +16,14 @@ function options(state: FakeState): ReturnType<typeof createGitHubServer> & {
   readonly config: Parameters<typeof createGitHubReader>[0];
 } {
   const server = createGitHubServer(state);
+
   return {
     ...server,
     config: {
       owner: "example",
       repo: "repo",
       fetch: server.fetch,
-      token: () => Promise.resolve(TOKEN_VALUE),
+      token: async () => Promise.resolve(TOKEN_VALUE),
     },
   };
 }
@@ -37,7 +38,7 @@ describe("GitHub reader", () => {
     const state = createFakeState();
     const server = options(state);
     await createGitHubReader(server.config).listRuns({});
-    expect(server.requests[0]?.headers["authorization"]).toBe(`Bearer ${TOKEN_VALUE}`);
+    expect(server.requests[0]?.headers.authorization).toBe(`Bearer ${TOKEN_VALUE}`);
     expect(server.requests[0]?.headers["x-github-api-version"]).toBe("2022-11-28");
   });
 
@@ -49,9 +50,9 @@ describe("GitHub reader", () => {
 
   it("rejects a page size above the API maximum", async () => {
     const server = options(createFakeState());
-    await expect(
-      createGitHubReader(server.config).listRuns({ limit: 101 }),
-    ).rejects.toBeInstanceOf(RangeError);
+    await expect(createGitHubReader(server.config).listRuns({ limit: 101 })).rejects.toBeInstanceOf(
+      RangeError,
+    );
   });
 
   it("raises a request error with the status for a failing response", async () => {

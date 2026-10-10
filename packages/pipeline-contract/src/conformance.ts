@@ -6,8 +6,8 @@ import { pipelineSchema, type Pipeline, type ProviderId } from "./schema.ts";
  * The test-framework surface the kit needs, so it runs under vitest, node:test or anything else that has `describe` and `it`.
  */
 export interface TestApi {
-  readonly describe: (name: string, body: () => void) => void;
-  readonly it: (name: string, body: () => Promise<void>) => void;
+  readonly describe: (name: string, body: () => void) => unknown;
+  readonly it: (name: string, body: () => Promise<void> | void) => unknown;
 }
 
 const SOURCE = "ci/sample.pipeline.json";
@@ -19,11 +19,7 @@ const DESCRIPTION_TEXT = "Explains why this job exists.";
 export function samplePipeline(): Pipeline {
   return pipelineSchema.parse({
     name: "CI",
-    triggers: [
-      { kind: "push", branches: ["main"] },
-      { kind: "pullRequest" },
-      { kind: "manual" },
-    ],
+    triggers: [{ kind: "push", branches: ["main"] }, { kind: "pullRequest" }, { kind: "manual" }],
     concurrency: { group: "ci-{{ workflow }}-{{ refName }}", cancelInProgress: true },
     jobs: {
       lint: {
@@ -31,10 +27,7 @@ export function samplePipeline(): Pipeline {
         description: DESCRIPTION_TEXT,
         runsOn: ["ubuntu-latest"],
         timeoutMinutes: 10,
-        steps: [
-          { kind: "checkout" },
-          { kind: "run", name: "Lint", run: "pnpm run lint" },
-        ],
+        steps: [{ kind: "checkout" }, { kind: "run", name: "Lint", run: "pnpm run lint" }],
       },
       test: {
         name: "Test",
@@ -119,14 +112,14 @@ export function describeCompilerConformance(
       check(all.includes(DESCRIPTION_TEXT), "the description was dropped");
     });
 
-    api.it("names one check per job and matrix combination", async () => {
+    api.it("names one check per job and matrix combination", () => {
       const names = [...makeCompiler().checkNames(samplePipeline()).values()].flat();
       check(
         new Set(names).size === names.length,
         `check names are not unique: ${names.join(", ")}`,
       );
       const test = names.filter((name) => name.includes("Test"));
-      check(test.length === 2, `the two-value matrix produced ${test.length} names`);
+      check(test.length === 2, `the two-value matrix produced ${String(test.length)} names`);
       for (const base of ["Lint", "Required checks"]) {
         check(names.includes(base), `no check named ${base}`);
       }
@@ -135,7 +128,7 @@ export function describeCompilerConformance(
     api.it("rejects a step owned by another provider", async () => {
       const compiler = makeCompiler();
       const pipeline = samplePipeline();
-      const lint = pipeline.jobs["lint"];
+      const lint = pipeline.jobs.lint;
       if (lint === undefined) throw new Error("sample pipeline lost its lint job");
       lint.steps.push({
         kind: "provider",

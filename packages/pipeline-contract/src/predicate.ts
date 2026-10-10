@@ -1,7 +1,7 @@
 import type { ExpressionNode, PredicateNode } from "trilean";
 
 import { contextKeySchema, type ContextKey } from "./context.ts";
-import { UnsupportedFeatureError } from "./errors.ts";
+import { UnsupportedFeatureError, assertNever } from "./errors.ts";
 
 const MATRIX_PREFIX = "matrix.";
 
@@ -26,11 +26,7 @@ export interface PredicateHandlers<T> {
   readonly anyOf?: (operands: readonly T[]) => T;
   /** Text equality in the neutral model is case-insensitive, because GitHub's `==` cannot be made case-sensitive; an adapter whose provider compares case-sensitively must render a case-insensitive comparison. */
   readonly equals?: (left: Operand, right: Operand, negated: boolean) => T;
-  readonly memberOf?: (
-    operand: Operand,
-    candidates: readonly Operand[],
-    negated: boolean,
-  ) => T;
+  readonly memberOf?: (operand: Operand, candidates: readonly Operand[], negated: boolean) => T;
 }
 
 interface Where {
@@ -53,6 +49,7 @@ function operandOf(expression: ExpressionNode, where: Where): Operand {
     const context = contextKeySchema.safeParse(expression.key);
     if (context.success) return { kind: "context", key: context.data };
   }
+
   return unsupported(where, `the ${expression.kind} expression as an operand`);
 }
 
@@ -82,27 +79,34 @@ export function compilePredicate<T>(
     case "not":
       return present(handlers.not, where, "negation")(child(node.operand, "operand"));
     case "and":
-      return present(handlers.and, where, "conjunction")(
-        child(node.left, "left"),
-        child(node.right, "right"),
-      );
+      return present(
+        handlers.and,
+        where,
+        "conjunction",
+      )(child(node.left, "left"), child(node.right, "right"));
     case "or":
-      return present(handlers.or, where, "disjunction")(
-        child(node.left, "left"),
-        child(node.right, "right"),
-      );
+      return present(
+        handlers.or,
+        where,
+        "disjunction",
+      )(child(node.left, "left"), child(node.right, "right"));
     case "allOf":
-      return present(handlers.allOf, where, "allOf")(
-        node.operands.map((operand, index) => child(operand, `operands/${index}`)),
-      );
+      return present(
+        handlers.allOf,
+        where,
+        "allOf",
+      )(node.operands.map((operand, index) => child(operand, `operands/${String(index)}`)));
     case "anyOf":
-      return present(handlers.anyOf, where, "anyOf")(
-        node.operands.map((operand, index) => child(operand, `operands/${index}`)),
-      );
+      return present(
+        handlers.anyOf,
+        where,
+        "anyOf",
+      )(node.operands.map((operand, index) => child(operand, `operands/${String(index)}`)));
     case "textCompare": {
       if (node.op !== "equals" && node.op !== "notEquals") {
         return unsupported(where, `the ${node.op} text comparison`);
       }
+
       return present(handlers.equals, where, "equality")(
         operandOf(node.left, at("left")),
         operandOf(node.right, at("right")),
@@ -113,6 +117,7 @@ export function compilePredicate<T>(
       if (node.op !== "eq" && node.op !== "neq") {
         return unsupported(where, `the ${node.op} comparison`);
       }
+
       return present(handlers.equals, where, "equality")(
         operandOf(node.left, at("left")),
         operandOf(node.right, at("right")),
@@ -123,11 +128,16 @@ export function compilePredicate<T>(
       return present(handlers.memberOf, where, "membership")(
         operandOf(node.operand, at("operand")),
         node.candidates.map((candidate, index) =>
-          operandOf(candidate, at(`candidates/${index}`)),
+          operandOf(candidate, at(`candidates/${String(index)}`)),
         ),
         node.op === "notIn",
       );
-    default:
+    case "exists":
+    case "some":
+    case "every":
+    case "treeReference":
       return unsupported(where, `the ${node.kind} predicate`);
   }
+
+  return assertNever(node);
 }

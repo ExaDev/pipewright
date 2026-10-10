@@ -3,8 +3,10 @@
  */
 export class UnsupportedFeatureError extends Error {
   readonly provider: string;
+
   /** JSON pointer, in the resolved pipeline, to the node that cannot be expressed. */
   readonly pointer: string;
+
   readonly feature: string;
 
   constructor(provider: string, pointer: string, feature: string) {
@@ -14,4 +16,11 @@ export class UnsupportedFeatureError extends Error {
     this.pointer = pointer;
     this.feature = feature;
   }
+}
+
+/**
+ * Closes an exhaustive `switch`: the argument is `never` only while every variant has a case, so adding a variant to a union fails compilation at each switch that forgot it.
+ */
+export function assertNever(value: never): never {
+  throw new Error(`unhandled variant ${JSON.stringify(value)}`);
 }

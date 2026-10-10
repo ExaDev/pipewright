@@ -13,10 +13,11 @@ export class UnsupportedOperationError extends Error {
  */
 export class PlatformRequestError extends Error {
   readonly status: number;
+
   readonly url: string;
 
   constructor(status: number, url: string) {
-    super(`request to ${url} failed with status ${status}`);
+    super(`request to ${url} failed with status ${String(status)}`);
     this.name = "PlatformRequestError";
     this.status = status;
     this.url = url;

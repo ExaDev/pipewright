@@ -23,7 +23,7 @@ export function createGitHubServer(state: FakeState): {
       headers: { "Content-Type": "application/json" },
     });
 
-  const handler = (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  const handler = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     const path = url.pathname.replace(/^\/repos\/[^/]+\/[^/]+/, "");
     const headers: Record<string, string> = {};
@@ -37,7 +37,7 @@ export function createGitHubServer(state: FakeState): {
       body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
     });
 
-    const runs = path.match(/^\/actions\/runs\/(\d+)$/);
+    const runs = /^\/actions\/runs\/(\d+)$/.exec(path);
     if (path === "/actions/runs") {
       const branch = url.searchParams.get("branch");
       const sha = url.searchParams.get("head_sha");
@@ -50,34 +50,34 @@ export function createGitHubServer(state: FakeState): {
             (sha === null || run.head_sha === sha) &&
             (event === null || run.event === event),
         );
+
       return Promise.resolve(json({ workflow_runs: wire }));
     }
     if (runs?.[1] !== undefined) {
       const run = state.runs.find((candidate) => candidate.id === runs[1]);
+
       return Promise.resolve(
-        run === undefined
-          ? new Response("{}", { status: 404 })
-          : json(runCodec.encode(run)),
+        run === undefined ? new Response("{}", { status: 404 }) : json(runCodec.encode(run)),
       );
     }
-    const checks = path.match(/^\/commits\/([^/]+)\/check-runs$/);
+    const checks = /^\/commits\/([^/]+)\/check-runs$/.exec(path);
     if (checks?.[1] !== undefined) {
       const listed = state.checks.get(decodeURIComponent(checks[1])) ?? [];
-      return Promise.resolve(
-        json({ check_runs: listed.map((check) => checkCodec.encode(check)) }),
-      );
+
+      return Promise.resolve(json({ check_runs: listed.map((check) => checkCodec.encode(check)) }));
     }
-    const jobs = path.match(/^\/actions\/runs\/(\d+)\/jobs$/);
+    const jobs = /^\/actions\/runs\/(\d+)\/jobs$/.exec(path);
     if (jobs?.[1] !== undefined) {
       return Promise.resolve(json({ jobs: [{ id: Number(jobs[1]), name: "build" }] }));
     }
-    const logs = path.match(/^\/actions\/jobs\/(\d+)\/logs$/);
+    const logs = /^\/actions\/jobs\/(\d+)\/logs$/.exec(path);
     if (logs?.[1] !== undefined) {
       return Promise.resolve(new Response(state.logs.get(logs[1]) ?? "", { status: 200 }));
     }
-    const rules = path.match(/^\/rules\/branches\/([^/]+)$/);
+    const rules = /^\/rules\/branches\/([^/]+)$/.exec(path);
     if (rules?.[1] !== undefined) {
       const required = state.required.get(decodeURIComponent(rules[1])) ?? [];
+
       return Promise.resolve(
         json([
           {
@@ -91,8 +91,9 @@ export function createGitHubServer(state: FakeState): {
     if (init?.method === "POST") {
       return Promise.resolve(new Response(null, { status: 204 }));
     }
+
     return Promise.resolve(new Response("{}", { status: 404 }));
   };
 
-  return { fetch: handler as typeof fetch, requests };
+  return { fetch: handler, requests };
 }

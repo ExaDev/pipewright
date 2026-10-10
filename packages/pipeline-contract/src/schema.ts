@@ -13,11 +13,9 @@ const description = z.string().min(1).optional();
 const templateString = z
   .string()
   .refine(
-    (text) =>
-      findTemplateTokens(text).every((token) => parseTemplateToken(token) !== undefined),
+    (text) => findTemplateTokens(text).every((token) => parseTemplateToken(token) !== undefined),
     {
-      message:
-        "contains a {{ token }} that is neither a neutral context key nor a matrix.<axis>",
+      message: "contains a {{ token }} that is neither a neutral context key nor a matrix.<axis>",
     },
   );
 
@@ -52,10 +50,7 @@ export const PERMISSION_SCOPES = [
   "identityToken",
 ] as const;
 export const permissionLevelSchema = z.enum(["none", "read", "write"]);
-export const permissionsSchema = z.partialRecord(
-  z.enum(PERMISSION_SCOPES),
-  permissionLevelSchema,
-);
+export const permissionsSchema = z.partialRecord(z.enum(PERMISSION_SCOPES), permissionLevelSchema);
 export type Permissions = z.infer<typeof permissionsSchema>;
 
 const providerIdSchema = z.enum(["github-actions", "gitlab-ci"]);
@@ -140,6 +135,7 @@ const pipelineShape = z.strictObject({
     .strictObject({
       group: templateString,
       cancelInProgress: z.boolean(),
+      description,
     })
     .optional(),
   env: envSchema.optional(),
@@ -149,16 +145,12 @@ const pipelineShape = z.strictObject({
 /**
  * Every `reference` node in a predicate, as raw keys. Predicate trees are plain JSON, so this walks the value rather than the typed tree, which keeps it correct for every node kind trilean adds.
  */
-function referenceKeys(value: unknown, found: unknown[] = []): unknown[] {
-  if (Array.isArray(value)) {
-    for (const item of value) referenceKeys(item, found);
-  } else if (typeof value === "object" && value !== null) {
-    if ("kind" in value && value.kind === "reference" && "key" in value) {
-      found.push(value.key);
-    }
-    for (const child of Object.values(value)) referenceKeys(child, found);
-  }
-  return found;
+function referenceKeys(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value.flatMap((item: unknown) => referenceKeys(item));
+  if (typeof value !== "object" || value === null) return [];
+  const own = "kind" in value && value.kind === "reference" && "key" in value ? [value.key] : [];
+
+  return [...own, ...Object.values(value).flatMap((child: unknown) => referenceKeys(child))];
 }
 
 function isKnownReference(key: unknown, matrixNames: ReadonlySet<string>): boolean {
@@ -166,6 +158,7 @@ function isKnownReference(key: unknown, matrixNames: ReadonlySet<string>): boole
   if (key.startsWith(MATRIX_PREFIX)) {
     return matrixNames.has(key.slice(MATRIX_PREFIX.length));
   }
+
   return contextKeySchema.safeParse(key).success;
 }
 
@@ -178,8 +171,10 @@ function hasCycle(graph: ReadonlyMap<string, readonly string[]>): boolean {
     state.set(id, "visiting");
     const cyclic = (graph.get(id) ?? []).some(visit);
     state.set(id, "done");
+
     return cyclic;
   };
+
   return [...graph.keys()].some(visit);
 }
 
@@ -269,9 +264,3 @@ export const pipelineSchema = pipelineShape.superRefine((pipeline, ctx) => {
   }
 });
 export type Pipeline = z.infer<typeof pipelineSchema>;
-
-/**
- * The `$schema` value authors put in a pipeline file so editors validate it without tooling.
- */
-export const PIPELINE_JSON_SCHEMA_ID =
-  "https://raw.githubusercontent.com/ExaDev/ci-adapters/main/schemas/pipeline.schema.json";

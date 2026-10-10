@@ -10,12 +10,11 @@ export {
   type EventKind,
   type TemplateToken,
 } from "./context.ts";
-export { UnsupportedFeatureError } from "./errors.ts";
+export { UnsupportedFeatureError, assertNever } from "./errors.ts";
 export {
   JOB_ID_PATTERN,
   formSchema,
   PERMISSION_SCOPES,
-  PIPELINE_JSON_SCHEMA_ID,
   jobSchema,
   permissionsSchema,
   pipelineSchema,
@@ -29,11 +28,7 @@ export {
   type Step,
   type Trigger,
 } from "./schema.ts";
-export {
-  compilePredicate,
-  type Operand,
-  type PredicateHandlers,
-} from "./predicate.ts";
+export { compilePredicate, type Operand, type PredicateHandlers } from "./predicate.ts";
 export {
   diffEmitted,
   generatedHeaderLines,
@@ -43,11 +38,7 @@ export {
   type PipelineCompiler,
 } from "./compiler.ts";
 export { createReferenceCompiler } from "./fake.ts";
-export {
-  describeCompilerConformance,
-  samplePipeline,
-  type TestApi,
-} from "./conformance.ts";
+export { describeCompilerConformance, samplePipeline, type TestApi } from "./conformance.ts";
 export {
   PipelineLoadError,
   loadPipeline,

@@ -19,13 +19,13 @@ export interface ControlCapabilities {
  */
 export interface CiPlatformReader {
   readonly capabilities: ReadCapabilities;
-  listRuns(query: RunQuery, signal?: AbortSignal): Promise<readonly Run[]>;
-  getRun(id: string, signal?: AbortSignal): Promise<Run>;
+  listRuns: (query: RunQuery, signal?: AbortSignal) => Promise<readonly Run[]>;
+  getRun: (id: string, signal?: AbortSignal) => Promise<Run>;
   /** The checks reported for a commit, which are what a branch ruleset's required checks are matched against. */
-  listChecks(sha: string, signal?: AbortSignal): Promise<readonly Check[]>;
-  getLogs(runId: string, signal?: AbortSignal): Promise<string>;
+  listChecks: (sha: string, signal?: AbortSignal) => Promise<readonly Check[]>;
+  getLogs: (runId: string, signal?: AbortSignal) => Promise<string>;
   /** Names of the checks the platform requires before `branch` accepts a merge. */
-  requiredChecks(branch: string, signal?: AbortSignal): Promise<readonly string[]>;
+  requiredChecks: (branch: string, signal?: AbortSignal) => Promise<readonly string[]>;
 }
 
 /**
@@ -33,7 +33,7 @@ export interface CiPlatformReader {
  */
 export interface CiPlatformController {
   readonly capabilities: ControlCapabilities;
-  rerun(runId: string, signal?: AbortSignal): Promise<void>;
-  cancel(runId: string, signal?: AbortSignal): Promise<void>;
-  dispatch(request: DispatchRequest, signal?: AbortSignal): Promise<void>;
+  rerun: (runId: string, signal?: AbortSignal) => Promise<void>;
+  cancel: (runId: string, signal?: AbortSignal) => Promise<void>;
+  dispatch: (request: DispatchRequest, signal?: AbortSignal) => Promise<void>;
 }

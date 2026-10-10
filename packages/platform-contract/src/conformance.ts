@@ -5,8 +5,8 @@ import type { FakeState } from "./fake.ts";
  * The test-framework surface the kit needs.
  */
 export interface TestApi {
-  readonly describe: (name: string, body: () => void) => void;
-  readonly it: (name: string, body: () => Promise<void>) => void;
+  readonly describe: (name: string, body: () => void) => unknown;
+  readonly it: (name: string, body: () => Promise<void> | void) => unknown;
 }
 
 /**
@@ -72,7 +72,7 @@ export function describeReaderConformance(api: TestApi, makeReader: ReaderFactor
   api.describe("CiPlatformReader conformance", () => {
     api.it("lists every run when unfiltered", async () => {
       const runs = await makeReader(seeded()).listRuns({});
-      check(runs.length === 2, `listed ${runs.length} runs`);
+      check(runs.length === 2, `listed ${String(runs.length)} runs`);
     });
 
     api.it("filters runs by ref, sha and event", async () => {

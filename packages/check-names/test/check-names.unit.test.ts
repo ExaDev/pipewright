@@ -8,16 +8,19 @@ import { deriveRequiredChecks, planRequiredChecks } from "../src/index.ts";
 
 describe("deriveRequiredChecks", () => {
   it("selects the fan-in gate by default scope", () => {
-    expect(
-      deriveRequiredChecks(samplePipeline(), createGitHubActionsCompiler(), "gates"),
-    ).toEqual(["Required checks"]);
+    expect(deriveRequiredChecks(samplePipeline(), createGitHubActionsCompiler(), "gates")).toEqual([
+      "Required checks",
+    ]);
   });
 
   it("expands matrix jobs in each provider's own naming", () => {
     const pipeline = samplePipeline();
-    expect(
-      deriveRequiredChecks(pipeline, createGitHubActionsCompiler(), "all"),
-    ).toEqual(["Lint", "Test (22)", "Test (24)", "Required checks"]);
+    expect(deriveRequiredChecks(pipeline, createGitHubActionsCompiler(), "all")).toEqual([
+      "Lint",
+      "Test (22)",
+      "Test (24)",
+      "Required checks",
+    ]);
     expect(deriveRequiredChecks(pipeline, createGitLabCiCompiler(), "all")).toEqual([
       "Lint",
       "Test: [22]",
@@ -27,9 +30,9 @@ describe("deriveRequiredChecks", () => {
   });
 
   it("works with any compiler, including the reference fake", () => {
-    expect(
-      deriveRequiredChecks(samplePipeline(), createReferenceCompiler(), "gates"),
-    ).toEqual(["Required checks"]);
+    expect(deriveRequiredChecks(samplePipeline(), createReferenceCompiler(), "gates")).toEqual([
+      "Required checks",
+    ]);
   });
 });
 

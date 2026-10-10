@@ -2,6 +2,8 @@ import type { CiPlatformController, CiPlatformReader } from "./contract.ts";
 import { PlatformRequestError } from "./errors.ts";
 import type { Check, DispatchRequest, Run } from "./schema.ts";
 
+const HTTP_NOT_FOUND = 404;
+
 export interface FakeState {
   runs: Run[];
   checks: Map<string, Check[]>;
@@ -33,43 +35,50 @@ export function createFakePlatform(state: FakeState): {
 } {
   const find = (id: string): Run => {
     const run = state.runs.find((candidate) => candidate.id === id);
-    if (run === undefined) throw new PlatformRequestError(404, `fake://runs/${id}`);
+    if (run === undefined) throw new PlatformRequestError(HTTP_NOT_FOUND, `fake://runs/${id}`);
+
     return run;
   };
+
   return {
     reader: {
       capabilities: { logs: true, requiredChecks: true },
-      listRuns(query) {
+      async listRuns(query) {
         const matching = state.runs.filter(
           (run) =>
             (query.ref === undefined || run.ref === query.ref) &&
             (query.sha === undefined || run.sha === query.sha) &&
             (query.event === undefined || run.event === query.event),
         );
+
         return Promise.resolve(matching.slice(0, query.limit));
       },
-      getRun: (id) => Promise.resolve(find(id)),
-      listChecks: (sha) => Promise.resolve(state.checks.get(sha) ?? []),
-      getLogs(runId) {
+      getRun: async (id) => Promise.resolve(find(id)),
+      listChecks: async (sha) => Promise.resolve(state.checks.get(sha) ?? []),
+      async getLogs(runId) {
         find(runId);
+
         return Promise.resolve(state.logs.get(runId) ?? "");
       },
-      requiredChecks: (branch) => Promise.resolve(state.required.get(branch) ?? []),
+      requiredChecks: async (branch) => Promise.resolve(state.required.get(branch) ?? []),
     },
     controller: {
       capabilities: { rerun: true, cancel: true, dispatch: true },
-      rerun(runId) {
+      async rerun(runId) {
         find(runId);
         state.rerun.push(runId);
+
         return Promise.resolve();
       },
-      cancel(runId) {
+      async cancel(runId) {
         find(runId);
         state.cancelled.push(runId);
+
         return Promise.resolve();
       },
-      dispatch(request) {
+      async dispatch(request) {
         state.dispatched.push(request);
+
         return Promise.resolve();
       },
     },
