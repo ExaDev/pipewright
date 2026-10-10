@@ -55,3 +55,9 @@ What was run, and by what:
 The two by-hand runs are not in CI. GitLab's linter needs a GitLab instance (the CE image and its several minutes of boot) or a token for one, and Bitbucket's validator is a web page with no command line or API, so it was driven through a browser. Neither has been run against the product's scheduler: no emitted file has been executed on its provider.
 
 `pnpm run test:integration` fetches each provider's published schema and runs actionlint and `circleci config validate` over the sample pipeline's output. It is a separate vitest project from the unit tests so the unit suite stays offline, and the CI job that runs it installs both tools first. A validator that cannot run is a failure, never a skip.
+
+## Execution on the provider
+
+A validator proves an emitted file is well formed, not that it runs. For GitHub there is also an end-to-end test: `ci/e2e.pipeline.ts` is emitted to `.github/workflows/pipewright-end-to-end.yml`, and the `e2e` vitest project dispatches it through the platform controller, waits for the run through the reader, requires it to conclude `success`, and requires GitHub to report every check name the compiler derived for it (`Build (22)`, `Build (24)`, `Wrapped`, `End to end gate`). That last comparison is what checks the claimed matrix naming against the provider.
+
+It runs in CI only after a merge to `main`, because a workflow can be dispatched only once its file is on the default branch, and it is outside the required-checks gate, which counts a skipped job as failed. The other three providers have no equivalent: nothing here holds an account on them, so no emitted Bitbucket, GitLab or CircleCI file has been executed.

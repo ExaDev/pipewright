@@ -4,6 +4,7 @@ import {
   definePipeline,
   jobsOf,
   t,
+  when,
   type JobDefinition,
   type StepInput,
 } from "@ci-adapters/pipeline-contract";
@@ -56,6 +57,7 @@ function check(options: CheckJob): JobDefinition {
 }
 
 const READ_BACK_TIMEOUT_MINUTES = 10;
+const E2E_TIMEOUT_MINUTES = 20;
 const GATE_TIMEOUT_MINUTES = 5;
 
 const lint = defineJob(
@@ -94,6 +96,7 @@ const drift = defineJob(
     description: "Fails when a generated file differs from what the tool emits now.",
     run: [
       `${TOOL} check --pipeline ${PIPELINE_FILE} --provider github-actions --tool-command "${TOOL}"`,
+      `${TOOL} check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "${TOOL}"`,
       `${TOOL} schema | diff -u schemas/pipeline.schema.json -`,
       `${TOOL} schema --authoring | diff -u schemas/pipeline.authoring.schema.json -`,
     ].join(" && "),
@@ -120,6 +123,26 @@ const actionlint = defineJob("actionlint", {
 const CIRCLECI_CLI_URL =
   "https://github.com/CircleCI-Public/circleci-cli/releases/download/v1.4.0/circleci-cli_1.4.0_linux_amd64.tar.gz";
 const CIRCLECI_CLI_SHA256 = "96c3de64d815b076725f5f05aa626d83eaf39b1332a6b1f7e5dbaf46af43f169";
+
+const e2e = defineJob("e2e", {
+  name: "End to end on GitHub",
+  description:
+    "Dispatches the emitted end-to-end workflow on GitHub through the platform adapter, waits for it, and compares the check names GitHub reports with the ones the compiler derived. It runs after a merge to main, because a workflow can be dispatched only once its file is on the default branch, and it is not part of the gate, which counts a skipped job as failed.",
+  runsOn: [RUNNER],
+  timeoutMinutes: E2E_TIMEOUT_MINUTES,
+  when: when.allOf(when.event("push"), when.equals(context.refName, "main")),
+  permissions: { actions: "write", checks: "read", contents: "read" },
+  native: {
+    "github-actions": {
+      env: {
+        GH_TOKEN: "${{ github.token }}",
+        REPOSITORY: "${{ github.repository }}",
+        E2E_REF: "${{ github.ref_name }}",
+      },
+    },
+  },
+  steps: [...setup, { kind: "run", name: "Dispatch and watch", run: "pnpm run test:e2e" }],
+});
 
 const validators = defineJob("validators", {
   name: "Provider validators",
@@ -202,5 +225,15 @@ export default definePipeline({
     cancelInProgress: true,
     description: "A new push to a branch supersedes that branch's in-flight run.",
   },
-  jobs: jobsOf(lint, typecheck, test, drift, actionlint, validators, platformSmoke, requiredChecks),
+  jobs: jobsOf(
+    lint,
+    typecheck,
+    test,
+    drift,
+    actionlint,
+    validators,
+    platformSmoke,
+    e2e,
+    requiredChecks,
+  ),
 });

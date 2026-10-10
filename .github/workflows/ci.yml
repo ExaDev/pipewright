@@ -79,7 +79,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Generated files
-        run: node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts schema | diff -u schemas/pipeline.schema.json - && node packages/cli/src/bin.ts schema --authoring | diff -u schemas/pipeline.authoring.schema.json -
+        run: node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts schema | diff -u schemas/pipeline.schema.json - && node packages/cli/src/bin.ts schema --authoring | diff -u schemas/pipeline.authoring.schema.json -
   # Validates the emitted workflow with GitHub's own linter rules.
   actionlint:
     name: Actionlint
@@ -138,6 +138,31 @@ jobs:
       REPOSITORY: ${{ github.repository }}
       COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       RUN_ID: ${{ github.run_id }}
+  # Dispatches the emitted end-to-end workflow on GitHub through the platform adapter, waits for it, and compares the check names GitHub reports with the ones the compiler derived. It runs after a merge to main, because a workflow can be dispatched only once its file is on the default branch, and it is not part of the gate, which counts a skipped job as failed.
+  e2e:
+    name: End to end on GitHub
+    runs-on: ubuntu-latest
+    if: (((github.event_name == 'push')) && (github.ref_name == 'main'))
+    timeout-minutes: 20
+    permissions:
+      actions: write
+      contents: read
+      checks: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Dispatch and watch
+        run: pnpm run test:e2e
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      E2E_REF: ${{ github.ref_name }}
   # The single branch-protection target. It runs whatever the other jobs concluded and fails unless all succeeded.
   required-checks:
     name: Required checks
