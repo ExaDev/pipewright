@@ -9,6 +9,12 @@ describe("readYaml", () => {
     expect(readYaml("a: 1\nb:\n  - x\n  - y\n").value).toEqual({ a: 1, b: ["x", "y"] });
   });
 
+  it("expands a merge key, as GitLab files use to share job settings", () => {
+    const text = "base: &base\n  tags: [a]\njob:\n  <<: *base\n  script: [x]\n";
+
+    expect(readYaml(text).value).toMatchObject({ job: { tags: ["a"], script: ["x"] } });
+  });
+
   it("throws on a syntax error", () => {
     expect(() => readYaml("a: [1, 2\n")).toThrow();
   });

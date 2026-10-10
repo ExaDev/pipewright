@@ -82,7 +82,8 @@ function collect(
  * Parses YAML text, throwing on any syntax error. Comments that precede a mapping key or a sequence item are returned keyed by the path of that node.
  */
 export function readYaml(text: string): ReadYaml {
-  const document = parseDocument(text, { prettyErrors: false });
+  // Merge keys (`<<`) are expanded, because GitLab files use them to share job settings.
+  const document = parseDocument(text, { prettyErrors: false, merge: true });
   const [first] = document.errors;
   if (first !== undefined) throw new Error(first.message);
 
