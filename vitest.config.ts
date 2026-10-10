@@ -13,8 +13,26 @@ export default defineConfig({
         // Reaches outside the repository: fetches each provider's published schema and runs the provider's own linter. A separate project so the unit suite stays offline and a failure here is never silently skipped.
         test: {
           name: "integration",
-          include: ["packages/*/test/**/*.integration.test.ts"],
+          include: ["packages/*/test/*.integration.test.ts"],
           testTimeout: 60_000,
+        },
+      },
+      {
+        // Drives Atlassian's validator page in a headless browser. Needs chromium (`playwright-core install chromium`) and the network.
+        test: {
+          name: "browser",
+          include: ["packages/*/test/browser/*.integration.test.ts"],
+          testTimeout: 120_000,
+          hookTimeout: 120_000,
+        },
+      },
+      {
+        // Boots GitLab CE in a container and runs its own CI linter. Needs Docker and several minutes.
+        test: {
+          name: "container",
+          include: ["packages/*/test/container/*.integration.test.ts"],
+          testTimeout: 600_000,
+          hookTimeout: 1_800_000,
         },
       },
       {

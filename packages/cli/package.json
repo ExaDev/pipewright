@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "ajv": "catalog:",
+    "playwright-core": "catalog:",
     "yaml": "catalog:"
   },
   "exports": {
