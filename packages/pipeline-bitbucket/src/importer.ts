@@ -106,6 +106,9 @@ function groupsOf(
   return groups;
 }
 
+/** A shell reference to a variable Bitbucket defines, which another provider's runner does not. */
+const RUNTIME_VARIABLE = /\$\{?BITBUCKET_[A-Z0-9_]+/;
+
 const STEP_KEYS = new Set(["name", "runs-on", "max-time", "deployment", "clone", "script"]);
 
 function stepOf(
@@ -155,6 +158,18 @@ function stepOf(
       ...(depthOnly && isRecord(clone) ? { fetchDepth: clone.depth } : {}),
     });
   }
+  // Consecutive command lines run in one shell, so they are one step, and a pipe between two runs of them is its own step.
+  let commands: string[] = [];
+  const flush = (): void => {
+    if (commands.length === 0) return;
+    const lines = commands;
+    commands = [];
+    steps.push(
+      lines.some((line) => RUNTIME_VARIABLE.test(line))
+        ? { kind: "provider", provider: PROVIDER, native: { script: lines } }
+        : { kind: "run", run: lines.join("\n") },
+    );
+  };
   for (const [index, item] of script.entries()) {
     const at: Pointer = [...pointer, "script", index];
     if (typeof item === "string") {
@@ -164,13 +179,15 @@ function stepOf(
           "a call to this tool's runner, which stands for steps held in the pipeline file it names; import that file",
         );
       }
-      steps.push({ kind: "run", run: item });
+      commands.push(item);
     } else if (isRecord(item) && "pipe" in item) {
+      flush();
       steps.push({ kind: "provider", provider: PROVIDER, native: item });
     } else {
       return fail(at, "a script item that is neither a command nor a pipe");
     }
   }
+  flush();
 
   for (const [key, entry] of Object.entries(body)) {
     if (!STEP_KEYS.has(key)) native[key] = entry;
@@ -229,6 +246,10 @@ function triggersOf(pipelines: Record<string, unknown>): Triggers {
     const branches = recordAt(pipelines.branches, ["pipelines", "branches"], "the branches");
     const names = Object.keys(branches);
     for (const name of names) {
+      // A branch key is a glob in Bitbucket, which the model's branch names are not, so another provider would take it literally.
+      if (/[*?+[\]{}!]/.test(name)) {
+        fail(["pipelines", "branches", name], "a branch pattern, which the model has no form for");
+      }
       declare(
         { kind: "push", branches: names },
         ["pipelines", "branches", name],
