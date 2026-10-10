@@ -18,7 +18,7 @@ describe("the JSON example", () => {
     const github = await createGitHubActionsCompiler().compile(pipeline, options);
     const gitlab = await createGitLabCiCompiler().compile(pipeline, options);
     expect(github[0]?.content).toContain("NODE_VERSION: ${{ matrix.node }}");
-    expect(gitlab[0]?.content).toContain("NODE_VERSION: $node");
+    expect(gitlab[0]?.content).toContain("NODE_VERSION: ${node}");
   });
 });
 
