@@ -11,6 +11,7 @@ export const conclusionSchema = z.enum([
   "timedOut",
   "actionRequired",
   "neutral",
+  "stale",
 ]);
 export type Conclusion = z.infer<typeof conclusionSchema>;
 

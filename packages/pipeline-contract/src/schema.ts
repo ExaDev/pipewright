@@ -92,8 +92,8 @@ export const stepSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     kind: z.literal("run"),
     run: z.string().min(1),
-    /** `native` keeps this step in the provider's own syntax even when its job renders in the wrapper form, which a step that must run before the tool itself can (installing its dependencies) requires. */
-    form: formSchema.optional(),
+    /** `native` keeps this step in the provider's own syntax even when its job renders in the wrapper form, which a step that must run before the tool itself can (installing its dependencies) requires. The wrapper form is chosen for a whole job, so a step cannot ask for it. */
+    form: z.literal("native").optional(),
     env: envSchema.optional(),
     workingDirectory: z.string().min(1).optional(),
     ...stepCommon,

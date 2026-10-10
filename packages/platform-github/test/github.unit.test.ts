@@ -88,14 +88,14 @@ describe("run codec", () => {
         id: 1,
         name: "CI",
         status: "completed",
-        conclusion: "stale",
+        conclusion: "superseded",
         head_branch: "main",
         head_sha: "abc",
         event: "push",
         html_url: "https://example.com",
         created_at: "2026-01-01T00:00:00Z",
       }),
-    ).toThrow("stale");
+    ).toThrow("superseded");
   });
 });
 
@@ -113,4 +113,38 @@ describe("GitHub controller", () => {
     ]);
     expect(server.requests[2]?.body).toEqual({ ref: "main", inputs: { a: "b" } });
   });
+});
+
+describe("every conclusion GitHub documents for a check", () => {
+  const documented = [
+    "action_required",
+    "cancelled",
+    "failure",
+    "neutral",
+    "skipped",
+    "stale",
+    "success",
+    "timed_out",
+  ];
+
+  for (const conclusion of documented) {
+    it(`decodes ${conclusion} instead of failing the whole listing`, async () => {
+      const state = createFakeState();
+      const server = options(state);
+      const reader = createGitHubReader({
+        ...server.config,
+        fetch: async () =>
+          Promise.resolve(
+            new Response(
+              JSON.stringify({
+                check_runs: [{ name: "Lint", status: "completed", conclusion, html_url: null }],
+              }),
+            ),
+          ),
+      });
+
+      const [check] = await reader.listChecks("abc");
+      expect(check?.status).toBe("completed");
+    });
+  }
 });

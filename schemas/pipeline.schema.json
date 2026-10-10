@@ -207,7 +207,8 @@
             "type": "string",
             "enum": [
               "success",
-              "always"
+              "always",
+              "gate"
             ]
           },
           "form": {
@@ -335,10 +336,7 @@
                     },
                     "form": {
                       "type": "string",
-                      "enum": [
-                        "native",
-                        "wrapper"
-                      ]
+                      "const": "native"
                     },
                     "env": {
                       "type": "object",
@@ -383,7 +381,9 @@
                       "type": "string",
                       "enum": [
                         "github-actions",
-                        "gitlab-ci"
+                        "gitlab-ci",
+                        "bitbucket-pipelines",
+                        "circleci"
                       ]
                     },
                     "native": {
@@ -423,7 +423,9 @@
               "type": "string",
               "enum": [
                 "github-actions",
-                "gitlab-ci"
+                "gitlab-ci",
+                "bitbucket-pipelines",
+                "circleci"
               ]
             },
             "additionalProperties": {
@@ -469,7 +471,8 @@
           "required": [
             "kind",
             "operand"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -489,7 +492,8 @@
             "kind",
             "left",
             "right"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -509,7 +513,8 @@
             "kind",
             "left",
             "right"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -528,7 +533,8 @@
           "required": [
             "kind",
             "operands"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -547,7 +553,8 @@
           "required": [
             "kind",
             "operands"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -579,7 +586,8 @@
             "op",
             "left",
             "right"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -611,7 +619,8 @@
             "op",
             "left",
             "right"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -642,7 +651,8 @@
             "op",
             "operand",
             "candidates"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -658,7 +668,8 @@
           "required": [
             "kind",
             "operand"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -681,7 +692,8 @@
             "kind",
             "collection",
             "item"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -704,7 +716,8 @@
             "kind",
             "collection",
             "item"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -720,7 +733,8 @@
           "required": [
             "kind",
             "key"
-          ]
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -751,7 +765,8 @@
               "required": [
                 "kind",
                 "value"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -767,7 +782,8 @@
               "required": [
                 "kind",
                 "value"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -783,7 +799,8 @@
               "required": [
                 "kind",
                 "value"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -799,7 +816,8 @@
               "required": [
                 "kind",
                 "value"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -826,7 +844,8 @@
                 "kind",
                 "value",
                 "unit"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -851,7 +870,8 @@
               "required": [
                 "kind",
                 "key"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -883,7 +903,8 @@
                 "op",
                 "left",
                 "right"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -899,7 +920,8 @@
               "required": [
                 "kind",
                 "operand"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -922,7 +944,8 @@
                 "kind",
                 "fn",
                 "args"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -945,7 +968,8 @@
                 "kind",
                 "table",
                 "keys"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -976,7 +1000,8 @@
                     "required": [
                       "when",
                       "then"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
                 },
                 "fallback": {
@@ -987,7 +1012,8 @@
                 "kind",
                 "cases",
                 "fallback"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -1018,7 +1044,8 @@
                       "required": [
                         "mode",
                         "item"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     {
                       "type": "object",
@@ -1034,7 +1061,8 @@
                       "required": [
                         "mode",
                         "item"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     {
                       "type": "object",
@@ -1054,7 +1082,8 @@
                         "mode",
                         "initial",
                         "combine"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   ]
                 }
@@ -1063,7 +1092,8 @@
                 "kind",
                 "collection",
                 "combiner"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -1075,7 +1105,8 @@
               },
               "required": [
                 "kind"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -1095,7 +1126,8 @@
                 "kind",
                 "system",
                 "payload"
-              ]
+              ],
+              "additionalProperties": false
             },
             {
               "type": "object",
@@ -1111,7 +1143,8 @@
               "required": [
                 "kind",
                 "key"
-              ]
+              ],
+              "additionalProperties": false
             }
           ]
         },

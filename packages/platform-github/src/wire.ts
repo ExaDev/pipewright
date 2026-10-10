@@ -24,6 +24,7 @@ const CONCLUSION_FROM_WIRE: Readonly<Record<string, Conclusion>> = {
   timed_out: "timedOut",
   action_required: "actionRequired",
   neutral: "neutral",
+  stale: "stale",
 };
 
 const CONCLUSION_TO_WIRE: Readonly<Record<Conclusion, string>> = {
@@ -34,6 +35,7 @@ const CONCLUSION_TO_WIRE: Readonly<Record<Conclusion, string>> = {
   timedOut: "timed_out",
   actionRequired: "action_required",
   neutral: "neutral",
+  stale: "stale",
 };
 
 const EVENT_FROM_WIRE: Readonly<Record<string, string>> = {
