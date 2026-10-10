@@ -47,6 +47,7 @@ const EVENT_NAME: Readonly<Record<EventKind, string>> = {
 };
 
 const PERMISSION_SCOPE: Readonly<Record<keyof Permissions, string>> = {
+  actions: "actions",
   contents: "contents",
   pullRequests: "pull-requests",
   issues: "issues",
@@ -191,6 +192,10 @@ interface WrapperContext {
 /**
  * Renders a job's steps in the wrapper form: checkouts and GitHub-owned steps stay native and keep their order, and each contiguous run of portable `run` steps becomes one invocation of the tool's runner for exactly those step indexes. Step names, conditions and per-step environments move into the pipeline file the runner reads, so GitHub's UI and actionlint no longer see them.
  */
+function isCollapsible(step: Step | undefined): boolean {
+  return step?.kind === "run" && step.form !== "native";
+}
+
 function wrapperStepsOf(id: string, job: Job, context: WrapperContext): Record<string, unknown>[] {
   const pointer = `/jobs/${id}`;
   const matrixFlags = Object.keys(job.matrix ?? {})
@@ -200,14 +205,14 @@ function wrapperStepsOf(id: string, job: Job, context: WrapperContext): Record<s
   let index = 0;
   while (index < job.steps.length) {
     const step = job.steps[index];
-    if (step?.kind !== "run") {
+    if (step?.kind !== "run" || step.form === "native") {
       if (step === undefined) break;
       steps.push(stepOf(step, `${pointer}/steps/${String(index)}`));
       index += 1;
       continue;
     }
     const from = index;
-    while (job.steps[index]?.kind === "run") index += 1;
+    while (isCollapsible(job.steps[index])) index += 1;
     steps.push({
       name: `Run ${job.name}`,
       run: `${context.toolCommand} run --pipeline ${context.source} --job ${id} --steps ${String(from)}-${String(index - 1)}${matrixFlags}`,

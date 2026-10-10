@@ -132,6 +132,22 @@ describe("GitHub Actions emission", () => {
       expect(text).not.toContain("run: one");
     });
 
+    it("keeps a run step marked native out of the collapsed group", async () => {
+      const text = await emitWrapper(
+        pipelineWith({
+          form: "wrapper",
+          steps: [
+            { kind: "run", name: "Install", run: "pnpm install", form: "native" },
+            { kind: "run", run: "one" },
+            { kind: "run", run: "two" },
+          ],
+        }),
+      );
+      expect(text).toContain("run: pnpm install");
+      expect(text).toContain("--job only --steps 1-2");
+      expect(text.indexOf("run: pnpm install")).toBeLessThan(text.indexOf("--steps 1-2"));
+    });
+
     it("applies a pipeline-level form to every job unless a job overrides it", async () => {
       const pipeline = samplePipeline();
       pipeline.form = "wrapper";
