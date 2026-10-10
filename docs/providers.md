@@ -23,7 +23,7 @@ What each adapter compiles, what it rejects, and how it is validated. An adapter
 | Timeouts | yes | yes | yes, 1 to 720 minutes | no |
 | Deployment environment | yes | yes | yes | no |
 | Wrapper form | yes | yes | yes | yes |
-| Validator run | actionlint | published JSON Schema | published JSON Schema | published JSON Schema |
+| Validator run | actionlint | published JSON Schema | published JSON Schema | `circleci config validate` and the published JSON Schema |
 
 ## Neutral semantics
 
@@ -50,8 +50,8 @@ What was run, and by what:
 | GitHub Actions | actionlint | the `integration` project and its CI job |
 | GitLab CI | the published `ci.json` JSON Schema | the `integration` project and its CI job |
 | Bitbucket Pipelines | the published pipelines schema | the `integration` project and its CI job |
-| CircleCI | the published JSON Schema in CI; `circleci config validate` (CLI 1.4.0) by hand | accepted the sample output with exit 0; not in CI, because no pinned, checksummed install route was settled |
+| CircleCI | `circleci config validate` (CLI 1.4.0, installed in CI from a pinned archive with a pinned digest), and the published JSON Schema | the `integration` project and its CI job |
 
-Not run: GitLab's CI lint, which is an API call needing a project token, and Bitbucket's web validator, which has no documented command line. The schemas stand in for both.
+Not run: GitLab's CI lint, which is an API call that needs a token for a GitLab project that nobody has supplied here, and Bitbucket's web validator, which has no documented command line or API. The schemas, which are the artefacts those products' own editors use, stand in for both, and the two remain untested against the products themselves.
 
 `pnpm run test:integration` fetches each provider's published schema and runs actionlint over the sample pipeline's output. It is a separate vitest project from the unit tests so the unit suite stays offline, and the CI job that runs it installs actionlint first. A validator that cannot run is a failure, never a skip.

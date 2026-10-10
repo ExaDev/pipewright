@@ -17,11 +17,14 @@ import { createCircleCiCompiler } from "@ci-adapters/pipeline-circleci";
 import { createGitHubActionsCompiler } from "@ci-adapters/pipeline-github-actions";
 import { createGitLabCiCompiler } from "@ci-adapters/pipeline-gitlab-ci";
 
-async function runActionlint(path: string): Promise<void> {
+/**
+ * Runs a provider's own validator and rejects with its output when it exits non-zero. A missing binary is a failure, not a skip.
+ */
+async function runTool(command: string, args: readonly string[]): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    execFile("actionlint", [path], (error) => {
+    execFile(command, [...args], (error, stdout, stderr) => {
       if (error === null) resolve();
-      else reject(new Error(`actionlint rejected the workflow: ${error.message}`));
+      else reject(new Error(`${command} rejected the file: ${error.message}\n${stdout}${stderr}`));
     });
   });
 }
@@ -75,7 +78,7 @@ describe("each provider's own validator accepts the emitted sample", () => {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, file.content);
 
-    await expect(runActionlint(target)).resolves.toBeUndefined();
+    await expect(runTool("actionlint", [target])).resolves.toBeUndefined();
   });
 
   it("GitLab's CI schema accepts the GitLab configuration", async () => {
@@ -96,6 +99,18 @@ describe("each provider's own validator accepts the emitted sample", () => {
         parse(file.content),
       ),
     ).toEqual([]);
+  });
+
+  it("circleci config validate accepts the CircleCI configuration", async () => {
+    const file = await emit(createCircleCiCompiler(), CIRCLECI);
+    const root = await mkdtemp(join(tmpdir(), "pipewright-circleci-"));
+    const target = join(root, file.path);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, file.content);
+
+    await expect(
+      runTool("circleci", ["config", "validate", target, "--skip-update-check"]),
+    ).resolves.toBeUndefined();
   });
 
   it("CircleCI's published schema accepts the CircleCI configuration", async () => {

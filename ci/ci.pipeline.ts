@@ -116,6 +116,11 @@ const actionlint = defineJob("actionlint", {
   ],
 });
 
+/** The CircleCI CLI release the integration tests validate with, and the digest of its Linux archive, so the binary that runs is the one that was tested. */
+const CIRCLECI_CLI_URL =
+  "https://github.com/CircleCI-Public/circleci-cli/releases/download/v1.4.0/circleci-cli_1.4.0_linux_amd64.tar.gz";
+const CIRCLECI_CLI_SHA256 = "96c3de64d815b076725f5f05aa626d83eaf39b1332a6b1f7e5dbaf46af43f169";
+
 const validators = defineJob("validators", {
   name: "Provider validators",
   description:
@@ -128,6 +133,17 @@ const validators = defineJob("validators", {
       kind: "run",
       name: "Install actionlint",
       run: 'go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"',
+    },
+    {
+      kind: "run",
+      name: "Install the CircleCI CLI",
+      run: [
+        `curl -fsSL -o "$RUNNER_TEMP/circleci.tgz" ${CIRCLECI_CLI_URL}`,
+        `echo "${CIRCLECI_CLI_SHA256}  $RUNNER_TEMP/circleci.tgz" | sha256sum -c -`,
+        'mkdir -p "$HOME/.local/bin"',
+        'tar -xzf "$RUNNER_TEMP/circleci.tgz" -C "$HOME/.local/bin" circleci',
+        'echo "$HOME/.local/bin" >> "$GITHUB_PATH"',
+      ].join(" && "),
     },
     { kind: "run", name: "Validate", run: "pnpm run test:integration" },
   ],
