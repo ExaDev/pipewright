@@ -4,6 +4,28 @@ import { pipelineSchema, samplePipeline } from "@ci-adapters/pipeline-contract";
 
 import { createGitLabCiCompiler } from "../src/index.ts";
 
+describe("GitLab CI variable references", () => {
+  it("braces a variable written inside text so what follows is not read as part of its name", async () => {
+    const pipeline = pipelineSchema.parse({
+      name: "CI",
+      triggers: [{ kind: "push" }],
+      jobs: {
+        only: {
+          name: "Only",
+          runsOn: ["x"],
+          matrix: { node: ["22"] },
+          env: { TAG: "{{ refName }}_build", RUNTIME: "{{ matrix.node }}x" },
+          steps: [{ kind: "run", run: "true" }],
+        },
+      },
+    });
+    const [file] = await createGitLabCiCompiler().compile(pipeline, { source: "s" });
+
+    expect(file?.content).toContain("TAG: ${CI_COMMIT_REF_NAME}_build");
+    expect(file?.content).toContain("RUNTIME: ${node}x");
+  });
+});
+
 describe("GitLab CI wrapper form", () => {
   it("collapses run steps into one runner call with the matrix axis as a variable", async () => {
     const pipeline = samplePipeline();

@@ -137,10 +137,15 @@ function workflowRule(trigger: Trigger, index: number): string {
   return assertNever(trigger);
 }
 
+/**
+ * A variable reference inside text. Braces end the name, so text that follows it is not read as part of it: `$CI_COMMIT_REF_NAME_build` names a different variable from `${CI_COMMIT_REF_NAME}_build`.
+ */
 function variableFor(
   token: { kind: "context"; key: ContextKey } | { kind: "matrix"; name: string },
 ): string {
-  return token.kind === "context" ? CONTEXT_VARIABLE[token.key] : `$${token.name}`;
+  return token.kind === "context"
+    ? `\${${CONTEXT_VARIABLE[token.key].slice(1)}}`
+    : `\${${token.name}}`;
 }
 
 function variablesOf(env: Readonly<Record<string, string>>): Record<string, string> {
