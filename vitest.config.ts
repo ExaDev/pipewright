@@ -36,6 +36,15 @@ export default defineConfig({
         },
       },
       {
+        // Packs every package as a release would, installs the tarballs into an empty directory and uses them. Needs the network for third-party dependencies.
+        test: {
+          name: "pack",
+          include: ["packages/*/test/pack/*.integration.test.ts"],
+          testTimeout: 120_000,
+          hookTimeout: 600_000,
+        },
+      },
+      {
         // Executes an emitted workflow on GitHub through the platform adapter. It needs a token, a repository and a ref, runs only after a merge to main, and fails rather than skips when any is missing.
         test: {
           name: "e2e",

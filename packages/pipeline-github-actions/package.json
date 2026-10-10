@@ -8,6 +8,22 @@
   "exports": {
     ".": "./src/index.ts"
   },
-  "private": true,
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExaDev/pipewright.git",
+    "directory": "packages/pipeline-github-actions"
+  },
   "type": "module"
 }

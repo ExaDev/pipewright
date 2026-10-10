@@ -139,13 +139,15 @@ pnpm run test               # unit tests, offline
 pnpm run test:integration   # published schemas, actionlint and circleci config validate over the emitted sample
 pnpm run test:browser       # Atlassian's own Bitbucket validator in Google Chrome
 pnpm run test:container     # GitLab's own CI linter from a pinned GitLab CE container
+pnpm run test:pack          # build, pack and install every package into an empty directory, and use it
+pnpm run build              # compile every package to dist, which is what a release publishes
 pnpm run test:e2e           # dispatch an emitted workflow on GitHub and watch it (needs GH_TOKEN, REPOSITORY, E2E_REF)
 pnpm run ci:local   # this repository's own pipeline, through its own runner
 pnpm run ci:check   # fails if the generated workflow has drifted
 pnpm run schema     # regenerate the JSON Schemas
 ```
 
-Packages are source-only workspace members run through Node's type stripping, so there is no build step. Node 22.18 or later.
+Packages are workspace members run from source through Node's type stripping, so development and CI need no build. A release compiles each package to `dist` (`pnpm run build`), because Node does not strip types in files under `node_modules`. Node 22.18 or later.
 
 ### This repository uses itself
 

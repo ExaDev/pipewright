@@ -1,0 +1,13 @@
+{
+  // How a package is compiled for publishing. The workspace itself runs from source through Node's type stripping and never uses this: Node refuses to strip types in files under node_modules, so what is published is JavaScript and declarations. `rewriteRelativeImportExtensions` turns the `.ts` extensions the source imports with into `.js`.
+  "compilerOptions": {
+    "allowImportingTsExtensions": false,
+    "declaration": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": false,
+    "rewriteRelativeImportExtensions": true,
+    "sourceMap": false
+  },
+  "extends": "./tsconfig.base.json"
+}

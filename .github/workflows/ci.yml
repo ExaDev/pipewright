@@ -173,6 +173,22 @@ jobs:
       REPOSITORY: ${{ github.repository }}
       COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       RUN_ID: ${{ github.run_id }}
+  # Builds every package to dist, packs it as a release would, installs the tarballs into an empty directory, and uses the contract and the pipewright binary from there. A package whose dist or exports are wrong passes every test that runs from source and fails here.
+  packages:
+    name: Packed packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Pack and install
+        run: pnpm run test:pack
   # Dispatches the emitted end-to-end workflow on GitHub through the platform adapter, waits for it, and compares the check names GitHub reports with the ones the compiler derived. It runs after a merge to main, because a workflow can be dispatched only once its file is on the default branch, and it is not part of the gate, which counts a skipped job as failed.
   e2e:
     name: End to end on GitHub
@@ -213,6 +229,7 @@ jobs:
       - bitbucket-validator
       - gitlab-lint
       - platform-smoke
+      - packages
     if: always()
     timeout-minutes: 5
     steps:
