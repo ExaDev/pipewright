@@ -1,0 +1,43 @@
+{
+  "$schema": "../schemas/pipeline.authoring.schema.json",
+  "description": "A pipeline authored as JSON. The repository's own pipeline is TypeScript; both formats compile to the same model.",
+  "jobs": {
+    "test": {
+      "env": {
+        "NODE_VERSION": "{{ matrix.node }}"
+      },
+      "matrix": {
+        "node": [
+          "22",
+          "24"
+        ]
+      },
+      "name": "Test",
+      "runsOn": [
+        "ubuntu-latest"
+      ],
+      "steps": [
+        {
+          "kind": "checkout"
+        },
+        {
+          "kind": "run",
+          "name": "Test",
+          "run": "npm test"
+        }
+      ]
+    }
+  },
+  "name": "Example",
+  "triggers": [
+    {
+      "branches": [
+        "main"
+      ],
+      "kind": "push"
+    },
+    {
+      "kind": "pullRequest"
+    }
+  ]
+}
