@@ -192,4 +192,20 @@ describe("Bitbucket Pipelines import", () => {
 
     expect(error.pointer).toBe("/pipelines/branches/feature~1*");
   });
+
+  it("rejects a step that waits for a person to start it", async () => {
+    const error = await rejection(
+      "pipelines:\n  default:\n    - step:\n        name: Deploy\n        trigger: manual\n        script: [deploy]\n",
+    );
+
+    expect(error.pointer).toBe("/pipelines/default/0/step/trigger");
+  });
+
+  it("carries a script containing a GitHub expression as a provider step", async () => {
+    const pipeline = await importText(
+      "pipelines:\n  default:\n    - step:\n        script:\n          - echo '${{ github.token }}'\n",
+    );
+
+    expect(Object.values(pipeline.jobs)[0]?.steps[1]).toMatchObject({ kind: "provider" });
+  });
 });
