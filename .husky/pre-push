@@ -1,0 +1,2 @@
+# Runs the repository's own pipeline through its own runner, so a push is checked by the same definition CI is generated from.
+pnpm run ci:local
