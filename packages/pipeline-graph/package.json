@@ -4,12 +4,7 @@
   "dependencies": {
     "@ci-adapters/pipeline-contract": "0.0.0",
     "@ci-adapters/platform-contract": "0.0.0",
-    "@exadev/process-graph-schema": "catalog:"
-  },
-  "devDependencies": {
-    "@exadev/process-graph-dag": "catalog:",
-    "@exadev/process-graph-domain": "catalog:",
-    "@exadev/process-graph-projection": "catalog:"
+    "process-graph": "catalog:"
   },
   "exports": {
     ".": "./src/index.ts"

@@ -1,4 +1,4 @@
-import { deriveStatuses, type Facts } from "@exadev/process-graph-domain";
+import { deriveStatuses, type Facts } from "process-graph";
 import { describe, expect, it } from "vitest";
 
 import { samplePipeline } from "@ci-adapters/pipeline-contract";

@@ -1,11 +1,10 @@
 # @ci-adapters/pipeline-graph
 
-A pipeline as a process model. `toModel` maps a `Pipeline` to the `Model` of [`@exadev/process-graph-schema`](https://www.npmjs.com/package/@exadev/process-graph-schema), so the swimlane, flowchart and state projections and the readiness, blocking and critical-path queries of the process-graph packages apply to it. `overlayOf` maps platform run state to the schema's `Overlay`, so those queries can answer for one run.
+A pipeline as a process model. `toModel` maps a `Pipeline` to the `Model` of [`process-graph`](https://www.npmjs.com/package/process-graph), so the swimlane, flowchart and state projections and the readiness, blocking and critical-path queries of `process-graph` apply to it. `overlayOf` maps platform run state to the schema's `Overlay`, so those queries can answer for one run.
 
 ```ts
 import { toModel, overlayOf } from "@ci-adapters/pipeline-graph";
-import { toSwimlane } from "@exadev/process-graph-projection";
-import { readySet } from "@exadev/process-graph-domain";
+import { readySet, toSwimlane } from "process-graph";
 
 const model = toModel(pipeline);
 toSwimlane(model).lanes; // one lane per runner

@@ -1,11 +1,11 @@
-import { criticalPath } from "@exadev/process-graph-dag";
 import {
-  deriveStatuses,
   criticalPath as remainingPath,
+  dag,
+  deriveStatuses,
+  toSwimlane,
+  validate,
   type Facts,
-} from "@exadev/process-graph-domain";
-import { toSwimlane } from "@exadev/process-graph-projection";
-import { validate } from "@exadev/process-graph-schema";
+} from "process-graph";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -196,7 +196,7 @@ describe("toModel", () => {
     const chains = longestChains(pipeline.jobs);
     const longest = Math.max(...chains.values());
 
-    const { path, weight } = criticalPath(jobGraphOf(pipeline.jobs), () => 1);
+    const { path, weight } = dag.criticalPath(jobGraphOf(pipeline.jobs), () => 1);
 
     expect(weight).toBe(longest);
     expect(path).toHaveLength(longest);

@@ -1,4 +1,4 @@
-import { buildDag, findCycles } from "@exadev/process-graph-dag";
+import { dag } from "process-graph";
 import { JsonValueSchema, PredicateNodeSchema } from "trilean";
 import { z } from "zod";
 
@@ -264,7 +264,7 @@ export const pipelineSchema = pipelineShape.superRefine((pipeline, ctx) => {
     }
   }
 
-  const cycles = findCycles(buildDag(ids, (id) => pipeline.jobs[id]?.needs ?? []));
+  const cycles = dag.findCycles(dag.buildDag(ids, (id) => pipeline.jobs[id]?.needs ?? []));
   if (cycles.length > 0) {
     ctx.addIssue({
       code: "custom",

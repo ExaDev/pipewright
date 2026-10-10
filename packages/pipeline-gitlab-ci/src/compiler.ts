@@ -20,7 +20,7 @@ import {
   type Trigger,
 } from "@ci-adapters/pipeline-contract";
 import { renderYaml } from "@ci-adapters/yaml-emit";
-import { topologicalLayers } from "@exadev/process-graph-dag";
+import { dag } from "process-graph";
 
 const PROVIDER = "gitlab-ci";
 
@@ -400,7 +400,7 @@ export function createGitLabCiCompiler(): PipelineCompiler {
         keyOf.set(id, job.name);
       }
 
-      const { levels, layers } = topologicalLayers(jobGraphOf(pipeline.jobs));
+      const { levels, layers } = dag.topologicalLayers(jobGraphOf(pipeline.jobs));
       const deepest = layers.length - 1;
       const comments = new Map<string, string>();
       const jobs: Record<string, unknown> = {};

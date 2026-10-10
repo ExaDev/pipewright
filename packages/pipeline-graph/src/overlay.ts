@@ -1,6 +1,6 @@
 import { assertNever } from "@ci-adapters/pipeline-contract";
 import type { Check } from "@ci-adapters/platform-contract";
-import type { OpenIds, Overlay, OverlayStatus } from "@exadev/process-graph-schema";
+import type { OpenIds, Overlay, OverlayStatus } from "process-graph";
 
 /**
  * What a platform read produced for one job.
