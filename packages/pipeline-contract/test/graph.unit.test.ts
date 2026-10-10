@@ -1,4 +1,4 @@
-import { topologicalLayers } from "@exadev/process-graph-dag";
+import { dag } from "process-graph";
 import { describe, expect, it } from "vitest";
 
 import { DependencyGraphError, jobGraphOf, type Pipeline } from "../src/index.ts";
@@ -24,7 +24,7 @@ function failureOf(jobs: Pipeline["jobs"]): DependencyGraphError {
 
 describe("jobGraphOf", () => {
   it("levels each job by the longest needs chain below it", () => {
-    const { levels } = topologicalLayers(
+    const { levels } = dag.topologicalLayers(
       jobGraphOf(
         jobsWithNeeds({
           build: [],

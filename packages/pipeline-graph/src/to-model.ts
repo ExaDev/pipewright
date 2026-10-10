@@ -1,11 +1,5 @@
 import type { Pipeline } from "@ci-adapters/pipeline-contract";
-import type {
-  Element,
-  Model,
-  OpenIds,
-  Participant,
-  Transition,
-} from "@exadev/process-graph-schema";
+import type { Element, Model, OpenIds, Participant, Transition } from "process-graph";
 
 /** The element every job without `needs` follows. A job id never contains a colon, so none of the generated ids can collide with one. */
 export const INITIAL_ID = "pipeline:initial";
@@ -34,7 +28,7 @@ export function runnerIdOf(runsOn: readonly string[]): string {
 }
 
 /**
- * Maps a pipeline to the process model of `@exadev/process-graph-schema`, so the process-graph projections and domain queries apply to it.
+ * Maps a pipeline to the process model of `process-graph`, so the process-graph projections and domain queries apply to it.
  *
  * - Every job is an `activity` whose id is the job id and whose actor is the `system` participant of its `runsOn` labels. The labels of one job together name one runner, so a participant exists per distinct label list.
  * - Every `needs` entry is a transition from the needed job to the dependent job.

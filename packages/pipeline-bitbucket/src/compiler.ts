@@ -14,7 +14,7 @@ import {
   type Step,
 } from "@ci-adapters/pipeline-contract";
 import { commentPath, renderYaml } from "@ci-adapters/yaml-emit";
-import { ancestorsOf, topologicalLayers, type Dag } from "@exadev/process-graph-dag";
+import { dag } from "process-graph";
 
 const PROVIDER = "bitbucket-pipelines";
 const FILE = "bitbucket-pipelines.yml";
@@ -213,12 +213,12 @@ function placeJob({ id, job, pipeline, toolCommand, source }: PlaceInput): Place
 /**
  * Bitbucket's graph is a sequence of parallel groups, so a pipeline compiles only when scheduling by level adds no dependency the model did not state: every job must depend, directly or through others, on exactly the jobs of the levels below it.
  */
-function assertSequenceOfGroups(dag: Dag<string>, levels: ReadonlyMap<string, number>): void {
+function assertSequenceOfGroups(graph: dag.Dag<string>, levels: ReadonlyMap<string, number>): void {
   for (const [id, level] of levels) {
     const below = new Set(
       [...levels].filter(([, other]) => other < level).map(([otherId]) => otherId),
     );
-    const needed = new Set(ancestorsOf(dag, id));
+    const needed = new Set(dag.ancestorsOf(graph, id));
     const exact = below.size === needed.size && [...below].every((other) => needed.has(other));
     if (!exact) {
       unsupported(
@@ -234,9 +234,9 @@ function itemsOf(
   toolCommand: string | undefined,
   source: string,
 ): { items: Record<string, unknown>[]; descriptions: Map<string, string> } {
-  const dag = jobGraphOf(pipeline.jobs);
-  const { levels } = topologicalLayers(dag);
-  assertSequenceOfGroups(dag, levels);
+  const graph = jobGraphOf(pipeline.jobs);
+  const { levels } = dag.topologicalLayers(graph);
+  assertSequenceOfGroups(graph, levels);
   const deepest = Math.max(...levels.values());
   const items: Record<string, unknown>[] = [];
   const descriptions = new Map<string, string>();
