@@ -45,15 +45,8 @@ export {
   type SampleFeatures,
   type TestApi,
 } from "./conformance.ts";
-export {
-  PipelineLoadError,
-  jsonPointerOf,
-  loadPipeline,
-  resolveRelative,
-  type FileReader,
-  type LoadIssue,
-  type LoadedPipeline,
-} from "./load.ts";
+export { PipelineLoadError, jsonPointerOf, loadPipeline, type LoadedPipeline } from "./load.ts";
+export type { FileReader, LoadIssue } from "@exadev/json-compose";
 export { pipelineAuthoringJsonSchema, pipelineJsonSchema } from "./json-schema.ts";
 export { definePipeline, type JobInput, type PipelineInput, type StepInput } from "./define.ts";
 export { ancestorsOf, dependencyLevels, slugOf } from "./graph.ts";
