@@ -12,6 +12,7 @@ minimumReleaseAge: 10080
 # ExaDev's own packages, published only from their own CI with trusted publishing.
 minimumReleaseAgeExclude:
   - "@exadev/eslint-config"
+  - "@exadev/json-compose"
   - "trilean"
   - "eslint-plugin-json-canonical"
 

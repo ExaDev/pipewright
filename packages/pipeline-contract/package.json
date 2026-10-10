@@ -2,6 +2,7 @@
   "name": "@ci-adapters/pipeline-contract",
   "version": "0.0.0",
   "dependencies": {
+    "@exadev/json-compose": "1.0.0",
     "trilean": "1.7.1",
     "zod": "catalog:"
   },
