@@ -60,6 +60,7 @@ describeImporterConformance(
     rejects: REJECTS.map(({ name, text }) => ({ name, file: workflow(text) })),
     wrapperForm: true,
     distinguishesGate: true,
+    recoversMatrix: true,
   },
 );
 
