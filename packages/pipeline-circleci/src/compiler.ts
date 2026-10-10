@@ -7,7 +7,6 @@ import {
   renderTemplate,
   slugOf,
   type CompileOptions,
-  type ContextKey,
   type EmittedFile,
   type Job,
   type MatrixCombination,
@@ -18,29 +17,14 @@ import {
 } from "@ci-adapters/pipeline-contract";
 import { renderYaml } from "@ci-adapters/yaml-emit";
 
-const PROVIDER = "circleci";
-
-/** The keys that select a job's executor. A job must name exactly one. */
-const EXECUTOR_KEYS: ReadonlySet<string> = new Set(["docker", "machine", "macos", "executor"]);
-
-/** Names a job parameter cannot take, because CircleCI uses them for workflow job configuration. */
-const RESERVED_PARAMETERS: ReadonlySet<string> = new Set([
-  "name",
-  "requires",
-  "context",
-  "type",
-  "filters",
-  "matrix",
-  "alias",
-]);
-const FILE = ".circleci/config.yml";
-
-/** The pipeline values CircleCI substitutes when the configuration is processed, which are the only context a job's environment can carry. */
-const PIPELINE_VALUE: Readonly<Partial<Record<ContextKey, string>>> = {
-  sha: "<< pipeline.git.revision >>",
-  refName: "<< pipeline.git.branch >>",
-  runId: "<< pipeline.id >>",
-};
+import {
+  CONFIG_VERSION,
+  EXECUTOR_KEYS,
+  FILE,
+  PIPELINE_VALUE,
+  PROVIDER,
+  RESERVED_PARAMETERS,
+} from "./vocabulary.ts";
 
 function unsupported(pointer: string, feature: string): never {
   throw new UnsupportedFeatureError(PROVIDER, pointer, feature);
@@ -391,7 +375,7 @@ export function createCircleCiCompiler(): PipelineCompiler {
         {
           path: FILE,
           content: renderYaml(
-            { version: 2.1, jobs, workflows },
+            { version: CONFIG_VERSION, jobs, workflows },
             comments,
             generatedHeaderLines(options.source),
           ),
