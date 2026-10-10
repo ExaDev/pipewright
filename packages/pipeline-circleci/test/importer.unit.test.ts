@@ -145,6 +145,14 @@ describe("CircleCI import", () => {
     expect(pipeline.jobs.build?.steps[0]).toMatchObject({ kind: "provider" });
   });
 
+  it("carries a command containing a GitHub expression as a provider step", async () => {
+    const pipeline = await importText(
+      `version: 2.1\njobs:\n  build:\n    docker:\n      - image: x\n    steps:\n      - run: echo '\${{ github.token }}'\n${WORKFLOW}`,
+    );
+
+    expect(pipeline.jobs.build?.steps[0]).toMatchObject({ kind: "provider" });
+  });
+
   it("rejects a job parameter that the matrix does not supply", async () => {
     const error = await rejection(
       `version: 2.1\njobs:\n  test:\n    parameters:\n      node:\n        type: string\n      cache:\n        type: boolean\n        default: true\n    docker:\n      - image: x\n    steps:\n      - run: t\nworkflows:\n  ci:\n    jobs:\n      - test:\n          name: Test (<< matrix.node >>)\n          matrix:\n            alias: test\n            parameters:\n              node: ["22"]\n`,
