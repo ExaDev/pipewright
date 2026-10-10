@@ -223,4 +223,31 @@ describe("GitLab CI import", () => {
       "gitlab-ci": { environment: "review/$CI_COMMIT_REF_SLUG" },
     });
   });
+
+  it("keeps the stage barrier for a job with no needs after a job that has none either", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}stages: [build, test, deploy]\nbuild-a:\n  stage: build\n${JOB}check:\n  stage: test\n  needs: []\n${JOB}deploy:\n  stage: deploy\n${JOB}`,
+    );
+
+    expect(pipeline.jobs.check?.needs).toEqual([]);
+    expect(pipeline.jobs.deploy?.needs).toEqual(["build-a", "check"]);
+  });
+
+  it("rejects a job that waits for a person to start it", async () => {
+    const jobGate = await rejection(`${WORKFLOW}deploy:\n${JOB}  when: manual\n`);
+    const ruleGate = await rejection(
+      `${WORKFLOW}deploy:\n${JOB}  rules:\n    - if: $CI_COMMIT_TAG\n      when: manual\n`,
+    );
+
+    expect(jobGate.pointer).toBe("/deploy/when");
+    expect(ruleGate.pointer).toBe("/deploy/rules");
+  });
+
+  it("carries a script containing a GitHub expression as a provider step", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}build:\n  tags: [linux]\n  script:\n    - echo '\${{ github.token }}'\n`,
+    );
+
+    expect(pipeline.jobs.build?.steps[1]).toMatchObject({ kind: "provider" });
+  });
 });

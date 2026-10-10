@@ -221,7 +221,8 @@ interface JobContext {
 const RUNTIME_VARIABLE = /\$\{?(?:CI|GITLAB)(?:_[A-Z0-9_]+)?\b/;
 
 function readsRuntimeVariable(line: string, axes: ReadonlySet<string>): boolean {
-  if (RUNTIME_VARIABLE.test(line)) return true;
+  // GitHub evaluates `${{ }}` in a command before the shell, so a command carrying one must not reach a GitHub workflow as portable text.
+  if (RUNTIME_VARIABLE.test(line) || line.includes("${{")) return true;
 
   return [...axes].some((axis) => new RegExp(`\\$\\{?${axis}\\b`).test(line));
 }
@@ -245,6 +246,18 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
     return fail(
       [...pointer, "script", wrapped],
       "a call to this tool's runner, which stands for steps held in the pipeline file it names; import that file",
+    );
+  }
+
+  // A job that waits for a person to start it is an approval gate, which the model has no form for and another provider would run unattended.
+  const gate = job.when === "manual" || job.when === "delayed";
+  const ruleGate =
+    Array.isArray(job.rules) &&
+    job.rules.some((rule) => isRecord(rule) && (rule.when === "manual" || rule.when === "delayed"));
+  if (gate || ruleGate) {
+    return fail(
+      [...pointer, gate ? "when" : "rules"],
+      "a job that waits for manual start, which the model has no approval gate for",
     );
   }
 
