@@ -213,6 +213,17 @@ interface JobContext {
   readonly comments: ReadonlyMap<string, string>;
   readonly idOf: ReadonlyMap<string, string>;
   readonly implicitNeeds: ReadonlyMap<string, readonly string[]>;
+  /** The pipeline-level variables, which a job inherits and may override. */
+  readonly globals: Readonly<Record<string, string>>;
+}
+
+/** A shell reference to a variable GitLab defines or exports, which another provider's runner does not. */
+const RUNTIME_VARIABLE = /\$\{?(?:CI|GITLAB)(?:_[A-Z0-9_]+)?\b/;
+
+function readsRuntimeVariable(line: string, axes: ReadonlySet<string>): boolean {
+  if (RUNTIME_VARIABLE.test(line)) return true;
+
+  return [...axes].some((axis) => new RegExp(`\\$\\{?${axis}\\b`).test(line));
 }
 
 function jobAt(name: string, value: unknown, context: JobContext): Record<string, unknown> {
@@ -244,8 +255,8 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
 
   const variables = job.variables === undefined ? undefined : neutralVariables(job.variables, axes);
   if (job.variables !== undefined && variables === undefined) native.variables = job.variables;
-  const depth = variables?.GIT_DEPTH;
-  const checksOut = variables?.GIT_STRATEGY !== "none";
+  const depth = variables?.GIT_DEPTH ?? context.globals.GIT_DEPTH;
+  const checksOut = (variables?.GIT_STRATEGY ?? context.globals.GIT_STRATEGY) !== "none";
   const fetchDepth =
     depth === undefined || !checksOut
       ? undefined
@@ -268,9 +279,9 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
 
   const timeout = typeof job.timeout === "string" ? MINUTES.exec(job.timeout)?.[1] : undefined;
   if (job.timeout !== undefined && timeout === undefined) native.timeout = job.timeout;
-  if (job.environment !== undefined && typeof job.environment !== "string") {
-    native.environment = job.environment;
-  }
+  // An environment name with a variable in it is expanded by GitLab, which another provider would take literally.
+  const environmentPortable = typeof job.environment === "string" && !job.environment.includes("$");
+  if (job.environment !== undefined && !environmentPortable) native.environment = job.environment;
 
   const needs = job.needs === undefined ? context.implicitNeeds.get(name) : stringList(job.needs);
   if (job.needs !== undefined && needs === undefined) {
@@ -293,19 +304,21 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
   }
 
   const description = context.comments.get(commentPath(name));
+  // The lines of a script run in one shell, so they are one step, whose commands share its working directory and variables.
+  const labels = lines.flatMap((_line, index) => {
+    const label = context.comments.get(commentPath(name, "script", String(index)));
+
+    return label === undefined ? [] : [label];
+  });
+  const described = labels.length === 0 ? {} : { description: labels.join("\n") };
+  const portable = !lines.some((line) => readsRuntimeVariable(line, axes));
   const steps = [
     ...(checksOut
       ? [{ kind: "checkout", ...(fetchDepth === undefined ? {} : { fetchDepth }) }]
       : []),
-    ...lines.map((line, index) => {
-      const label = context.comments.get(commentPath(name, "script", String(index)));
-
-      return {
-        kind: "run",
-        run: line,
-        ...(label === undefined ? {} : { description: label }),
-      };
-    }),
+    portable
+      ? { kind: "run", run: lines.join("\n"), ...described }
+      : { kind: "provider", provider: PROVIDER, native: { script: lines }, ...described },
   ];
 
   return {
@@ -316,7 +329,9 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
     ...(rules.always ? { needsPolicy: "always" } : {}),
     ...(rules.when === undefined ? {} : { when: rules.when }),
     ...(timeout === undefined ? {} : { timeoutMinutes: Number(timeout) }),
-    ...(typeof job.environment === "string" ? { environment: job.environment } : {}),
+    ...(environmentPortable && typeof job.environment === "string"
+      ? { environment: job.environment }
+      : {}),
     ...(env === undefined || Object.keys(env).length === 0 ? {} : { env }),
     ...(matrix === undefined ? {} : { matrix }),
     steps,
@@ -331,7 +346,7 @@ const LAST_STAGE = ".post";
 const WORKFLOW_KEYS = new Set(["name", "rules", "auto_cancel"]);
 
 /**
- * The jobs a job with no `needs` waits for. GitLab starts a stage when every job in the one before it has finished, so the job depends on the whole nearest earlier stage that has jobs.
+ * The jobs a job with no `needs` waits for. GitLab holds a job until every job in every earlier stage has finished, including jobs that themselves start early through `needs`, so the job depends on all of them.
  */
 function implicitNeedsOf(
   jobs: ReadonlyMap<string, Record<string, unknown>>,
@@ -353,11 +368,19 @@ function implicitNeedsOf(
         `the stage ${JSON.stringify(stageOf(job))}, which is not declared`,
       );
     }
-    const earlier = order
-      .slice(0, position)
-      .reverse()
-      .find((stage) => (byStage.get(stage) ?? []).length > 0);
-    needs.set(name, earlier === undefined ? [] : (byStage.get(earlier) ?? []));
+    const earlier = order.slice(0, position).flatMap((stage) => byStage.get(stage) ?? []);
+    const optional = earlier.find((other) => {
+      const candidate = jobs.get(other);
+
+      return candidate !== undefined && ("rules" in candidate || "when" in candidate);
+    });
+    if (optional !== undefined) {
+      return fail(
+        [name],
+        `a job with no needs that waits on ${JSON.stringify(optional)}, which has rules or a when and so may not run, because the model's needs would wait on a job GitLab skips`,
+      );
+    }
+    needs.set(name, earlier);
   }
 
   return needs;
@@ -396,10 +419,13 @@ function importConfiguration(file: EmittedFile): Pipeline {
   const names = [...jobs.keys()];
   const generated = uniqueJobIds(names);
   const idOf = new Map(names.map((name, index) => [name, generated[index] ?? name]));
+  const globals =
+    document.variables === undefined ? {} : (neutralVariables(document.variables, new Set()) ?? {});
   const context: JobContext = {
     comments,
     idOf,
     implicitNeeds: implicitNeedsOf(jobs, stages),
+    globals,
   };
   const jobEntries = names.map((name) => [name, jobAt(name, jobs.get(name), context)] as const);
 
