@@ -194,6 +194,8 @@ export interface ImporterConformanceOptions {
   readonly rejects: readonly { readonly name: string; readonly file: EmittedFile }[];
   /** True when the provider's compiler has a wrapper form, whose emitted file must be rejected with `UnsupportedNativeError`: it only calls this tool, so the pipeline source it names is what to import. */
   readonly wrapperForm: boolean;
+  /** True when the provider's file can tell a gate from an ordinary dependent job. A provider that already fails a pipeline when a dependency fails writes both the same, so the policy is not in the file to be read back. */
+  readonly distinguishesGate: boolean;
 }
 
 const TOOL_COMMAND = "node packages/cli/src/bin.ts";
@@ -253,8 +255,9 @@ export function describeImporterConformance(
 
     api.it("restores a node description from the comment that carried it", async () => {
       const imported = await makeImporter().import(only(await compile(sample())));
+      const described = Object.values(imported.jobs).find((job) => job.name === "Lint");
       check(
-        imported.jobs.lint?.description === DESCRIPTION_TEXT,
+        described?.description === DESCRIPTION_TEXT,
         "the description was not read back from the file",
       );
     });
@@ -262,19 +265,33 @@ export function describeImporterConformance(
     api.it("reads the jobs, dependencies and matrix the compiler wrote", async () => {
       const original = sample();
       const imported = await makeImporter().import(only(await compile(original)));
+      // A provider that keys a job by its name has no job id to read back, so jobs are compared by name.
+      const names = (pipeline: Pipeline): string[] =>
+        Object.values(pipeline.jobs).map((job) => job.name);
+      const needsByName = (pipeline: Pipeline): string[][] =>
+        Object.values(pipeline.jobs).map((job) =>
+          (job.needs ?? []).map((id) => pipeline.jobs[id]?.name ?? id),
+        );
       check(
-        JSON.stringify(Object.keys(imported.jobs)) === JSON.stringify(Object.keys(original.jobs)),
-        "the imported job ids differ from the original",
+        JSON.stringify(names(imported)) === JSON.stringify(names(original)),
+        "the imported job names differ from the original",
       );
       check(
-        JSON.stringify(imported.jobs.test?.needs) === JSON.stringify(original.jobs.test?.needs),
+        JSON.stringify(needsByName(imported)) === JSON.stringify(needsByName(original)),
         "the imported job dependencies differ from the original",
       );
+      const matrixOf = (pipeline: Pipeline): unknown =>
+        Object.values(pipeline.jobs).find((job) => job.name === "Test")?.matrix;
       check(
-        JSON.stringify(imported.jobs.test?.matrix) === JSON.stringify(original.jobs.test?.matrix),
+        JSON.stringify(matrixOf(imported)) === JSON.stringify(matrixOf(original)),
         "the imported matrix differs from the original",
       );
-      check(imported.jobs.gate?.needsPolicy === "gate", "the gate policy was not restored");
+      if (options.distinguishesGate) {
+        const policy = Object.values(imported.jobs).find(
+          (job) => job.name === "Required checks",
+        )?.needsPolicy;
+        check(policy === "gate", "the gate policy was not restored");
+      }
     });
 
     api.it("rejects text that is not a configuration", async () => {
