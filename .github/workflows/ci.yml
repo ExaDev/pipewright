@@ -128,7 +128,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Read this run
-        run: node packages/cli/src/bin.ts platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -F running
+        run: node packages/cli/src/bin.ts platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -E "queued|running|waiting"
       - name: List this commit's checks
         run: node packages/cli/src/bin.ts platform checks --repo "$REPOSITORY" --sha "$COMMIT"
     env:

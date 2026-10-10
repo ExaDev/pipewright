@@ -155,7 +155,7 @@ const platformSmoke = defineJob("platform-smoke", {
     {
       kind: "run",
       name: "Read this run",
-      run: `${TOOL} platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -F running`,
+      run: `${TOOL} platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -E "queued|running|waiting"`,
     },
     {
       kind: "run",
