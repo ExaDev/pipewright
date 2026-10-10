@@ -58,16 +58,7 @@ describe("CircleCI emission", () => {
       source: SOURCE,
       toolCommand: "node tool/bin.ts",
     });
-    expect(file?.content).toContain("--job test --steps 1-1 --matrix node=<< parameters.node >>");
-  });
-
-  it("emits a scheduled workflow for a schedule trigger", async () => {
-    const [file] = await createCircleCiCompiler().compile(
-      pipelineWith({ triggers: [{ kind: "schedule", cron: "0 0 * * *" }] }),
-      { source: SOURCE },
-    );
-    expect(file?.content).toContain("ci-schedule-0:");
-    expect(file?.content).toContain("cron: 0 0 * * *");
+    expect(file?.content).toContain('--job test --steps 1-1 --matrix "node=<< parameters.node >>"');
   });
 
   describe("guard", () => {
@@ -80,6 +71,80 @@ describe("CircleCI emission", () => {
         }),
       );
       expect(error.pointer).toBe("/jobs/only/native");
+    });
+
+    it("rejects a schedule trigger, which CircleCI requires a branch filter for", async () => {
+      const error = await rejection(
+        pipelineWith({ triggers: [{ kind: "schedule", cron: "0 0 * * *" }] }),
+      );
+      expect(error.pointer).toBe("/triggers/0");
+    });
+
+    it("rejects an executor-less native mapping and one with two executors", async () => {
+      const job = (native: unknown): Record<string, unknown> => ({
+        name: "Only",
+        runsOn: ["x"],
+        native: { circleci: native },
+        steps: [{ kind: "run", run: "true" }],
+      });
+      expect(
+        (await rejection(pipelineWith({ jobs: { only: job({ resource_class: "large" }) } })))
+          .pointer,
+      ).toBe("/jobs/only/native");
+      expect(
+        (
+          await rejection(
+            pipelineWith({ jobs: { only: job({ docker: [{ image: "a" }], machine: true }) } }),
+          )
+        ).pointer,
+      ).toBe("/jobs/only/native");
+    });
+
+    it("rejects a reserved matrix axis name", async () => {
+      const error = await rejection(
+        pipelineWith({
+          jobs: {
+            only: {
+              name: "Only",
+              runsOn: ["x"],
+              native: EXECUTOR,
+              matrix: { name: ["a"] },
+              steps: [{ kind: "run", run: "true" }],
+            },
+          },
+        }),
+      );
+      expect(error.pointer).toBe("/jobs/only/matrix/name");
+    });
+
+    it("rejects two jobs with one display name", async () => {
+      const job = {
+        name: "Same",
+        runsOn: ["x"],
+        native: EXECUTOR,
+        steps: [{ kind: "run", run: "true" }],
+      };
+      const error = await rejection(pipelineWith({ jobs: { one: job, two: job } }));
+      expect(error.pointer).toBe("/jobs/two/name");
+    });
+
+    it("rejects a shallow checkout and keeps a full one", async () => {
+      const withCheckout = (fetchDepth: number | "full"): Pipeline =>
+        pipelineWith({
+          jobs: {
+            only: {
+              name: "Only",
+              runsOn: ["x"],
+              native: EXECUTOR,
+              steps: [{ kind: "checkout", fetchDepth }],
+            },
+          },
+        });
+      expect((await rejection(withCheckout(1))).pointer).toBe("/jobs/only/steps/0/fetchDepth");
+      const [file] = await createCircleCiCompiler().compile(withCheckout("full"), {
+        source: SOURCE,
+      });
+      expect(file?.content).toContain("method: full");
     });
 
     it("rejects a pull-request trigger and a manual trigger", async () => {

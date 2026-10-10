@@ -13,7 +13,7 @@ describe("GitLab CI wrapper form", () => {
       toolCommand: "node tool/bin.ts",
     });
     expect(file?.content).toContain(
-      "node tool/bin.ts run --pipeline ci/sample.pipeline.json --job test --steps 1-1 --matrix node=$node",
+      'node tool/bin.ts run --pipeline ci/sample.pipeline.json --job test --steps 1-1 --matrix "node=$node"',
     );
     expect(file?.content).not.toContain("- pnpm test");
   });

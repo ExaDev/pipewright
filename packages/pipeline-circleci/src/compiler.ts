@@ -19,6 +19,20 @@ import {
 import { renderYaml } from "@ci-adapters/yaml-emit";
 
 const PROVIDER = "circleci";
+
+/** The keys that select a job's executor. A job must name exactly one. */
+const EXECUTOR_KEYS: ReadonlySet<string> = new Set(["docker", "machine", "macos", "executor"]);
+
+/** Names a job parameter cannot take, because CircleCI uses them for workflow job configuration. */
+const RESERVED_PARAMETERS: ReadonlySet<string> = new Set([
+  "name",
+  "requires",
+  "context",
+  "type",
+  "filters",
+  "matrix",
+  "alias",
+]);
 const FILE = ".circleci/config.yml";
 
 /** The pipeline values CircleCI substitutes when the configuration is processed, which are the only context a job's environment can carry. */
@@ -84,7 +98,13 @@ function stepsOf(
     }
 
     if (step.kind === "checkout") {
-      entries.push("checkout");
+      if (typeof step.fetchDepth === "number") {
+        unsupported(
+          `${pointer}/fetchDepth`,
+          "a shallow checkout depth, which CircleCI's checkout step has no equivalent for",
+        );
+      }
+      entries.push(step.fetchDepth === "full" ? { checkout: { method: "full" } } : "checkout");
       index += 1;
     } else if (step.kind === "provider") {
       if (step.provider !== PROVIDER) unsupported(pointer, `a step owned by ${step.provider}`);
@@ -95,7 +115,7 @@ function stepsOf(
         const from = index;
         while (isCollapsible(job.steps[index])) index += 1;
         const matrixFlags = Object.keys(job.matrix ?? {})
-          .map((axis) => ` --matrix ${axis}=<< parameters.${axis} >>`)
+          .map((axis) => ` --matrix "${axis}=<< parameters.${axis} >>"`)
           .join("");
         entries.push({
           run: {
@@ -153,10 +173,11 @@ function jobOf({ id, job, pipeline, toolCommand, source }: JobInput): Record<str
     if (job[field] !== undefined) unsupported(`${pointer}/${field}`, feature);
   }
   const executor = job.native?.circleci;
-  if (executor === undefined) {
+  const executorKeys = Object.keys(executor ?? {}).filter((key) => EXECUTOR_KEYS.has(key));
+  if (executor === undefined || executorKeys.length !== 1) {
     unsupported(
       `${pointer}/native`,
-      "a job with no executor, because CircleCI cannot run one without docker, machine or macos declared under native.circleci",
+      "a job without exactly one executor, because CircleCI requires one of docker, machine, macos or executor declared under native.circleci",
     );
   }
   const form = job.form ?? pipeline.form ?? "native";
@@ -172,10 +193,16 @@ function jobOf({ id, job, pipeline, toolCommand, source }: JobInput): Record<str
     job.matrix === undefined
       ? undefined
       : Object.fromEntries(
-          Object.entries(job.matrix).map(([axis, values]) => [
-            axis,
-            { type: parameterType(values, `${pointer}/matrix/${axis}`) },
-          ]),
+          Object.entries(job.matrix).map(([axis, values]) => {
+            if (RESERVED_PARAMETERS.has(axis)) {
+              unsupported(
+                `${pointer}/matrix/${axis}`,
+                `the matrix axis name ${axis}, which CircleCI reserves for workflow job configuration`,
+              );
+            }
+
+            return [axis, { type: parameterType(values, `${pointer}/matrix/${axis}`) }];
+          }),
         );
 
   return {
@@ -250,6 +277,17 @@ export function createCircleCiCompiler(): PipelineCompiler {
         );
       }
 
+      const taken = new Set<string>();
+      for (const [id, job] of Object.entries(pipeline.jobs)) {
+        const name = workflowJobName(id, job);
+        if (taken.has(name)) {
+          unsupported(
+            `/jobs/${id}/name`,
+            `a second job named "${name}", because CircleCI requires workflow job names to be unique and refers to a dependency by that name`,
+          );
+        }
+        taken.add(name);
+      }
       const comments = new Map<string, string>();
       const jobs: Record<string, unknown> = {};
       const nameOf = new Map<string, string>();
@@ -296,10 +334,10 @@ export function createCircleCiCompiler(): PipelineCompiler {
             };
             break;
           case "schedule":
-            workflows[`${slug}-schedule-${String(index)}`] = {
-              triggers: [{ schedule: { cron: trigger.cron } }],
-              jobs: workflowJobs,
-            };
+            unsupported(
+              pointer,
+              "a schedule trigger, because CircleCI requires a branch filter on a scheduled workflow and the neutral trigger names no branch",
+            );
             break;
           case "pullRequest":
             unsupported(

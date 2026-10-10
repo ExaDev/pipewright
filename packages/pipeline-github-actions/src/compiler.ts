@@ -210,7 +210,7 @@ function isCollapsible(step: Step | undefined): boolean {
 function wrapperStepsOf(id: string, job: Job, context: WrapperContext): Record<string, unknown>[] {
   const pointer = `/jobs/${id}`;
   const matrixFlags = Object.keys(job.matrix ?? {})
-    .map((axis) => ` --matrix ${axis}=\${{ matrix.${axis} }}`)
+    .map((axis) => ` --matrix "${axis}=\${{ matrix.${axis} }}"`)
     .join("");
   const steps: Record<string, unknown>[] = [];
   let index = 0;

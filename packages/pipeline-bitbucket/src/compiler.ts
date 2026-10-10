@@ -22,6 +22,11 @@ const FILE = "bitbucket-pipelines.yml";
 /** The documented range of `max-time`, in minutes. */
 const MAX_TIME_RANGE = { min: 1, max: 720 } as const;
 
+/**
+ * Bitbucket documents `runs-on` as available only for self-hosted runners, and a self-hosted runner always carries this label. Any other label set names no Bitbucket runner, so the job runs on Bitbucket's own infrastructure and the labels are not written.
+ */
+const SELF_HOSTED_LABEL = "self.hosted";
+
 /** The key under `custom` a manual trigger is published as. */
 const MANUAL_PIPELINE = "manual";
 
@@ -30,6 +35,13 @@ interface PlacedStep {
   readonly body: Record<string, unknown>;
   readonly description: string | undefined;
   readonly always: boolean;
+}
+
+/**
+ * Quotes a literal for a POSIX shell, so a matrix value containing a space or a shell metacharacter reaches the runner as one argument.
+ */
+function shellQuote(text: string): string {
+  return `'${text.replaceAll("'", `'\\''`)}'`;
 }
 
 function unsupported(pointer: string, feature: string): never {
@@ -107,7 +119,7 @@ function scriptOf(context: ScriptContext): {
         const from = index;
         while (isCollapsible(job.steps[index])) index += 1;
         const matrixFlags = Object.entries(matrix)
-          .map(([axis, value]) => ` --matrix ${axis}=${String(value)}`)
+          .map(([axis, value]) => ` --matrix ${shellQuote(`${axis}=${String(value)}`)}`)
           .join("");
         script.push(
           `${wrapper.toolCommand} run --pipeline ${wrapper.source} --job ${id} --steps ${String(from)}-${String(index - 1)}${matrixFlags}`,
@@ -177,7 +189,7 @@ function placeJob({ id, job, pipeline, toolCommand, source }: PlaceInput): Place
       description: job.description,
       body: {
         name: stepLabel(job, matrix),
-        ...(job.runsOn.length === 0 ? {} : { "runs-on": job.runsOn }),
+        ...(job.runsOn.includes(SELF_HOSTED_LABEL) ? { "runs-on": job.runsOn } : {}),
         ...(job.timeoutMinutes === undefined ? {} : { "max-time": job.timeoutMinutes }),
         ...(job.environment === undefined ? {} : { deployment: job.environment }),
         ...(cloneDepth === undefined ? {} : { clone: { depth: cloneDepth } }),

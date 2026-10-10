@@ -84,7 +84,7 @@ Conditions are predicate trees from the ExaDev `trilean` package: serialisable J
 - **A pull request's workflow commit is the merge commit.** No run reports it as its head, so listing runs by `github.sha` finds nothing on a pull request. The head is `github.event.pull_request.head.sha`.
 - **The tool cannot run before its dependencies are installed.** A wrapper job's runner invocation absorbed the install step and failed to resolve the workspace's own packages. The install step is marked native.
 - **GitHub counts a job skipped because a dependency failed as successful**, and a skipped job does not block a required check. A gate job therefore runs regardless and fails explicitly. [using conditions to control job execution](https://docs.github.com/en/actions/using-jobs/using-conditions-to-control-job-execution)
-- **Bitbucket's schema allows no `final` step in a custom pipeline.** The official schema rejected the emitted file, which is why an always-running job is refused for a manual trigger.
+- **Bitbucket's published schema allows no `final` step in a custom pipeline**, and the step-options page documents one there. The two disagree; the adapter follows the schema it can run and refuses the combination.
 - **`typescript-eslint` cannot load TypeScript 7**, the native compiler, so the repository stays on the 6 line.
 - **GitLab's `==` is case-sensitive, GitHub's is not**, and Bitbucket's is case-sensitive with no case-insensitive form, which is why the neutral equality is case-insensitive and Bitbucket accepts no conditions.
 

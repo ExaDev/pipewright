@@ -214,7 +214,7 @@ function wrapperOf(
 
   return (from, to, axes) =>
     `${toolCommand} run --pipeline ${source} --job ${id} --steps ${String(from)}-${String(to)}${axes
-      .map((axis) => ` --matrix ${axis}=$${axis}`)
+      .map((axis) => ` --matrix "${axis}=$${axis}"`)
       .join("")}`;
 }
 

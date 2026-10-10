@@ -133,7 +133,7 @@ describe("GitHub Actions emission", () => {
       );
       expect(text).toContain("uses: actions/checkout@v7");
       expect(text).toContain(
-        "run: node tool/bin.ts run --pipeline ci/sample.pipeline.json --job only --steps 1-2 --matrix node=${{ matrix.node }}",
+        'run: node tool/bin.ts run --pipeline ci/sample.pipeline.json --job only --steps 1-2 --matrix "node=${{ matrix.node }}"',
       );
       expect(text).toContain("uses: x/y@v1");
       expect(text).toContain("--steps 4-4");
@@ -166,7 +166,7 @@ describe("GitHub Actions emission", () => {
       gate.form = "native";
       const text = await emitWrapper(pipeline);
       expect(text).toContain("--job lint --steps 1-1");
-      expect(text).toContain("--job test --steps 1-1 --matrix node=${{ matrix.node }}");
+      expect(text).toContain('--job test --steps 1-1 --matrix "node=${{ matrix.node }}"');
       expect(text).toContain("run: echo gate");
     });
 

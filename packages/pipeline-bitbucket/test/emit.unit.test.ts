@@ -49,6 +49,42 @@ describe("Bitbucket Pipelines emission", () => {
     expect(file?.content).toBe(golden);
   });
 
+  it("writes runs-on only for a self-hosted runner label", async () => {
+    const compile = async (runsOn: readonly string[]): Promise<string> => {
+      const [file] = await createBitbucketPipelinesCompiler().compile(
+        pipelineWith({
+          jobs: {
+            only: { name: "Only", runsOn, steps: [{ kind: "run", run: "true" }] },
+          },
+        }),
+        { source: SOURCE },
+      );
+
+      return file?.content ?? "";
+    };
+    expect(await compile(["ubuntu-latest"])).not.toContain("runs-on");
+    expect(await compile(["self.hosted", "linux"])).toContain("runs-on");
+  });
+
+  it("quotes a matrix value that contains a space", async () => {
+    const pipeline = pipelineWith({
+      form: "wrapper",
+      jobs: {
+        only: {
+          name: "Only",
+          runsOn: ["x"],
+          matrix: { version: ["node 22"] },
+          steps: [{ kind: "run", run: "true" }],
+        },
+      },
+    });
+    const [file] = await createBitbucketPipelinesCompiler().compile(pipeline, {
+      source: SOURCE,
+      toolCommand: "tool",
+    });
+    expect(file?.content).toContain("--matrix 'version=node 22'");
+  });
+
   it("writes the wrapper form with the matrix value as a literal flag", async () => {
     const pipeline = samplePipeline(FEATURES);
     pipeline.form = "wrapper";
@@ -57,7 +93,7 @@ describe("Bitbucket Pipelines emission", () => {
       toolCommand: "node tool/bin.ts",
     });
     expect(file?.content).toContain(
-      "node tool/bin.ts run --pipeline ci/sample.pipeline.json --job test --steps 1-1 --matrix node=22",
+      "node tool/bin.ts run --pipeline ci/sample.pipeline.json --job test --steps 1-1 --matrix 'node=22'",
     );
   });
 
