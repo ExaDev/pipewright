@@ -148,10 +148,15 @@ function variableFor(
     : `\${${token.name}}`;
 }
 
+/**
+ * Text with each reference rendered as a variable. GitLab expands `$NAME` wherever it appears in a variable's value, so a literal `$` in the model's text, which a file for another provider can carry as plain text, is written `$$` and stays the character it was.
+ */
+function valueOf(value: string): string {
+  return renderTemplate(value.replaceAll("$", "$$$$"), variableFor);
+}
+
 function variablesOf(env: Readonly<Record<string, string>>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(env).map(([key, value]) => [key, renderTemplate(value, variableFor)]),
-  );
+  return Object.fromEntries(Object.entries(env).map(([key, value]) => [key, valueOf(value)]));
 }
 
 interface JobOutput {
@@ -295,9 +300,7 @@ function jobOf(input: JobInput): JobOutput {
     ...variablesOf(job.env ?? {}),
   };
   const group =
-    pipeline.concurrency === undefined
-      ? undefined
-      : renderTemplate(pipeline.concurrency.group, variableFor);
+    pipeline.concurrency === undefined ? undefined : valueOf(pipeline.concurrency.group);
 
   if (job.description !== undefined) comments.set(key, job.description);
 
