@@ -113,7 +113,10 @@ function stepAt(
       const substituted = [settings.command, settings.name, settings.working_directory].some(
         (text) =>
           typeof text === "string" &&
-          (new RegExp(SUBSTITUTION.source).test(text) || RUNTIME_VARIABLE.test(text)),
+          (new RegExp(SUBSTITUTION.source).test(text) ||
+            RUNTIME_VARIABLE.test(text) ||
+            // GitHub evaluates `${{ }}` in a command before the shell, so a command carrying one must not reach a GitHub workflow as portable text.
+            text.includes("${{")),
       );
       const portable =
         !substituted &&
