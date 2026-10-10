@@ -176,8 +176,8 @@ importers:
         specifier: 10.0.1
         version: 10.0.1(eslint@10.12.0(jiti@2.7.0))
       '@exadev/eslint-config':
-        specifier: 2.36.4
-        version: 2.36.4(@eslint/json@2.1.0)(eslint@10.12.0(jiti@2.7.0))(typescript-eslint@8.71.0(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)
+        specifier: 3.0.0
+        version: 3.0.0(@eslint/json@2.1.0)(eslint@10.12.0(jiti@2.7.0))(typescript-eslint@8.71.0(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)
       '@types/node':
         specifier: 26.6.4
         version: 26.6.4
@@ -471,8 +471,8 @@ packages:
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
 
-  '@exadev/eslint-config@2.36.4':
-    resolution: {integrity: sha512-yMXF3OtHditaz0DmCVq5sqDiaj+U6S+nKCYz49AJWnd0E9a4gumt67dVc2w1ReHVEfvHX8Q5cUNSrQQDtJvwTA==}
+  '@exadev/eslint-config@3.0.0':
+    resolution: {integrity: sha512-nvyOjjM1sGKjQo6buZt69vJ5ND0CuE/lxoDvR2oRgv74qj4gJBZr10d6Y/QeTd6LQIPDkPPnH78YYfX/HSzNJA==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
     peerDependencies:
       '@eslint/json': ^2.1.0
@@ -1851,7 +1851,7 @@ snapshots:
       '@eslint/core': 1.2.1
       levn: 0.4.1
 
-  '@exadev/eslint-config@2.36.4(@eslint/json@2.1.0)(eslint@10.12.0(jiti@2.7.0))(typescript-eslint@8.71.0(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)':
+  '@exadev/eslint-config@3.0.0(@eslint/json@2.1.0)(eslint@10.12.0(jiti@2.7.0))(typescript-eslint@8.71.0(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)':
     dependencies:
       '@eslint/js': 10.0.1(eslint@10.12.0(jiti@2.7.0))
       '@microsoft/tsdoc': 0.17.1
@@ -2033,8 +2033,8 @@ snapshots:
 
   '@typescript-eslint/project-service@8.56.1(typescript@6.0.3)':
     dependencies:
-      '@typescript-eslint/tsconfig-utils': 8.56.1(typescript@6.0.3)
-      '@typescript-eslint/types': 8.56.1
+      '@typescript-eslint/tsconfig-utils': 8.71.0(typescript@6.0.3)
+      '@typescript-eslint/types': 8.71.0
       debug: 4.4.3
       typescript: 6.0.3
     transitivePeerDependencies:

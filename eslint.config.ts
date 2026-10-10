@@ -1,12 +1,13 @@
 import { exadevConfig } from "@exadev/eslint-config";
+import { defineConfig } from "eslint/config";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import globals from "globals";
 
 /**
  * One configuration for the whole workspace. Packages are source-only members of a single TypeScript program, so type-aware rules resolve every file through the root tsconfig rather than one per package.
  */
-export default exadevConfig(
-  {},
+export default defineConfig(
+  ...exadevConfig(),
   {
     ignores: [
       "node_modules",
