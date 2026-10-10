@@ -44,6 +44,53 @@ async function emit(pipeline: Pipeline): Promise<string> {
   return file.content;
 }
 
+describe("GitHub Actions runner labels", () => {
+  it("rejects a job with no runner label, which GitHub cannot select by anything else", async () => {
+    await expect(emit(pipelineWith({ runsOn: [] }))).rejects.toMatchObject({
+      pointer: "/jobs/only/runsOn",
+    });
+  });
+});
+
+describe("GitHub Actions step descriptions", () => {
+  const steps = [
+    { kind: "checkout", description: "Get the sources." },
+    { kind: "run", run: "pnpm test", description: "Run the suite." },
+  ];
+
+  it("annotates the step that carries a description when a gate adds a leading step", async () => {
+    const text = await emit(
+      pipelineSchema.parse({
+        name: "CI",
+        triggers: [{ kind: "push" }],
+        jobs: {
+          build: { name: "Build", runsOn: ["x"], steps: [{ kind: "run", run: "build" }] },
+          gate: { name: "Gate", runsOn: ["x"], needs: ["build"], needsPolicy: "gate", steps },
+        },
+      }),
+    );
+
+    expect(text).toContain("# Get the sources.\n      - uses: actions/checkout@");
+    expect(text).toContain("# Run the suite.\n      - run: pnpm test");
+  });
+
+  it("annotates only steps that keep a step of their own in the wrapper form", async () => {
+    const [file] = await createGitHubActionsCompiler().compile(
+      pipelineSchema.parse({
+        name: "CI",
+        triggers: [{ kind: "push" }],
+        jobs: {
+          build: { name: "Build", runsOn: ["x"], form: "wrapper", steps },
+        },
+      }),
+      { source: SOURCE, toolCommand: "tool" },
+    );
+
+    expect(file?.content).toContain("# Get the sources.\n      - uses: actions/checkout@");
+    expect(file?.content).not.toContain("Run the suite.");
+  });
+});
+
 describe("GitHub Actions emission", () => {
   it("matches the golden workflow for the sample pipeline", async () => {
     const golden = await readFile(new URL("./golden/sample.yml", import.meta.url), "utf8");
