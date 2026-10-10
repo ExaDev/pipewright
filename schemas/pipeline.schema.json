@@ -189,7 +189,6 @@
             "minLength": 1
           },
           "runsOn": {
-            "minItems": 1,
             "type": "array",
             "items": {
               "type": "string",
