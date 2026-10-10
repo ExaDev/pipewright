@@ -7,6 +7,7 @@ import { loadPipeline, pipelineSchema } from "@pipewright/pipeline-contract";
 import { createGitHubActionsCompiler } from "@pipewright/pipeline-github-actions";
 import { createGitLabCiCompiler } from "@pipewright/pipeline-gitlab-ci";
 
+const SCHEMA = "https://unpkg.com/@pipewright/pipeline-contract/dist/pipeline.schema.json";
 const ROOT = resolve(import.meta.dirname, "../../..");
 
 describe("the JSON example", () => {
@@ -30,13 +31,13 @@ describe("JSON as the serialisation of a pipeline", () => {
         ? module.default
         : undefined,
     );
-    const exported = JSON.stringify({ ...authored, $schema: "pipeline.schema.json" });
+    const exported = JSON.stringify({ ...authored, $schema: SCHEMA });
 
     const { pipeline } = await loadPipeline("exported.pipeline.json", {
       read: async () => Promise.resolve(exported),
     });
 
-    expect(pipeline).toEqual({ ...authored, $schema: "pipeline.schema.json" });
+    expect(pipeline).toEqual({ ...authored, $schema: SCHEMA });
   });
 
   it("emits the same workflow from the exported document as from the module", async () => {
@@ -47,8 +48,7 @@ describe("JSON as the serialisation of a pipeline", () => {
         : undefined,
     );
     const { pipeline } = await loadPipeline("exported.pipeline.json", {
-      read: async () =>
-        Promise.resolve(JSON.stringify({ ...authored, $schema: "pipeline.schema.json" })),
+      read: async () => Promise.resolve(JSON.stringify({ ...authored, $schema: SCHEMA })),
     });
     const options = { source: "ci/ci.pipeline.ts", toolCommand: "tool" };
     const compiler = createGitHubActionsCompiler();

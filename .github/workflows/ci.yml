@@ -64,7 +64,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Run Test
         run: node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.ts --job test --steps 4-4
-  # Fails when a generated file differs from what the tool emits now.
+  # Fails when a generated workflow differs from what the tool emits now.
   drift:
     name: Generated files
     runs-on: ubuntu-latest
@@ -79,7 +79,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Generated files
-        run: node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts schema | diff -u schemas/pipeline.schema.json - && node packages/cli/src/bin.ts schema --authoring | diff -u schemas/pipeline.authoring.schema.json -
+        run: node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts"
   # Validates the emitted workflow with GitHub's own linter rules.
   actionlint:
     name: Actionlint

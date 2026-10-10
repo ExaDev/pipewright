@@ -74,7 +74,8 @@ const IMPORTERS: Readonly<Record<string, () => PipelineImporter>> = {
 };
 
 /** Where an exported document says its JSON Schema is, relative to the file it is written to. */
-const DEFAULT_SCHEMA_REFERENCE = "pipeline.schema.json";
+const DEFAULT_SCHEMA_REFERENCE =
+  "https://unpkg.com/@pipewright/pipeline-contract/dist/pipeline.schema.json";
 
 const USAGE = `pipewright <command> [options]
 

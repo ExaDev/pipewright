@@ -61,6 +61,15 @@ describe("packed packages", () => {
     expect(output.trim()).toBe("function");
   });
 
+  it("ships the JSON Schemas inside the contract, where a document's $schema resolves", () => {
+    for (const name of ["pipeline.schema.json", "pipeline.authoring.schema.json"]) {
+      const file = join(project, "node_modules", "@pipewright", "pipeline-contract", "dist", name);
+      const schema: unknown = JSON.parse(readFileSync(file, "utf8"));
+
+      expect(schema).toMatchObject({ type: "object" });
+    }
+  });
+
   it("runs the pipewright binary, which prints the JSON Schema", () => {
     const output = run(join(project, "node_modules", ".bin", "pipewright"), ["schema"], project);
 
