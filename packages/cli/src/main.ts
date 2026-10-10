@@ -56,7 +56,7 @@ Commands
   schema       [--authoring]                                              print the JSON Schema
   check-names  --pipeline <file> --provider <id> --scope gates|all
                [--repo <owner>/<repo> --branch <name>]                    derive required check names, and compare with the platform
-  platform     runs|checks|logs|required --repo <owner>/<repo> [...]      read-only platform queries
+  platform     runs|run|checks|logs|required --repo <owner>/<repo> [...]  read-only platform queries
 
 Providers: ${Object.keys(COMPILERS).join(", ")}
 `;
@@ -308,6 +308,14 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
                 run.status === "completed" ? `${run.status}/${run.conclusion}` : run.status;
               io.stdout(`${run.id}\t${result}\t${run.ref}\t${run.name}\n`);
             }
+
+            return 0;
+          }
+          case "run": {
+            const run = await reader.getRun(required(values.run, "--run"));
+            const result =
+              run.status === "completed" ? `${run.status}/${run.conclusion}` : run.status;
+            io.stdout(`${run.id}\t${result}\t${run.ref}\t${run.name}\n`);
 
             return 0;
           }

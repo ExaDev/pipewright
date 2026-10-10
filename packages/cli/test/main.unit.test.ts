@@ -267,6 +267,31 @@ describe("schema, check-names and platform", () => {
     expect(h.out.join("")).toBe("Required checks\n");
   });
 
+  it("reads one run through the platform adapter", async () => {
+    const h = harness({ env: { GH_TOKEN: "test-credential" } });
+    const io: Io = {
+      ...h.io,
+      fetch: async () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: 7,
+              name: "CI",
+              status: "in_progress",
+              conclusion: null,
+              head_branch: "main",
+              head_sha: "abc",
+              event: "push",
+              html_url: "https://example.com/runs/7",
+              created_at: "2026-01-01T00:00:00Z",
+            }),
+          ),
+        ),
+    };
+    expect(await main(["platform", "run", "--repo", "o/r", "--run", "7"], io)).toBe(0);
+    expect(h.out.join("")).toBe("7\trunning\tmain\tCI\n");
+  });
+
   it("refuses a platform query when no token is set", async () => {
     const h = harness();
     expect(await main(["platform", "runs", "--repo", "o/r"], h.io)).toBe(1);

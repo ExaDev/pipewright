@@ -59,7 +59,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Lint
         run: pnpm run lint
-  # Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. Required-check comparison is not possible here: rulesets are unavailable to a private repository on this organisation's plan, and the API answers 403.
+  # Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. A required-check comparison is not possible here: rulesets are unavailable to a private repository on this organisation's plan, and the API answers 403.
   platform-smoke:
     name: Platform read path
     runs-on: ubuntu-latest
@@ -77,12 +77,12 @@ jobs:
           node-version-file: .tool-versions
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: List this run
-        run: node packages/cli/src/bin.ts platform runs --repo "$REPOSITORY" --sha "$COMMIT" | grep -F "$RUN_ID"
+      - name: Read this run
+        run: node packages/cli/src/bin.ts platform run --repo "$REPOSITORY" --run "$RUN_ID" | grep -F running
       - name: List this commit's checks
         run: node packages/cli/src/bin.ts platform checks --sha "$COMMIT"
     env:
-      COMMIT: ${{ github.sha }}
+      COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
       GH_TOKEN: ${{ github.token }}
       REPOSITORY: ${{ github.repository }}
       RUN_ID: ${{ github.run_id }}
