@@ -59,10 +59,39 @@ async function emit(compiler: Readonly<PipelineCompiler>, features: SampleFeatur
   return file;
 }
 
+/** Attempts per schema download. A published schema host that rate-limits answers 429, which is transient by definition. */
+const FETCH_ATTEMPTS = 5;
+/** The wait after the first refusal when the server gives no Retry-After, doubled on each further one. */
+const FIRST_BACKOFF_MS = 2000;
+const MS_PER_SECOND = 1000;
+/** HTTP statuses that mean the request may succeed if repeated. */
+const HTTP_TOO_MANY_REQUESTS = 429;
+const HTTP_SERVER_ERROR_FLOOR = 500;
+
+async function fetchSchema(url: string): Promise<unknown> {
+  const attempt = async (number: number, backoff: number): Promise<unknown> => {
+    const response = await fetch(url);
+    if (response.ok) return response.json();
+    const transient =
+      response.status === HTTP_TOO_MANY_REQUESTS || response.status >= HTTP_SERVER_ERROR_FLOOR;
+    if (!transient || number >= FETCH_ATTEMPTS) {
+      throw new Error(`could not fetch ${url}: ${String(response.status)}`);
+    }
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const wait =
+      Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * MS_PER_SECOND : backoff;
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, wait);
+    });
+
+    return attempt(number + 1, backoff * 2);
+  };
+
+  return attempt(1, FIRST_BACKOFF_MS);
+}
+
 async function schemaErrors(url: string, document: unknown): Promise<unknown[]> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`could not fetch ${url}: ${String(response.status)}`);
-  const schema: unknown = await response.json();
+  const schema = await fetchSchema(url);
   if (typeof schema !== "object" || schema === null) throw new Error(`${url} is not a schema`);
   const validate = new Ajv({ strict: false, allErrors: true, logger: false }).compile(schema);
   validate(document);
