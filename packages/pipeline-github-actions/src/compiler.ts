@@ -7,6 +7,7 @@ import {
   matrixValues,
   generatedHeaderLines,
   renderTemplate,
+  slugOf,
   type CompileOptions,
   type ContextKey,
   type EmittedFile,
@@ -254,13 +255,6 @@ function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): Recor
   };
 }
 
-function slug(text: string): string {
-  return text
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, "-")
-    .replaceAll(/^-+|-+$/g, "");
-}
-
 function triggersOf(pipeline: Pipeline, comments: Map<string, string>): Record<string, unknown> {
   const on: Record<string, unknown> = {};
   const schedules: { cron: string }[] = [];
@@ -373,7 +367,7 @@ export function createGitHubActionsCompiler(): PipelineCompiler {
 
       return Promise.resolve([
         {
-          path: `.github/workflows/${slug(pipeline.name)}.yml`,
+          path: `.github/workflows/${slugOf(pipeline.name)}.yml`,
           content: renderYaml(document, comments, generatedHeaderLines(options.source)),
         },
       ]);

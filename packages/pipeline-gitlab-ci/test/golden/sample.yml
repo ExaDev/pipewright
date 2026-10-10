@@ -5,7 +5,6 @@ workflow:
   name: CI
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^(main)$/i
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "web"
   auto_cancel:
     on_new_commit: interruptible

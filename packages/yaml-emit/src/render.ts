@@ -56,7 +56,7 @@ export function renderYaml(
   comments: CommentTable,
   headerLines: readonly string[],
 ): string {
-  const document = new Document(value);
+  const document = new Document(value, { aliasDuplicateObjects: false });
   document.commentBefore = asComment(headerLines.join("\n"));
   for (const [path, text] of comments) {
     const node = target(document.contents, path.split("/"));

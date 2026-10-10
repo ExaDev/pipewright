@@ -2,6 +2,7 @@ import {
   UnsupportedFeatureError,
   assertNever,
   compilePredicate,
+  dependencyLevels,
   expandMatrix,
   matrixValues,
   generatedHeaderLines,
@@ -174,22 +175,6 @@ function variablesOf(env: Readonly<Record<string, string>>): Record<string, stri
   return Object.fromEntries(
     Object.entries(env).map(([key, value]) => [key, renderTemplate(value, variableFor)]),
   );
-}
-
-function levelsOf(pipeline: Pipeline): Map<string, number> {
-  const levels = new Map<string, number>();
-  const levelOf = (id: string): number => {
-    const known = levels.get(id);
-    if (known !== undefined) return known;
-    const needs = pipeline.jobs[id]?.needs ?? [];
-    const level = needs.length === 0 ? 0 : Math.max(...needs.map(levelOf)) + 1;
-    levels.set(id, level);
-
-    return level;
-  };
-  for (const id of Object.keys(pipeline.jobs)) levelOf(id);
-
-  return levels;
 }
 
 interface JobOutput {
@@ -373,7 +358,7 @@ export function createGitLabCiCompiler(): PipelineCompiler {
         keyOf.set(id, job.name);
       }
 
-      const levels = levelsOf(pipeline);
+      const levels = dependencyLevels(pipeline.jobs);
       const deepest = Math.max(...levels.values());
       const comments = new Map<string, string>();
       const jobs: Record<string, unknown> = {};

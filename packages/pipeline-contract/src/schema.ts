@@ -54,7 +54,7 @@ export const permissionLevelSchema = z.enum(["none", "read", "write"]);
 export const permissionsSchema = z.partialRecord(z.enum(PERMISSION_SCOPES), permissionLevelSchema);
 export type Permissions = z.infer<typeof permissionsSchema>;
 
-const providerIdSchema = z.enum(["github-actions", "gitlab-ci"]);
+const providerIdSchema = z.enum(["github-actions", "gitlab-ci", "bitbucket-pipelines", "circleci"]);
 export type ProviderId = z.infer<typeof providerIdSchema>;
 
 const envSchema = z.record(z.string().min(1), templateString);
