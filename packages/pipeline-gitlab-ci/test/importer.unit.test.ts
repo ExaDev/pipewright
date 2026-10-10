@@ -165,4 +165,62 @@ describe("GitLab CI import", () => {
     expect(error.pointer).toBe("/build/tags");
     expect(error.provider).toBe("gitlab-ci");
   });
+
+  it("makes a job with no needs wait for every job in every earlier stage", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}stages: [build, test, deploy]\nbuild-a:\n  stage: build\n${JOB}build-b:\n  stage: build\n${JOB}test-x:\n  stage: test\n  needs: [build-a]\n${JOB}deploy:\n  stage: deploy\n${JOB}`,
+    );
+
+    expect(pipeline.jobs.deploy?.needs).toEqual(["build-a", "build-b", "test-x"]);
+  });
+
+  it("rejects a stage order over a job that may not run", async () => {
+    const error = await rejection(
+      `${WORKFLOW}stages: [build, test]\nbuild-a:\n  stage: build\n${JOB}  rules:\n    - if: $CI_COMMIT_TAG\ncheck:\n  stage: test\n${JOB}`,
+    );
+
+    expect(error.pointer).toBe("/check");
+  });
+
+  it("reads the lines of a script as one step, since they share a shell", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}build:\n  tags: [linux]\n  script:\n    - cd web\n    - npm test\n`,
+    );
+
+    expect(pipeline.jobs.build?.steps[1]).toEqual({ kind: "run", run: "cd web\nnpm test" });
+  });
+
+  it("carries a script that reads a GitLab variable or a matrix axis as a provider step", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}test:\n  tags: [linux]\n  parallel:\n    matrix:\n      - NODE: ["20", "22"]\n  script:\n    - nvm use $NODE\n`,
+    );
+    const other = await importText(
+      `${WORKFLOW}build:\n  tags: [linux]\n  script:\n    - echo $CI_COMMIT_SHA\n`,
+    );
+
+    expect(pipeline.jobs.test?.steps[1]).toMatchObject({
+      kind: "provider",
+      native: { script: ["nvm use $NODE"] },
+    });
+    expect(other.jobs.build?.steps[1]).toMatchObject({ kind: "provider" });
+  });
+
+  it("reads a pipeline-level GIT_DEPTH and GIT_STRATEGY into each job's checkout", async () => {
+    const depth = await importText(`${WORKFLOW}variables:\n  GIT_DEPTH: "0"\nbuild:\n${JOB}`);
+    const none = await importText(`${WORKFLOW}variables:\n  GIT_STRATEGY: none\nbuild:\n${JOB}`);
+
+    expect(depth.jobs.build?.steps[0]).toEqual({ kind: "checkout", fetchDepth: "full" });
+    expect(none.jobs.build?.steps[0]).toMatchObject({ kind: "run" });
+  });
+
+  it("keeps an environment name with a variable in it as GitLab's", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}deploy:\n${JOB}  environment: review/$CI_COMMIT_REF_SLUG\n`,
+    );
+
+    expect(pipeline.jobs.deploy?.environment).toBeUndefined();
+    expect(pipeline.jobs.deploy?.native).toEqual({
+      "gitlab-ci": { environment: "review/$CI_COMMIT_REF_SLUG" },
+    });
+  });
 });
