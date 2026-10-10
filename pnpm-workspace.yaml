@@ -1,0 +1,20 @@
+packages:
+  - "packages/*"
+
+# Sibling dependencies are plain exact versions resolved from the workspace, so a package stays installable if it is ever published. Nothing here publishes today.
+linkWorkspacePackages: true
+saveWorkspaceProtocol: false
+saveExact: true
+
+# Seven days, in minutes, matching the global pnpm configuration. CI never reads the global file, so the limit is repeated here rather than assumed.
+minimumReleaseAge: 10080
+
+# ExaDev's own packages, published only from their own CI with trusted publishing.
+minimumReleaseAgeExclude:
+  - "@exadev/eslint-config"
+  - "trilean"
+  - "eslint-plugin-json-canonical"
+
+# esbuild (via vitest) fetches its platform binary in an install script and does not run without it; every other install script stays refused.
+allowBuilds:
+  esbuild: true
