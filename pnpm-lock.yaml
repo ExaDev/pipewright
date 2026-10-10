@@ -167,9 +167,21 @@ catalogs:
     '@exadev/process-graph-dag':
       specifier: 1.0.0
       version: 1.0.0
+    '@exadev/process-graph-domain':
+      specifier: 1.0.0
+      version: 1.0.0
+    '@exadev/process-graph-projection':
+      specifier: 1.0.0
+      version: 1.0.0
+    '@exadev/process-graph-schema':
+      specifier: 1.0.0
+      version: 1.0.0
     ajv:
       specifier: 8.20.0
       version: 8.20.0
+    trilean:
+      specifier: 1.7.2
+      version: 1.7.2
     yaml:
       specifier: 2.9.1
       version: 2.9.1
@@ -316,8 +328,8 @@ importers:
         specifier: 'catalog:'
         version: 1.0.0
       trilean:
-        specifier: 1.7.1
-        version: 1.7.1
+        specifier: 'catalog:'
+        version: 1.7.2
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -344,6 +356,28 @@ importers:
         specifier: 0.0.0
         version: link:../yaml-emit
       '@exadev/process-graph-dag':
+        specifier: 'catalog:'
+        version: 1.0.0
+
+  packages/pipeline-graph:
+    dependencies:
+      '@ci-adapters/pipeline-contract':
+        specifier: 0.0.0
+        version: link:../pipeline-contract
+      '@ci-adapters/platform-contract':
+        specifier: 0.0.0
+        version: link:../platform-contract
+      '@exadev/process-graph-schema':
+        specifier: 'catalog:'
+        version: 1.0.0
+    devDependencies:
+      '@exadev/process-graph-dag':
+        specifier: 'catalog:'
+        version: 1.0.0
+      '@exadev/process-graph-domain':
+        specifier: 'catalog:'
+        version: 1.0.0
+      '@exadev/process-graph-projection':
         specifier: 'catalog:'
         version: 1.0.0
 
@@ -565,6 +599,15 @@ packages:
 
   '@exadev/process-graph-dag@1.0.0':
     resolution: {integrity: sha512-2KoGmoxAZ3M+I8cWbe2IuezIdQg6b9yyrO8gyCPGphgiT/xDLZ58qkp3gIgPYgZqa3bcWMb7ffmsnwHAty5DlQ==}
+
+  '@exadev/process-graph-domain@1.0.0':
+    resolution: {integrity: sha512-8MIlMUixK2mqwyRpNR8LSreFT5+Yq3m9ITv4xT8cGlKq3AudiNpD/f5j3HIldVrYCEput+kAZQnTEF/DjEwybA==}
+
+  '@exadev/process-graph-projection@1.0.0':
+    resolution: {integrity: sha512-1exEmCwiM0k/KSQz5xIdkgrUqD0whHNEwqOtsJPl+UWsdW17jKtY6aJsTiInDI5QcUErQJeagHIfrjpa2iRF7Q==}
+
+  '@exadev/process-graph-schema@1.0.0':
+    resolution: {integrity: sha512-AagYiOqL8YbYzHjgpOsKCZReaDp/WwKRtJUQzFjbDynnJzGOb9cTd4giY7Bst8TOP2UlypcpGMMd+rfcWfFb5g==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -1559,12 +1602,12 @@ packages:
     resolution: {integrity: sha512-41wJyvKep3yT2tyPqX/4blcfybknGB4D+oETKLs7Q76UiPqRpUJK3hr1nxelyYO0PHKVzJwlu0aCeEAsGI6rpw==}
     engines: {node: '>=20'}
 
-  trilean-regex@1.0.3:
-    resolution: {integrity: sha512-6i+FYT0udFlu8sR4suack6FDnYhkgrUeUk2LC16Zj28zhtPeJJTiHtoHDqmsEMUYJMrkKHZ32CBguyHV87JS8A==}
+  trilean-regex@1.0.4:
+    resolution: {integrity: sha512-uUjHS0KKuqqcUwWZjhYS9WOlt0BAYwNztiJMfpXPkQfRCXAv3kIkvdY0NbXUGRuV/o/z+JpnRfbVA9hzBvZjMA==}
     engines: {node: '>=20'}
 
-  trilean@1.7.1:
-    resolution: {integrity: sha512-qRlE3AEyxd9/7KB4B106MmyR77qTAvVWuAI/vjPcZy2r7ZtrUEnXBvWaVSy2nni5N+gP0v8KY5zzjGps5Q2dvA==}
+  trilean@1.7.2:
+    resolution: {integrity: sha512-9LCIhYxQWeCaSHWH0ygv8bquw72co01Zs/0b1t1faKxdOEzQQCDt4FDoQdaS893218y+rURk6m04KgSxJdgmUA==}
     engines: {node: '>=20'}
 
   ts-api-utils@2.5.0:
@@ -1938,6 +1981,21 @@ snapshots:
   '@exadev/json-compose@1.0.0': {}
 
   '@exadev/process-graph-dag@1.0.0': {}
+
+  '@exadev/process-graph-domain@1.0.0':
+    dependencies:
+      '@exadev/process-graph-dag': 1.0.0
+      '@exadev/process-graph-schema': 1.0.0
+      trilean: 1.7.2
+
+  '@exadev/process-graph-projection@1.0.0':
+    dependencies:
+      '@exadev/process-graph-schema': 1.0.0
+
+  '@exadev/process-graph-schema@1.0.0':
+    dependencies:
+      trilean: 1.7.2
+      zod: 4.6.5
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -2841,11 +2899,11 @@ snapshots:
       '@sindresorhus/base62': 1.0.0
       reserved-identifiers: 1.2.0
 
-  trilean-regex@1.0.3: {}
+  trilean-regex@1.0.4: {}
 
-  trilean@1.7.1:
+  trilean@1.7.2:
     dependencies:
-      trilean-regex: 1.0.3
+      trilean-regex: 1.0.4
       zod: 4.6.5
 
   ts-api-utils@2.5.0(typescript@6.0.3):
