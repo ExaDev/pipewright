@@ -35,6 +35,7 @@ export {
   type Trigger,
 } from "./schema.ts";
 export { compilePredicate, type Operand, type PredicateHandlers } from "./predicate.ts";
+export { predicateOf, type Condition } from "./condition.ts";
 export {
   diffEmitted,
   generatedHeaderLines,
