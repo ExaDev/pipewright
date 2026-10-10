@@ -17,6 +17,14 @@ export default defineConfig({
           testTimeout: 60_000,
         },
       },
+      {
+        // Executes an emitted workflow on GitHub through the platform adapter. It needs a token, a repository and a ref, runs only after a merge to main, and fails rather than skips when any is missing.
+        test: {
+          name: "e2e",
+          include: ["packages/*/test/**/*.e2e.test.ts"],
+          testTimeout: 700_000,
+        },
+      },
     ],
   },
 });

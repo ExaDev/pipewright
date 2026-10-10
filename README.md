@@ -132,6 +132,7 @@ pnpm run lint
 pnpm run typecheck
 pnpm run test               # unit tests, offline
 pnpm run test:integration   # each provider's own validator over the emitted sample
+pnpm run test:e2e           # dispatch an emitted workflow on GitHub and watch it (needs GH_TOKEN, REPOSITORY, E2E_REF)
 pnpm run ci:local   # this repository's own pipeline, through its own runner
 pnpm run ci:check   # fails if the generated workflow has drifted
 pnpm run schema     # regenerate the JSON Schemas
