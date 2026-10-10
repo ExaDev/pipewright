@@ -116,6 +116,23 @@ const actionlint = defineJob("actionlint", {
   ],
 });
 
+const validators = defineJob("validators", {
+  name: "Provider validators",
+  description:
+    "Runs each provider's own validator over the configuration the tool emits for it: actionlint for GitHub, and the published JSON Schemas for GitLab, Bitbucket and CircleCI.",
+  runsOn: [RUNNER],
+  timeoutMinutes: DEFAULT_TIMEOUT_MINUTES,
+  steps: [
+    ...setup,
+    {
+      kind: "run",
+      name: "Install actionlint",
+      run: 'go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"',
+    },
+    { kind: "run", name: "Validate", run: "pnpm run test:integration" },
+  ],
+});
+
 const platformSmoke = defineJob("platform-smoke", {
   name: "Platform read path",
   description:
@@ -154,20 +171,9 @@ const requiredChecks = defineJob("required-checks", {
     "The single branch-protection target. It runs whatever the other jobs concluded and fails unless all succeeded.",
   runsOn: [RUNNER],
   timeoutMinutes: GATE_TIMEOUT_MINUTES,
-  needsPolicy: "always",
-  needs: [lint, typecheck, test, drift, actionlint, platformSmoke],
-  steps: [
-    {
-      kind: "provider",
-      provider: "github-actions",
-      native: {
-        name: "Fail when a required job did not succeed",
-        if: "contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')",
-        run: "exit 1",
-      },
-    },
-    { kind: "run", name: "Report", run: "echo all required jobs succeeded" },
-  ],
+  needsPolicy: "gate",
+  needs: [lint, typecheck, test, drift, actionlint, validators, platformSmoke],
+  steps: [{ kind: "run", name: "Report", run: "echo all required jobs succeeded" }],
 });
 
 export default definePipeline({
@@ -180,5 +186,5 @@ export default definePipeline({
     cancelInProgress: true,
     description: "A new push to a branch supersedes that branch's in-flight run.",
   },
-  jobs: jobsOf(lint, typecheck, test, drift, actionlint, platformSmoke, requiredChecks),
+  jobs: jobsOf(lint, typecheck, test, drift, actionlint, validators, platformSmoke, requiredChecks),
 });

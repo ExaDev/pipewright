@@ -91,6 +91,24 @@ jobs:
         run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
       - name: Lint workflows
         run: '"$(go env GOPATH)/bin/actionlint"'
+  # Runs each provider's own validator over the configuration the tool emits for it: actionlint for GitHub, and the published JSON Schemas for GitLab, Bitbucket and CircleCI.
+  validators:
+    name: Provider validators
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Install actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 && echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Validate
+        run: pnpm run test:integration
   # Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. A required-check comparison is not possible here: rulesets are unavailable to a private repository on this organisation's plan, and the API answers 403.
   platform-smoke:
     name: Platform read path
@@ -128,11 +146,12 @@ jobs:
       - test
       - drift
       - actionlint
+      - validators
       - platform-smoke
     if: always()
     timeout-minutes: 5
     steps:
-      - name: Fail when a required job did not succeed
+      - name: Fail unless every needed job succeeded
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
         run: exit 1
       - name: Report
