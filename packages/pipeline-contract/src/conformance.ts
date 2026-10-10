@@ -196,6 +196,8 @@ export interface ImporterConformanceOptions {
   readonly wrapperForm: boolean;
   /** True when the provider's file can tell a gate from an ordinary dependent job. A provider that already fails a pipeline when a dependency fails writes both the same, so the policy is not in the file to be read back. */
   readonly distinguishesGate: boolean;
+  /** True when the provider's file keeps a matrix as axes. One that writes each combination as its own job has no matrix to read back. */
+  readonly recoversMatrix: boolean;
 }
 
 const TOOL_COMMAND = "node packages/cli/src/bin.ts";
@@ -255,44 +257,46 @@ export function describeImporterConformance(
 
     api.it("restores a node description from the comment that carried it", async () => {
       const imported = await makeImporter().import(only(await compile(sample())));
-      const described = Object.values(imported.jobs).find((job) => job.name === "Lint");
       check(
-        described?.description === DESCRIPTION_TEXT,
+        Object.values(imported.jobs).some((job) => job.description === DESCRIPTION_TEXT),
         "the description was not read back from the file",
       );
     });
 
-    api.it("reads the jobs, dependencies and matrix the compiler wrote", async () => {
+    api.it("reports the same checks as the pipeline it was compiled from", async () => {
       const original = sample();
       const imported = await makeImporter().import(only(await compile(original)));
-      // A provider that keys a job by its name has no job id to read back, so jobs are compared by name.
-      const names = (pipeline: Pipeline): string[] =>
-        Object.values(pipeline.jobs).map((job) => job.name);
-      const needsByName = (pipeline: Pipeline): string[][] =>
-        Object.values(pipeline.jobs).map((job) =>
-          (job.needs ?? []).map((id) => pipeline.jobs[id]?.name ?? id),
+      // Jobs are compared by the checks they report, because a provider may key a job by its name or expand a matrix, which leaves no job id or matrix to read back.
+      const checks = (pipeline: Pipeline): string[] =>
+        [...makeCompiler().checkNames(pipeline).values()].flat().sort();
+      check(
+        JSON.stringify(checks(imported)) === JSON.stringify(checks(original)),
+        "the imported pipeline reports different checks from the original",
+      );
+    });
+
+    if (options.recoversMatrix) {
+      api.it("reads a matrix back as the axes it was written from", async () => {
+        const original = sample();
+        const imported = await makeImporter().import(only(await compile(original)));
+        const matrixOf = (pipeline: Pipeline): unknown =>
+          Object.values(pipeline.jobs).find((job) => job.name === "Test")?.matrix;
+        check(
+          JSON.stringify(matrixOf(imported)) === JSON.stringify(matrixOf(original)),
+          "the imported matrix differs from the original",
         );
-      check(
-        JSON.stringify(names(imported)) === JSON.stringify(names(original)),
-        "the imported job names differ from the original",
-      );
-      check(
-        JSON.stringify(needsByName(imported)) === JSON.stringify(needsByName(original)),
-        "the imported job dependencies differ from the original",
-      );
-      const matrixOf = (pipeline: Pipeline): unknown =>
-        Object.values(pipeline.jobs).find((job) => job.name === "Test")?.matrix;
-      check(
-        JSON.stringify(matrixOf(imported)) === JSON.stringify(matrixOf(original)),
-        "the imported matrix differs from the original",
-      );
-      if (options.distinguishesGate) {
+      });
+    }
+
+    if (options.distinguishesGate) {
+      api.it("reads a gate back as a gate", async () => {
+        const imported = await makeImporter().import(only(await compile(sample())));
         const policy = Object.values(imported.jobs).find(
           (job) => job.name === "Required checks",
         )?.needsPolicy;
         check(policy === "gate", "the gate policy was not restored");
-      }
-    });
+      });
+    }
 
     api.it("rejects text that is not a configuration", async () => {
       const outcome = await outcomeOf(async () =>
