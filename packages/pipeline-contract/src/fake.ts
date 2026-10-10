@@ -1,5 +1,6 @@
 import { generatedHeaderLines, type EmittedFile, type PipelineCompiler } from "./compiler.ts";
 import { UnsupportedFeatureError } from "./errors.ts";
+import { validateImported, type PipelineImporter } from "./importer.ts";
 import { expandMatrix, matrixValues } from "./matrix.ts";
 import type { Pipeline, ProviderId } from "./schema.ts";
 
@@ -45,6 +46,25 @@ export function createReferenceCompiler(provider: ProviderId = "github-actions")
           content: `${header}\n${JSON.stringify(pipeline, null, 2)}\n`,
         },
       ]);
+    },
+  };
+}
+
+/**
+ * The reference importer for `createReferenceCompiler`'s output: its header lines are `//` comments and the rest is the pipeline as JSON, so reading it is parsing what remains and validating it against the model.
+ */
+export function createReferenceImporter(provider: ProviderId = "github-actions"): PipelineImporter {
+  return {
+    provider,
+    async import(file, options): Promise<Pipeline> {
+      options?.signal?.throwIfAborted();
+      const body = file.content
+        .split("\n")
+        .filter((line) => !line.startsWith("//"))
+        .join("\n");
+      const candidate: unknown = JSON.parse(body);
+
+      return Promise.resolve(validateImported(provider, candidate));
     },
   };
 }

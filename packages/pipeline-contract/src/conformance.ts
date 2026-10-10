@@ -1,5 +1,6 @@
-import type { PipelineCompiler } from "./compiler.ts";
-import { UnsupportedFeatureError } from "./errors.ts";
+import type { EmittedFile, PipelineCompiler } from "./compiler.ts";
+import { UnsupportedFeatureError, UnsupportedNativeError } from "./errors.ts";
+import type { PipelineImporter } from "./importer.ts";
 import { pipelineSchema, type Pipeline, type ProviderId } from "./schema.ts";
 
 /**
@@ -85,7 +86,7 @@ function foreignProviderOf(provider: ProviderId): ProviderId {
   return provider === "github-actions" ? "gitlab-ci" : "github-actions";
 }
 
-function check(condition: boolean, message: string): void {
+function check(condition: boolean, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
@@ -181,5 +182,132 @@ export function describeCompilerConformance(
         "a foreign provider step was accepted or failed with another error",
       );
     });
+  });
+}
+
+/**
+ * What the importer kit needs beyond the compiler and importer: native files the importer must reject, and whether the provider has a wrapper form to hold the importer to.
+ */
+export interface ImporterConformanceOptions {
+  readonly features?: SampleFeatures;
+  /** Native files that use something the model cannot express, each of which must fail with `UnsupportedNativeError`. */
+  readonly rejects: readonly { readonly name: string; readonly file: EmittedFile }[];
+  /** True when the provider's compiler has a wrapper form, whose emitted file must be rejected with `UnsupportedNativeError`: it only calls this tool, so the pipeline source it names is what to import. */
+  readonly wrapperForm: boolean;
+}
+
+const TOOL_COMMAND = "node packages/cli/src/bin.ts";
+
+async function outcomeOf(run: () => Promise<unknown>): Promise<unknown> {
+  try {
+    await run();
+  } catch (error) {
+    return error;
+  }
+
+  return undefined;
+}
+
+/**
+ * Registers the behavioural spec every `PipelineImporter` must meet. The correctness bar is the round trip: what the provider's compiler wrote, imported and compiled again, is byte-identical, which holds the importer to being the compiler's inverse for everything the compiler can say. `makeCompiler` and `makeImporter` are called per case so no state is shared.
+ */
+export function describeImporterConformance(
+  api: TestApi,
+  makeCompiler: () => PipelineCompiler,
+  makeImporter: () => PipelineImporter,
+  options: ImporterConformanceOptions,
+): void {
+  const features = options.features ?? ALL_FEATURES;
+  const sample = (): Pipeline => samplePipeline(features);
+  const compile = async (pipeline: Pipeline): Promise<readonly EmittedFile[]> =>
+    makeCompiler().compile(pipeline, { source: SOURCE, toolCommand: TOOL_COMMAND });
+  const only = (files: readonly EmittedFile[]): EmittedFile => {
+    const [file] = files;
+    if (file === undefined || files.length !== 1) {
+      throw new Error(`expected one emitted file, got ${String(files.length)}`);
+    }
+
+    return file;
+  };
+
+  api.describe("PipelineImporter conformance", () => {
+    api.it("names the provider whose files it reads", () => {
+      check(
+        makeImporter().provider === makeCompiler().provider,
+        "the importer and compiler are for different providers",
+      );
+    });
+
+    api.it(
+      "round-trips: compiling what it read from a compiled file gives the same file",
+      async () => {
+        const [first] = await compile(sample());
+        if (first === undefined) throw new Error("the compiler emitted no file");
+        const imported = await makeImporter().import(first);
+        const [second] = await compile(imported);
+        check(second !== undefined, "the imported pipeline compiled to no file");
+        check(second.path === first.path, `the path changed from ${first.path} to ${second.path}`);
+        check(second.content === first.content, "the re-emitted file differs from the original");
+      },
+    );
+
+    api.it("restores a node description from the comment that carried it", async () => {
+      const imported = await makeImporter().import(only(await compile(sample())));
+      check(
+        imported.jobs.lint?.description === DESCRIPTION_TEXT,
+        "the description was not read back from the file",
+      );
+    });
+
+    api.it("reads the jobs, dependencies and matrix the compiler wrote", async () => {
+      const original = sample();
+      const imported = await makeImporter().import(only(await compile(original)));
+      check(
+        JSON.stringify(Object.keys(imported.jobs)) === JSON.stringify(Object.keys(original.jobs)),
+        "the imported job ids differ from the original",
+      );
+      check(
+        JSON.stringify(imported.jobs.test?.needs) === JSON.stringify(original.jobs.test?.needs),
+        "the imported job dependencies differ from the original",
+      );
+      check(
+        JSON.stringify(imported.jobs.test?.matrix) === JSON.stringify(original.jobs.test?.matrix),
+        "the imported matrix differs from the original",
+      );
+      check(imported.jobs.gate?.needsPolicy === "gate", "the gate policy was not restored");
+    });
+
+    api.it("rejects text that is not a configuration", async () => {
+      const outcome = await outcomeOf(async () =>
+        makeImporter().import({ path: "broken", content: "{ not: [valid" }),
+      );
+      check(outcome instanceof Error, "text that is not a configuration was accepted");
+    });
+
+    for (const { name, file } of options.rejects) {
+      api.it(`rejects ${name} with the provider and a pointer`, async () => {
+        const importer = makeImporter();
+        const outcome = await outcomeOf(async () => importer.import(file));
+        check(
+          outcome instanceof UnsupportedNativeError,
+          `${name} was accepted or failed with another error: ${String(outcome)}`,
+        );
+        check(outcome.provider === importer.provider, "the error names another provider");
+      });
+    }
+
+    if (options.wrapperForm) {
+      api.it("rejects a file in the wrapper form, which only calls this tool", async () => {
+        const pipeline = sample();
+        const wrapped = pipelineSchema.parse({ ...pipeline, form: "wrapper" });
+        const outcome = await outcomeOf(async () =>
+          makeImporter().import(only(await compile(wrapped))),
+        );
+        check(
+          outcome instanceof UnsupportedNativeError,
+          `a wrapper-form file was accepted or failed with another error: ${String(outcome)}`,
+        );
+      });
+    }
   });
 }

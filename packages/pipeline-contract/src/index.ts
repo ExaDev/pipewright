@@ -10,7 +10,13 @@ export {
   type EventKind,
   type TemplateToken,
 } from "./context.ts";
-export { DependencyGraphError, UnsupportedFeatureError, assertNever } from "./errors.ts";
+export {
+  DependencyGraphError,
+  ImportedPipelineError,
+  UnsupportedFeatureError,
+  UnsupportedNativeError,
+  assertNever,
+} from "./errors.ts";
 export {
   JOB_ID_PATTERN,
   formSchema,
@@ -37,10 +43,13 @@ export {
   type EmittedFile,
   type PipelineCompiler,
 } from "./compiler.ts";
-export { createReferenceCompiler } from "./fake.ts";
+export { validateImported, type ImportOptions, type PipelineImporter } from "./importer.ts";
+export { createReferenceCompiler, createReferenceImporter } from "./fake.ts";
 export {
   ALL_FEATURES,
   describeCompilerConformance,
+  describeImporterConformance,
+  type ImporterConformanceOptions,
   samplePipeline,
   type SampleFeatures,
   type TestApi,
