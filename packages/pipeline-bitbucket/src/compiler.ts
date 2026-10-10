@@ -14,7 +14,7 @@ import {
   type PipelineCompiler,
   type Step,
 } from "@ci-adapters/pipeline-contract";
-import { renderYaml } from "@ci-adapters/yaml-emit";
+import { commentPath, renderYaml } from "@ci-adapters/yaml-emit";
 
 const PROVIDER = "bitbucket-pipelines";
 const FILE = "bitbucket-pipelines.yml";
@@ -31,6 +31,7 @@ const SELF_HOSTED_LABEL = "self.hosted";
 const MANUAL_PIPELINE = "manual";
 
 interface PlacedStep {
+  readonly id: string;
   /** The mapping stored under `step` (or `final`). */
   readonly body: Record<string, unknown>;
   readonly description: string | undefined;
@@ -80,7 +81,9 @@ function scriptOf(context: ScriptContext): {
     const step = job.steps[index];
     if (step === undefined) break;
     const pointer = `/jobs/${id}/steps/${String(index)}`;
-    if (step.when !== undefined) {
+    // A collapsed run step is interpreted by the tool's runner, which evaluates its condition and environment, so Bitbucket need not express them.
+    const collapsed = wrapper !== undefined && isCollapsible(step);
+    if (!collapsed && step.when !== undefined) {
       unsupported(
         `${pointer}/when`,
         "a condition, because Bitbucket's == is case-sensitive and the neutral model's is not",
@@ -106,13 +109,13 @@ function scriptOf(context: ScriptContext): {
       }
       index += 1;
     } else {
-      if (step.env !== undefined) {
+      if (!collapsed && step.env !== undefined) {
         unsupported(
           `${pointer}/env`,
           "a step environment, because Bitbucket takes variables from repository and deployment settings",
         );
       }
-      if (step.workingDirectory !== undefined) {
+      if (!collapsed && step.workingDirectory !== undefined) {
         unsupported(`${pointer}/workingDirectory`, "a step working directory");
       }
       if (wrapper !== undefined && isCollapsible(step)) {
@@ -183,8 +186,15 @@ function placeJob({ id, job, pipeline, toolCommand, source }: PlaceInput): Place
 
   return expandMatrix(job.matrix).map((matrix) => {
     const { script, cloneDepth } = scriptOf({ id, job, matrix, wrapper });
+    if (script.length === 0) {
+      unsupported(
+        `${pointer}/steps`,
+        "a job with no command, because Bitbucket requires a step to have at least one script item and checkout is clone configuration",
+      );
+    }
 
     return {
+      id,
       always,
       description: job.description,
       body: {
@@ -229,11 +239,23 @@ function itemsOf(
   const deepest = Math.max(...levels.values());
   const items: Record<string, unknown>[] = [];
   const descriptions = new Map<string, string>();
+  const deployments = new Set<string>();
 
   for (let level = 0; level <= deepest; level += 1) {
     const placed = Object.entries(pipeline.jobs)
       .filter(([id]) => levels.get(id) === level)
       .flatMap(([id, job]) => placeJob({ id, job, pipeline, toolCommand, source }));
+    for (const entry of placed) {
+      const deployment = entry.body.deployment;
+      if (typeof deployment !== "string") continue;
+      if (deployments.has(deployment)) {
+        unsupported(
+          `/jobs/${entry.id}/environment`,
+          `the deployment environment ${deployment} a second time, because Bitbucket permits one step per deployment environment in a pipeline`,
+        );
+      }
+      deployments.add(deployment);
+    }
     const always = placed.filter((entry) => entry.always);
     if (always.length > 0) {
       if (level !== deepest || placed.length !== 1) {
@@ -281,7 +303,7 @@ function withBranches(
 ): Record<string, unknown> {
   const added = names.map((branch): [string, unknown[]] => {
     if (branch in existing) unsupported(target.pointer, `branch ${branch} named twice`);
-    target.place(`pipelines/branches/${branch}`);
+    target.place(commentPath("pipelines", "branches", branch));
 
     return [branch, [...target.items]];
   });
@@ -307,7 +329,7 @@ function pipelinesOf(
           if ("default" in pipelines)
             unsupported(pointer, "a second push trigger with no branches");
           pipelines.default = [...items];
-          place("pipelines/default");
+          place(commentPath("pipelines", "default"));
         } else {
           branches = withBranches(branches, trigger.branches, { items, pointer, place });
         }
@@ -320,7 +342,7 @@ function pipelinesOf(
           );
         }
         pipelines["pull-requests"] = { "**": [...items] };
-        place("pipelines/pull-requests/**");
+        place(commentPath("pipelines", "pull-requests", "**"));
         break;
       case "manual":
         if (items.some((item) => "final" in item)) {
@@ -330,7 +352,7 @@ function pipelinesOf(
           );
         }
         pipelines.custom = { [MANUAL_PIPELINE]: [...items] };
-        place(`pipelines/custom/${MANUAL_PIPELINE}`);
+        place(commentPath("pipelines", "custom", MANUAL_PIPELINE));
         break;
       case "schedule":
         unsupported(

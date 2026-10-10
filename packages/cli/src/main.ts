@@ -11,6 +11,7 @@ import {
   PipelineLoadError,
   contextKeySchema,
   diffEmitted,
+  jsonPointerOf,
   loadPipeline,
   pipelineSchema,
   type LoadedPipeline,
@@ -169,17 +170,13 @@ function loadErrorFrom(path: string, error: ZodError): PipelineLoadError {
     error.issues.map((issue) => ({
       message: issue.message,
       file: path,
-      pointer: pointerOf(issue.path),
+      pointer: jsonPointerOf(issue.path),
     })),
   );
 }
 
 function isTypeScript(path: string): boolean {
   return path.endsWith(".ts") || path.endsWith(".mts");
-}
-
-function pointerOf(path: readonly PropertyKey[]): string {
-  return path.map((segment) => `/${String(segment)}`).join("");
 }
 
 /**

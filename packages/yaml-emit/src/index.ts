@@ -1,1 +1,1 @@
-export { renderYaml, type CommentTable } from "./render.ts";
+export { commentPath, renderYaml, type CommentTable } from "./render.ts";

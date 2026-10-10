@@ -97,7 +97,64 @@ describe("Bitbucket Pipelines emission", () => {
     );
   });
 
+  it("lets a collapsed wrapper step carry its own environment and condition", async () => {
+    const pipeline = pipelineWith({
+      form: "wrapper",
+      jobs: {
+        only: {
+          name: "Only",
+          runsOn: ["x"],
+          steps: [{ kind: "run", run: "true", env: { A: "b" } }],
+        },
+      },
+    });
+    const [file] = await createBitbucketPipelinesCompiler().compile(pipeline, {
+      source: SOURCE,
+      toolCommand: "tool",
+    });
+    expect(file?.content).toContain("tool run --pipeline");
+  });
+
+  it("renders a described job under a branch name that contains a slash", async () => {
+    const pipeline = pipelineWith({
+      triggers: [{ kind: "push", branches: ["feature/foo"] }],
+      jobs: {
+        only: {
+          name: "Only",
+          description: "Explains the job.",
+          runsOn: ["x"],
+          steps: [{ kind: "run", run: "true" }],
+        },
+      },
+    });
+    const [file] = await createBitbucketPipelinesCompiler().compile(pipeline, { source: SOURCE });
+    expect(file?.content).toContain("feature/foo:");
+    expect(file?.content).toContain("# Explains the job.");
+  });
+
   describe("guard", () => {
+    it("rejects a job whose only step is a checkout", async () => {
+      const error = await rejection(
+        pipelineWith({
+          jobs: {
+            only: { name: "Only", runsOn: ["x"], steps: [{ kind: "checkout" }] },
+          },
+        }),
+      );
+      expect(error.pointer).toBe("/jobs/only/steps");
+    });
+
+    it("rejects a deployment environment used by two steps", async () => {
+      const job = (name: string): Record<string, unknown> => ({
+        name,
+        runsOn: ["x"],
+        environment: "production",
+        steps: [{ kind: "run", run: "true" }],
+      });
+      const error = await rejection(pipelineWith({ jobs: { one: job("One"), two: job("Two") } }));
+      expect(error.feature).toContain("production");
+    });
+
     it("rejects a schedule trigger", async () => {
       const error = await rejection(
         pipelineWith({ triggers: [{ kind: "schedule", cron: "0 * * * *" }] }),

@@ -47,6 +47,7 @@ export {
 } from "./conformance.ts";
 export {
   PipelineLoadError,
+  jsonPointerOf,
   loadPipeline,
   resolveRelative,
   type FileReader,

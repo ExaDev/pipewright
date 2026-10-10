@@ -204,6 +204,52 @@ export function describeRunnerConformance(api: TestApi, makeRunner: () => Pipeli
       );
     });
 
+    api.it("does not read a blocked job's condition when a dependency failed", async () => {
+      const pipeline = pipelineSchema.parse({
+        name: "CI",
+        triggers: [{ kind: "push" }],
+        jobs: {
+          first: {
+            name: "First",
+            runsOn: ["x"],
+            steps: [{ kind: "run", run: "fail" }],
+          },
+          second: {
+            name: "Second",
+            runsOn: ["x"],
+            needs: ["first"],
+            when: {
+              kind: "textCompare",
+              op: "equals",
+              left: { kind: "reference", key: "refName" },
+              right: { kind: "textLiteral", value: "main" },
+            },
+            steps: [{ kind: "run", run: "second" }],
+          },
+        },
+      });
+      const executor = recordingExecutor((command) => command === "fail");
+      const report = await makeRunner().run(pipeline, { executor, context: {} });
+      const second = report.jobs.find((job) => job.id === "second");
+      check(second?.outcome === "skipped", "the blocked job was not reported as skipped");
+    });
+
+    api.it("skips a gate whose own condition is false rather than failing it", async () => {
+      const pipeline = samplePipeline();
+      const gate = pipeline.jobs.gate;
+      if (gate === undefined) throw new Error("sample pipeline lost its gate job");
+      gate.when = {
+        kind: "textCompare",
+        op: "equals",
+        left: { kind: "reference", key: "refName" },
+        right: { kind: "textLiteral", value: "release" },
+      };
+      const executor = recordingExecutor((command) => command === "pnpm run lint");
+      const report = await makeRunner().run(pipeline, { executor, context: CONTEXT });
+      const reported = report.jobs.find((job) => job.id === "gate");
+      check(reported?.outcome === "skipped", `the gate was ${String(reported?.outcome)}`);
+    });
+
     api.it("runs only the named jobs when asked", async () => {
       const executor = recordingExecutor();
       await makeRunner().run(samplePipeline(), {

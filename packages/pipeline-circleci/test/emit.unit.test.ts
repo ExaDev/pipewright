@@ -128,6 +128,39 @@ describe("CircleCI emission", () => {
       expect(error.pointer).toBe("/jobs/two/name");
     });
 
+    it("rejects two matrix jobs that expand to the same reported names", async () => {
+      const job = {
+        name: "Same",
+        runsOn: ["x"],
+        native: EXECUTOR,
+        matrix: { node: ["22"] },
+        steps: [{ kind: "run", run: "true" }],
+      };
+      const error = await rejection(pipelineWith({ jobs: { one: job, two: job } }));
+      expect(error.pointer).toBe("/jobs/two/name");
+    });
+
+    it("rejects a native mapping that sets a key the compiler generates", async () => {
+      const error = await rejection(
+        pipelineWith({
+          jobs: {
+            only: {
+              name: "Only",
+              runsOn: ["x"],
+              native: { circleci: { docker: [{ image: "a" }], parameters: {} } },
+              steps: [{ kind: "run", run: "true" }],
+            },
+          },
+        }),
+      );
+      expect(error.pointer).toBe("/jobs/only/native");
+    });
+
+    it("rejects a name that yields no workflow key", async () => {
+      const error = await rejection(pipelineWith({ name: "---" }));
+      expect(error.pointer).toBe("/name");
+    });
+
     it("rejects a shallow checkout and keeps a full one", async () => {
       const withCheckout = (fetchDepth: number | "full"): Pipeline =>
         pipelineWith({

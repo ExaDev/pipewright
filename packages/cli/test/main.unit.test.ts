@@ -189,6 +189,20 @@ describe("TypeScript pipelines", () => {
     expect(h.err.join("")).toContain("ci/ci.pipeline.ts#/jobs/lint/runsOn");
   });
 
+  it("escapes a slash in a record key when it locates a violation", async () => {
+    const h = harness({
+      modules: {
+        "ci/ci.pipeline.ts": {
+          default: { ...definition, env: { "A/B": "{{ nope }}" } },
+        },
+      },
+    });
+    expect(
+      await main(["emit", "--pipeline", "ci/ci.pipeline.ts", "--provider", "github-actions"], h.io),
+    ).toBe(1);
+    expect(h.err.join("")).toContain("ci/ci.pipeline.ts#/env/A~1B");
+  });
+
   it("rejects a module with no default export", async () => {
     const h = harness({ modules: { "ci/ci.pipeline.ts": {} } });
     expect(
@@ -304,6 +318,10 @@ describe("resolveContext", () => {
         {},
       ),
     ).toMatchObject({ refName: "main", sha: "abc", repository: "o/r" });
+    expect(
+      resolveContext({ CIRCLECI: "true", CIRCLE_PIPELINE_ID: "p1", CIRCLE_WORKFLOW_ID: "w1" }, {})
+        .runId,
+    ).toBe("p1");
   });
 
   it("maps GitLab pipeline sources onto the neutral events", () => {
