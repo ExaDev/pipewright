@@ -69,6 +69,13 @@ Used for the platform wire format only: GitHub's snake_case fields and status st
 
 Conditions are predicate trees from the ExaDev `trilean` package: serialisable JSON, evaluated through injected resolvers, with a compiler for SQL as precedent for compiling the same tree to a provider's language with a guard that rejects what the target cannot express. Provider expression languages are not three-valued and coerce a missing value differently, so each adapter accepts only the constructs whose result cannot differ and rejects the rest. [package](https://github.com/ExaDev/trilean)
 
+### GitHub Actions Importer
+
+GitHub's own migration tool, run as a container through the `gh actions-importer` extension. It converts pipelines from Azure DevOps, Bamboo, Bitbucket Pipelines, CircleCI, GitLab, Jenkins and Travis CI to GitHub Actions workflows, with `audit`, `forecast`, `dry-run` and `migrate` commands.
+
+- It is one-directional and targets GitHub only. The importers here are the inverse of each compiler, so any provider can be both the source and the target of a conversion.
+- Its documentation does not say which constructs it cannot convert; it asks that converted workflows "should be inspected for correctness" and aims at "an 80% conversion rate" per workflow. The importers here reject what the model cannot express, naming it by pointer, so what they accept is exact. [use-github-actions-importer](https://docs.github.com/en/actions/tutorials/migrate-to-github-actions/automated-migrations/use-github-actions-importer) ([capture](https://web.archive.org/web/20261010153300/https://docs.github.com/en/actions/tutorials/migrate-to-github-actions/automated-migrations/use-github-actions-importer))
+
 ## Provider references
 
 | Provider | Syntax reference | Schema or validator |
@@ -98,6 +105,8 @@ Conditions are predicate trees from the ExaDev `trilean` package: serialisable J
 
 ## Considered and not built
 
+- Importing a provider's reusable constructs (orbs, includes, reusable workflows, `extends`, composite actions). They are references to definitions outside the file, which the model has no place for, so an importer rejects them; resolving them would make it a second implementation of each provider's include semantics.
+- A `convert` that approximates what the target cannot express. It refuses instead, as the compilers do.
 - A provider-neutral cache declaration compiled per provider (issue 1 and its sub-issues).
 - Per-step retry and timeout as typed data, and a failure or `finally` concept.
 - Manual approval gates (protected environments, manual jobs).

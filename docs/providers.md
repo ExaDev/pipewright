@@ -33,6 +33,27 @@ What each adapter compiles, what it rejects, and how it is validated. An adapter
 - **Final steps in custom Bitbucket pipelines.** The step-options page documents them and Atlassian's validator accepts one, but the published pipelines JSON Schema rejects it. The schema lags the product, so the adapter emits the file the validator accepts and the schema test never contains that case.
 - **`native`** on a job is merged verbatim into that provider's job, and a `provider` step is accepted only by the provider that owns it. This is how non-portable parts stay visible in the file.
 
+## Importing
+
+An importer is the inverse of a compiler: it reads a provider's native file into the neutral model, and `convert` composes one provider's importer with another's compiler. It takes the compilers' stance in the other direction. What the model cannot express is rejected with the file and the JSON pointer of the node in it; what the provider owns and the model carries verbatim is kept, so nothing is dropped or reinterpreted.
+
+The bar every importer meets is a round trip. For each sample the compiler conformance kit uses, `emit`, then `import`, then `emit` again writes the same file, and the importer rejects a wrapper-form file, which holds only a call to this tool and none of the steps.
+
+| | GitHub Actions | GitLab CI | Bitbucket Pipelines | CircleCI |
+| --- | --- | --- | --- | --- |
+| Triggers read | push and pull request with branches, manual, schedule | workflow rules over the pipeline source and branch | default, branches, pull requests, manual | a workflow with an optional branch condition |
+| Graph read from | `needs` | `needs`, and the whole earlier stage for a job with none | the order of steps and parallel groups | `requires` |
+| Job id | the job key | derived from the job name | derived from the step name | derived from the job key |
+| Matrix | read back as axes | read back as axes | not recoverable, read as separate steps | read back as axes |
+| `gate` read back | yes | no, written as an ordinary job | no | no |
+| Kept on `native` | any job key the model has no field for, a setting with no neutral form, a condition with no neutral form | any job key the model has no field for, rules with no neutral form | any step key the model has no field for, runner labels naming no self-hosted runner | the executor and other job keys |
+| Kept as a `provider` step | any step that is not a plain `run` or the pinned checkout, and a command containing `${{ }}` | none | a pipe | any step that is not a plain run or checkout |
+| Rejected | other trigger filters and events, a reusable-workflow job, a computed runner label | no workflow rules, hidden jobs and `extends`, a downstream trigger, a `needs` entry with options | top-level settings, tag pipelines, other custom pipelines, stages, triggers that run different steps | orbs, more than one workflow, workflow job filters, a job no workflow runs |
+
+A command, a script line or an environment value is carried as written. A provider substitutes its own variables and expressions into it, and the model has no vocabulary for them, so a value that uses one is kept with the provider that evaluates it: `convert` refuses a pipeline whose jobs carry settings for the source provider, because the target would drop them.
+
+A job that names no runner label has an empty `runsOn`, which means the provider's own default runner. GitLab and Bitbucket write nothing for it; GitHub, which selects a runner only by label, rejects it.
+
 ## Wrapper form
 
 Every adapter can render a job in the wrapper form: orchestration stays native and each contiguous run of portable steps becomes one call to this tool's runner for exactly those step indexes. A run step with `form: "native"` stays in the provider's syntax, which is how an install step runs before the tool exists. A matrix combination is passed as a quoted `--matrix "axis=value"` argument: as a shell-quoted literal where the adapter expands the matrix itself, and through the provider's own substitution (`${{ matrix.node }}`, `$node`, `<< parameters.node >>`) where the provider does. The run context the runner reads comes from the provider's environment variables; a value that provider does not expose (Bitbucket cannot tell a push from a manual run, CircleCI exposes no workflow name) is absent, and the runner fails only if a step or condition reads it.
