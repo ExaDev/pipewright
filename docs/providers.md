@@ -43,4 +43,15 @@ Every adapter can render a job in the wrapper form: orchestration stays native a
 
 ## Validation
 
+What was run, and by what:
+
+| Provider | Validator | Where it runs |
+| --- | --- | --- |
+| GitHub Actions | actionlint | the `integration` project and its CI job |
+| GitLab CI | the published `ci.json` JSON Schema | the `integration` project and its CI job |
+| Bitbucket Pipelines | the published pipelines schema | the `integration` project and its CI job |
+| CircleCI | the published JSON Schema in CI; `circleci config validate` (CLI 1.4.0) by hand | accepted the sample output with exit 0; not in CI, because no pinned, checksummed install route was settled |
+
+Not run: GitLab's CI lint, which is an API call needing a project token, and Bitbucket's web validator, which has no documented command line. The schemas stand in for both.
+
 `pnpm run test:integration` fetches each provider's published schema and runs actionlint over the sample pipeline's output. It is a separate vitest project from the unit tests so the unit suite stays offline, and the CI job that runs it installs actionlint first. A validator that cannot run is a failure, never a skip.
