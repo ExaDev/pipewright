@@ -346,12 +346,6 @@ function pipelinesOf(
         place(commentPath("pipelines", "pull-requests", "**"));
         break;
       case "manual":
-        if (items.some((item) => "final" in item)) {
-          unsupported(
-            pointer,
-            "a manual trigger for a pipeline with an always-running job, because Bitbucket's schema allows a final step in no custom pipeline",
-          );
-        }
         pipelines.custom = { [MANUAL_PIPELINE]: [...items] };
         place(commentPath("pipelines", "custom", MANUAL_PIPELINE));
         break;

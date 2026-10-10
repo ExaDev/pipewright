@@ -238,8 +238,12 @@ describe("always-running jobs", () => {
     expect(file?.content).toContain("- final:");
   });
 
-  it("is rejected in a custom pipeline, where the schema allows no final step", async () => {
-    const error = await rejection(withAlways([{ kind: "manual" }]));
-    expect(error.pointer).toBe("/triggers/0");
+  it("is also the final step of a custom pipeline, which Atlassian's validator accepts", async () => {
+    const [file] = await createBitbucketPipelinesCompiler().compile(
+      withAlways([{ kind: "manual" }]),
+      { source: SOURCE },
+    );
+    expect(file?.content).toContain("custom:");
+    expect(file?.content).toContain("- final:");
   });
 });
