@@ -60,7 +60,7 @@ export type { FileReader, LoadIssue } from "@exadev/json-compose";
 export { pipelineAuthoringJsonSchema, pipelineJsonSchema } from "./json-schema.ts";
 export { definePipeline, type JobInput, type PipelineInput, type StepInput } from "./define.ts";
 export { jobGraphOf } from "./graph.ts";
-export { slugOf } from "./slug.ts";
+export { slugOf, uniqueJobIds } from "./slug.ts";
 export { expandMatrix, matrixValues, type MatrixCombination } from "./matrix.ts";
 export {
   type CommandExecution,
