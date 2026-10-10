@@ -180,6 +180,14 @@ function jobOf({ id, job, pipeline, toolCommand, source }: JobInput): Record<str
       "a job without exactly one executor, because CircleCI requires one of docker, machine, macos or executor declared under native.circleci",
     );
   }
+  for (const generated of ["parameters", "environment", "steps"]) {
+    if (generated in executor) {
+      unsupported(
+        `${pointer}/native`,
+        `a native.circleci mapping that sets ${generated}, which the compiler generates and would silently replace`,
+      );
+    }
+  }
   const form = job.form ?? pipeline.form ?? "native";
   if (form === "wrapper" && toolCommand === undefined) {
     throw new Error(
@@ -279,6 +287,22 @@ export function createCircleCiCompiler(): PipelineCompiler {
 
       const taken = new Set<string>();
       for (const [id, job] of Object.entries(pipeline.jobs)) {
+        const expanded =
+          job.matrix === undefined
+            ? [job.name]
+            : expandMatrix(job.matrix).map(
+                (combination) =>
+                  `${job.name} (${matrixValues(job.matrix, combination).join(", ")})`,
+              );
+        for (const display of expanded) {
+          if (taken.has(`display:${display}`)) {
+            unsupported(
+              `/jobs/${id}/name`,
+              `a second job reported as "${display}", because CircleCI appends numeric suffixes to duplicate workflow job names`,
+            );
+          }
+          taken.add(`display:${display}`);
+        }
         const name = workflowJobName(id, job);
         if (taken.has(name)) {
           unsupported(
@@ -320,6 +344,12 @@ export function createCircleCiCompiler(): PipelineCompiler {
       });
 
       const slug = slugOf(pipeline.name);
+      if (slug === "") {
+        unsupported(
+          "/name",
+          "a pipeline name with no letters or digits, because the workflow key is derived from it and CircleCI requires a non-empty key",
+        );
+      }
       const workflows: Record<string, unknown> = {};
       for (const [index, trigger] of pipeline.triggers.entries()) {
         const pointer = `/triggers/${String(index)}`;

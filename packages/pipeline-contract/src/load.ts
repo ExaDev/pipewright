@@ -79,7 +79,10 @@ function escapePointer(segment: string): string {
   return segment.replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
-function pointerOf(path: readonly PropertyKey[]): string {
+/**
+ * Builds an RFC 6901 JSON pointer from path segments, escaping `~` and `/` inside each.
+ */
+export function jsonPointerOf(path: readonly PropertyKey[]): string {
   return path.map((segment) => `/${escapePointer(String(segment))}`).join("");
 }
 
@@ -251,7 +254,7 @@ class Loader {
         header.error.issues.map((issue) => ({
           message: issue.message,
           file,
-          pointer: pointerOf(issue.path),
+          pointer: jsonPointerOf(issue.path),
         })),
       );
     }

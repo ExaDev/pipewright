@@ -241,7 +241,9 @@ function jobOf(input: JobInput): JobOutput {
     const step = job.steps[index];
     if (step === undefined) break;
     const at = `/steps/${String(index)}`;
-    if (step.when !== undefined) {
+    // A collapsed run step is interpreted by the tool's runner, which evaluates its condition and environment, so GitLab need not express them.
+    const collapsed = wrapper !== undefined && step.kind === "run" && step.form !== "native";
+    if (!collapsed && step.when !== undefined) {
       unsupported(
         `${at}/when`,
         "a step-level condition, because GitLab conditions apply to whole jobs",
@@ -254,13 +256,13 @@ function jobOf(input: JobInput): JobOutput {
         }
         break;
       case "run": {
-        if (step.env !== undefined) {
+        if (!collapsed && step.env !== undefined) {
           unsupported(
             `${at}/env`,
             "a step-level environment, because GitLab scopes variables to the job",
           );
         }
-        if (step.workingDirectory !== undefined) {
+        if (!collapsed && step.workingDirectory !== undefined) {
           unsupported(`${at}/workingDirectory`, "a step working directory");
         }
         if (wrapper !== undefined && step.form !== "native") {

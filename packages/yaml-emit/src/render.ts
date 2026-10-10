@@ -5,6 +5,17 @@ import { Document, isMap, isScalar, isSeq } from "yaml";
  */
 export type CommentTable = ReadonlyMap<string, string>;
 
+/**
+ * Builds a comment path from segments, escaping `~` and `/` inside a segment the way a JSON pointer does, so a mapping key that contains a slash (a branch name such as `feature/foo`) is one segment and not two.
+ */
+export function commentPath(...segments: readonly string[]): string {
+  return segments.map((segment) => segment.replaceAll("~", "~0").replaceAll("/", "~1")).join("/");
+}
+
+function segmentsOf(path: string): string[] {
+  return path.split("/").map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"));
+}
+
 function commentable(node: unknown): node is { commentBefore?: string | null } {
   return typeof node === "object" && node !== null;
 }
@@ -59,7 +70,7 @@ export function renderYaml(
   const document = new Document(value, { aliasDuplicateObjects: false });
   document.commentBefore = asComment(headerLines.join("\n"));
   for (const [path, text] of comments) {
-    const node = target(document.contents, path.split("/"));
+    const node = target(document.contents, segmentsOf(path));
     if (node === undefined) throw new Error(`no node at ${path} to carry a comment`);
     node.commentBefore = asComment(text);
   }

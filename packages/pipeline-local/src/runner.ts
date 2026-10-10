@@ -166,17 +166,21 @@ async function runStep(plan: JobPlan, scope: Scope, step: Step, index: number): 
 async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise<JobReport> {
   const scope: Scope = { context: plan.options.context, matrix };
   const { job, id } = plan;
-  const conditionHolds = plan.jobCondition(scope);
-  if (conditionHolds && plan.failsGate) {
+  const skippedSteps = job.steps.map((step) => ({
+    name: stepName(step),
+    outcome: "skipped" as const,
+  }));
+  // A gate's condition is read first, because the gate is evaluated even after a failed dependency and its own condition decides whether it reports. Any other job is not evaluated at all once a dependency has not succeeded, so a condition over a value the host never supplied cannot mask the upstream failure.
+  if (plan.failsGate) {
     return {
       id,
       name: job.name,
       matrix,
-      outcome: "failure",
-      steps: job.steps.map((step) => ({ name: stepName(step), outcome: "skipped" })),
+      outcome: plan.jobCondition(scope) ? "failure" : "skipped",
+      steps: skippedSteps,
     };
   }
-  if (!plan.mayRun || !conditionHolds) {
+  if (!plan.mayRun || !plan.jobCondition(scope)) {
     return {
       id,
       name: job.name,

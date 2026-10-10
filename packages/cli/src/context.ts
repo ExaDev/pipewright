@@ -80,7 +80,7 @@ function fromCircleCi(env: Environment): Values {
     ["refName", env.CIRCLE_BRANCH],
     ["sha", env.CIRCLE_SHA1],
     ["repository", owner === undefined || repo === undefined ? undefined : `${owner}/${repo}`],
-    ["runId", env.CIRCLE_WORKFLOW_ID],
+    ["runId", env.CIRCLE_PIPELINE_ID],
   ]);
 }
 

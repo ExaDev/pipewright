@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { renderYaml } from "../src/index.ts";
+import { commentPath, renderYaml } from "../src/index.ts";
 
 /** Well beyond any default line width, so a folding serialiser would split it. */
 const LONG_VALUE = 200;
@@ -30,5 +30,14 @@ describe("renderYaml", () => {
 
   it("throws for a comment path that matches nothing", () => {
     expect(() => renderYaml({ a: 1 }, new Map([["b", "x"]]), ["h"])).toThrow("no node at b");
+  });
+
+  it("treats a key containing a slash as one path segment", () => {
+    const text = renderYaml(
+      { branches: { "feature/foo": [{ step: 1 }] } },
+      new Map([[commentPath("branches", "feature/foo", "0"), "On the feature branch."]]),
+      ["h"],
+    );
+    expect(text).toContain("# On the feature branch.");
   });
 });
