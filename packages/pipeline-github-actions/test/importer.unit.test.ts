@@ -323,4 +323,28 @@ jobs:
       "github-actions": { environment: "${{ inputs.target }}" },
     });
   });
+
+  it("writes a literal expression from another provider so GitHub does not evaluate it", async () => {
+    const [file] = await createGitHubActionsCompiler().compile(
+      pipelineSchema.parse({
+        name: "CI",
+        triggers: [{ kind: "push" }],
+        jobs: {
+          a: {
+            name: "A",
+            runsOn: ["x"],
+            env: { PAYLOAD: "${{secrets['TOKEN']}}", REF: "{{ refName }}" },
+            steps: [{ kind: "run", run: "true" }],
+          },
+        },
+      }),
+      { source: "s" },
+    );
+
+    expect(file?.content).toContain("PAYLOAD: ${{ '${{' }}secrets['TOKEN']}}");
+    expect(file?.content).toContain("REF: ${{ github.ref_name }}");
+
+    const back = await createGitHubActionsImporter().import(file ?? { path: "", content: "" });
+    expect(back.jobs.a?.env).toEqual({ PAYLOAD: "${{secrets['TOKEN']}}", REF: "{{ refName }}" });
+  });
 });

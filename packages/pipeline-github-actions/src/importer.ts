@@ -70,6 +70,10 @@ function scalarText(value: unknown, pointer: Pointer, what: string): string {
 
 /** A `${{ }}` expression. A `}` inside a quoted string, as in `format('v{0}', x)`, does not end it. */
 const EXPRESSION = /\$\{\{\s*((?:[^}']|'[^']*')*?)\s*\}\}/g;
+/** Private-use characters that mark where a quoted literal was taken out of a value while its references are read. */
+const LITERAL_OPEN = "\uE000";
+const LITERAL_CLOSE = "\uE001";
+const QUOTED_STRING = /^'((?:[^']|'')*)'$/;
 const AXIS = /^[A-Za-z][A-Za-z0-9_]*$/;
 const MATRIX_PREFIX = "matrix.";
 
@@ -81,6 +85,8 @@ function neutralText(value: unknown, allowMatrix: boolean): string | undefined {
   const text = String(value);
   if (findTemplateTokens(text.replace(EXPRESSION, "")).length > 0) return undefined;
   let foreign = 0;
+  // An expression that is only a quoted string stands for that text, which is how the compiler writes a literal `${{`.
+  const literals: string[] = [];
   const neutral = text.replace(EXPRESSION, (whole, expression: string) => {
     const key = CONTEXT_OF_EXPRESSION.get(expression);
     if (key !== undefined) return `{{ ${key} }}`;
@@ -91,13 +97,26 @@ function neutralText(value: unknown, allowMatrix: boolean): string | undefined {
     ) {
       return `{{ ${expression} }}`;
     }
+    const quoted = QUOTED_STRING.exec(expression)?.[1];
+    if (quoted !== undefined) {
+      literals.push(quoted.replaceAll("''", "'"));
+
+      return `${LITERAL_OPEN}${String(literals.length - 1)}${LITERAL_CLOSE}`;
+    }
     foreign += 1;
 
     return whole;
   });
 
   // Anything of an expression that the pattern did not consume is one it could not read, so it is not neutral.
-  return foreign === 0 && !neutral.includes("${{") ? neutral : undefined;
+  if (foreign !== 0 || neutral.includes("${{")) return undefined;
+  // A quoted literal that looks like a reference would be read as one by the model, so it is not neutral.
+  if (literals.some((literal) => findTemplateTokens(literal).length > 0)) return undefined;
+
+  return neutral.replaceAll(
+    new RegExp(`${LITERAL_OPEN}(\\d+)${LITERAL_CLOSE}`, "g"),
+    (_whole, index: string) => literals[Number(index)] ?? "",
+  );
 }
 
 /**
@@ -252,8 +271,9 @@ function stepAt(
   value: unknown,
   pointer: Pointer,
   description: string | undefined,
-  allowMatrix: boolean,
+  options: { readonly allowMatrix: boolean; readonly owned: boolean },
 ): Record<string, unknown> {
+  const { allowMatrix, owned } = options;
   const step = recordAt(value, pointer, "a step");
   const named =
     step.name === undefined
@@ -280,6 +300,7 @@ function stepAt(
   const evaluated = (text: unknown): boolean =>
     typeof text === "string" && (text.includes("${{") || RUNTIME_VARIABLE.test(text));
   const portable =
+    !owned &&
     hasRun &&
     typeof step.run === "string" &&
     !evaluated(step.run) &&
@@ -300,7 +321,7 @@ function stepAt(
     };
   }
 
-  const checkout = step.uses === CHECKOUT_ACTION ? checkoutDepthOf(step) : undefined;
+  const checkout = step.uses === CHECKOUT_ACTION && !owned ? checkoutDepthOf(step) : undefined;
   if (checkout !== undefined && condition.raw === undefined) {
     return { kind: "checkout", ...named, ...checkout, ...when, ...described };
   }
@@ -380,6 +401,8 @@ function jobAt(id: string, value: unknown, comments: Comments): Record<string, u
     docSteps.length > 1 &&
     JSON.stringify(docSteps[0]) === JSON.stringify(GATE_STEP);
   const offset = gated ? 1 : 0;
+  // A job gated by a condition the model has no form for is GitHub's as a whole: its steps would otherwise be portable and run unconditionally anywhere else.
+  const owned = condition.raw !== undefined;
   const steps = docSteps
     .slice(offset)
     .map((step, index) =>
@@ -387,7 +410,7 @@ function jobAt(id: string, value: unknown, comments: Comments): Record<string, u
         step,
         [...pointer, "steps", index + offset],
         comments.at("jobs", id, "steps", String(index + offset)),
-        allowMatrix,
+        { allowMatrix, owned },
       ),
     );
 

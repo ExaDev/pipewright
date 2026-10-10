@@ -111,17 +111,19 @@ function permissionsOf(permissions: Readonly<Permissions>): Record<string, strin
   );
 }
 
-function envOf(env: Readonly<Record<string, string>>): Record<string, string> {
-  return Object.fromEntries(
-    Object.entries(env).map(([key, value]) => [
-      key,
-      renderTemplate(value, (token) =>
-        token.kind === "context"
-          ? `\${{ ${CONTEXT_EXPRESSION[token.key]} }}`
-          : `\${{ matrix.${token.name} }}`,
-      ),
-    ]),
+/**
+ * Text with each reference rendered as an expression. GitHub evaluates `${{ }}` wherever it appears in a value, so a literal `${{` in the model's text is written as an expression whose value is those characters, which keeps text that came from another provider from being run as an expression here.
+ */
+function valueOf(value: string): string {
+  return renderTemplate(value.replaceAll("${{", "${{ '${{' }}"), (token) =>
+    token.kind === "context"
+      ? `\${{ ${CONTEXT_EXPRESSION[token.key]} }}`
+      : `\${{ matrix.${token.name} }}`,
   );
+}
+
+function envOf(env: Readonly<Record<string, string>>): Record<string, string> {
+  return Object.fromEntries(Object.entries(env).map(([key, value]) => [key, valueOf(value)]));
 }
 
 function stepOf(step: Step, pointer: string): Record<string, unknown> {
@@ -350,11 +352,7 @@ export function createGitHubActionsCompiler(): PipelineCompiler {
           ? {}
           : {
               concurrency: {
-                group: renderTemplate(pipeline.concurrency.group, (token) =>
-                  token.kind === "context"
-                    ? `\${{ ${CONTEXT_EXPRESSION[token.key]} }}`
-                    : `\${{ matrix.${token.name} }}`,
-                ),
+                group: valueOf(pipeline.concurrency.group),
                 "cancel-in-progress": pipeline.concurrency.cancelInProgress,
               },
             }),
