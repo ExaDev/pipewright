@@ -19,6 +19,49 @@ export class UnsupportedFeatureError extends Error {
 }
 
 /**
+ * Raised by an importer when a provider's native file uses something the neutral model cannot express. Reading it anyway would produce a pipeline that behaves differently from the file, so every importer fails loudly instead, the same stance the compilers take in the other direction.
+ */
+export class UnsupportedNativeError extends Error {
+  readonly provider: string;
+
+  /** JSON pointer, in the parsed native document, to the node that cannot be expressed. */
+  readonly pointer: string;
+
+  readonly construct: string;
+
+  constructor(provider: string, pointer: string, construct: string) {
+    super(`${provider} file uses ${construct} at ${pointer === "" ? "/" : pointer}`);
+    this.name = "UnsupportedNativeError";
+    this.provider = provider;
+    this.pointer = pointer;
+    this.construct = construct;
+  }
+}
+
+/**
+ * Raised when an importer read a native file but the pipeline it built is not a valid model, for example a job name the model forbids. The pointers locate the offending nodes in the imported pipeline, not in the native file.
+ */
+export class ImportedPipelineError extends Error {
+  readonly provider: string;
+
+  readonly issues: readonly { readonly pointer: string; readonly message: string }[];
+
+  constructor(
+    provider: string,
+    issues: readonly { readonly pointer: string; readonly message: string }[],
+  ) {
+    super(
+      `${provider} file does not map to a valid pipeline: ${issues
+        .map((issue) => `${issue.pointer === "" ? "/" : issue.pointer} ${issue.message}`)
+        .join("; ")}`,
+    );
+    this.name = "ImportedPipelineError";
+    this.provider = provider;
+    this.issues = issues;
+  }
+}
+
+/**
  * Closes an exhaustive `switch`: the argument is `never` only while every variant has a case, so adding a variant to a union fails compilation at each switch that forgot it.
  */
 export function assertNever(value: never): never {
