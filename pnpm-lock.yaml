@@ -272,6 +272,9 @@ importers:
       '@ci-adapters/platform-github':
         specifier: 0.0.0
         version: link:../platform-github
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
     devDependencies:
       ajv:
         specifier: 'catalog:'

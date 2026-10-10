@@ -254,15 +254,58 @@ describe("run", () => {
     expect(await main(["run", "--pipeline", "ci/ci.pipeline.json"], h.io)).toBe(0);
   });
 
-  it("names the missing context key rather than guessing", async () => {
+  it("runs a pipeline that reads no context with none supplied", async () => {
     const h = harness();
+    expect(await main(["run", "--pipeline", "ci/ci.pipeline.json"], h.io)).toBe(0);
+  });
+
+  it("names the missing context key at the point it is read, rather than guessing", async () => {
+    const reading = {
+      ...pipeline,
+      jobs: {
+        lint: {
+          name: "Lint",
+          runsOn: ["ubuntu-latest"],
+          env: { BRANCH: "{{ refName }}" },
+          steps: [{ kind: "run", run: "echo" }],
+        },
+      },
+    };
+    const h = harness({ files: { "ci/ci.pipeline.json": reading } });
     expect(await main(["run", "--pipeline", "ci/ci.pipeline.json"], h.io)).toBe(1);
-    expect(h.err.join("")).toContain("no value for context");
     expect(h.err.join("")).toContain("refName");
+    expect(h.commands).toEqual([]);
   });
 });
 
 describe("resolveContext", () => {
+  it("reads Bitbucket Pipelines and CircleCI variables", () => {
+    expect(
+      resolveContext(
+        {
+          BITBUCKET_BUILD_NUMBER: "1",
+          BITBUCKET_BRANCH: "main",
+          BITBUCKET_COMMIT: "abc",
+          BITBUCKET_REPO_FULL_NAME: "o/r",
+          BITBUCKET_PR_ID: "7",
+        },
+        {},
+      ),
+    ).toMatchObject({ refName: "main", sha: "abc", repository: "o/r", event: "pullRequest" });
+    expect(
+      resolveContext(
+        {
+          CIRCLECI: "true",
+          CIRCLE_BRANCH: "main",
+          CIRCLE_SHA1: "abc",
+          CIRCLE_PROJECT_USERNAME: "o",
+          CIRCLE_PROJECT_REPONAME: "r",
+        },
+        {},
+      ),
+    ).toMatchObject({ refName: "main", sha: "abc", repository: "o/r" });
+  });
+
   it("maps GitLab pipeline sources onto the neutral events", () => {
     const context = resolveContext(
       {

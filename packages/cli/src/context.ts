@@ -1,6 +1,7 @@
-import { CONTEXT_KEYS, type ContextKey, type RunContext } from "@ci-adapters/pipeline-contract";
+import type { ContextKey, RunContext } from "@ci-adapters/pipeline-contract";
 
 type Environment = Readonly<Record<string, string | undefined>>;
+type Values = Partial<Record<ContextKey, string>>;
 
 const GITHUB_EVENT: Readonly<Record<string, string>> = {
   push: "push",
@@ -18,64 +19,83 @@ const GITLAB_SOURCE: Readonly<Record<string, string>> = {
   api: "manual",
 };
 
-function fromGitHub(env: Environment): Partial<Record<ContextKey, string>> {
-  const event = env.GITHUB_EVENT_NAME;
-
-  return {
-    ...(event === undefined ? {} : { event: GITHUB_EVENT[event] ?? event }),
-    ...(env.GITHUB_REF_NAME === undefined ? {} : { refName: env.GITHUB_REF_NAME }),
-    baseRefName: env.GITHUB_BASE_REF ?? "",
-    ...(env.GITHUB_SHA === undefined ? {} : { sha: env.GITHUB_SHA }),
-    ...(env.GITHUB_REPOSITORY === undefined ? {} : { repository: env.GITHUB_REPOSITORY }),
-    ...(env.GITHUB_WORKFLOW === undefined ? {} : { workflow: env.GITHUB_WORKFLOW }),
-    ...(env.GITHUB_RUN_ID === undefined ? {} : { runId: env.GITHUB_RUN_ID }),
-  };
+/** Keeps only the entries that have a value, so an absent environment variable is an absent context value. */
+function defined(entries: readonly (readonly [ContextKey, string | undefined])[]): Values {
+  return Object.fromEntries(
+    entries.filter((entry): entry is readonly [ContextKey, string] => entry[1] !== undefined),
+  );
 }
 
-function fromGitLab(env: Environment): Partial<Record<ContextKey, string>> {
+function fromGitHub(env: Environment): Values {
+  const event = env.GITHUB_EVENT_NAME;
+
+  return defined([
+    ["event", event === undefined ? undefined : (GITHUB_EVENT[event] ?? event)],
+    ["refName", env.GITHUB_REF_NAME],
+    ["baseRefName", env.GITHUB_BASE_REF ?? ""],
+    ["sha", env.GITHUB_SHA],
+    ["repository", env.GITHUB_REPOSITORY],
+    ["workflow", env.GITHUB_WORKFLOW],
+    ["runId", env.GITHUB_RUN_ID],
+  ]);
+}
+
+function fromGitLab(env: Environment): Values {
   const source = env.CI_PIPELINE_SOURCE;
 
-  return {
-    ...(source === undefined ? {} : { event: GITLAB_SOURCE[source] ?? source }),
-    ...(env.CI_COMMIT_REF_NAME === undefined ? {} : { refName: env.CI_COMMIT_REF_NAME }),
-    baseRefName: env.CI_MERGE_REQUEST_TARGET_BRANCH_NAME ?? "",
-    ...(env.CI_COMMIT_SHA === undefined ? {} : { sha: env.CI_COMMIT_SHA }),
-    ...(env.CI_PROJECT_PATH === undefined ? {} : { repository: env.CI_PROJECT_PATH }),
-    ...(env.CI_PIPELINE_NAME === undefined ? {} : { workflow: env.CI_PIPELINE_NAME }),
-    ...(env.CI_PIPELINE_ID === undefined ? {} : { runId: env.CI_PIPELINE_ID }),
-  };
+  return defined([
+    ["event", source === undefined ? undefined : (GITLAB_SOURCE[source] ?? source)],
+    ["refName", env.CI_COMMIT_REF_NAME],
+    ["baseRefName", env.CI_MERGE_REQUEST_TARGET_BRANCH_NAME ?? ""],
+    ["sha", env.CI_COMMIT_SHA],
+    ["repository", env.CI_PROJECT_PATH],
+    ["workflow", env.CI_PIPELINE_NAME],
+    ["runId", env.CI_PIPELINE_ID],
+  ]);
 }
 
 /**
- * Builds the neutral run context from the provider's own environment variables when run inside one, with explicit `overrides` taking precedence. Every key must resolve: a missing one throws naming it, because a condition evaluated against a guessed value is silently wrong.
+ * Bitbucket exposes no variable that says whether a branch pipeline was started by a push or by hand, so `event` is supplied only for a pull request and is otherwise left for the caller.
  */
-export function resolveContext(
-  env: Environment,
-  overrides: Readonly<Partial<Record<ContextKey, string>>>,
-): RunContext {
-  const detected =
-    env.GITHUB_ACTIONS === "true"
-      ? fromGitHub(env)
-      : env.GITLAB_CI === "true"
-        ? fromGitLab(env)
-        : {};
-  const merged: Partial<Record<ContextKey, string>> = { ...detected, ...overrides };
-  const missing = CONTEXT_KEYS.filter((key) => merged[key] === undefined);
-  if (missing.length > 0) {
-    throw new Error(
-      `no value for context ${missing.join(", ")}; run inside a supported CI or pass --context <key>=<value>`,
-    );
-  }
+function fromBitbucket(env: Environment): Values {
+  return defined([
+    ["event", env.BITBUCKET_PR_ID === undefined ? undefined : "pullRequest"],
+    ["refName", env.BITBUCKET_BRANCH],
+    ["baseRefName", env.BITBUCKET_PR_DESTINATION_BRANCH ?? ""],
+    ["sha", env.BITBUCKET_COMMIT],
+    ["repository", env.BITBUCKET_REPO_FULL_NAME],
+    ["runId", env.BITBUCKET_PIPELINE_UUID],
+  ]);
+}
 
-  const value = (key: ContextKey): string => merged[key] ?? "";
+/**
+ * CircleCI exposes no workflow name as a variable, and no variable distinguishing a push from a manual run, so those are left for the caller.
+ */
+function fromCircleCi(env: Environment): Values {
+  const owner = env.CIRCLE_PROJECT_USERNAME;
+  const repo = env.CIRCLE_PROJECT_REPONAME;
 
-  return {
-    event: value("event"),
-    refName: value("refName"),
-    baseRefName: value("baseRefName"),
-    sha: value("sha"),
-    repository: value("repository"),
-    workflow: value("workflow"),
-    runId: value("runId"),
-  };
+  return defined([
+    ["event", env.CIRCLE_PULL_REQUEST === undefined ? undefined : "pullRequest"],
+    ["refName", env.CIRCLE_BRANCH],
+    ["sha", env.CIRCLE_SHA1],
+    ["repository", owner === undefined || repo === undefined ? undefined : `${owner}/${repo}`],
+    ["runId", env.CIRCLE_WORKFLOW_ID],
+  ]);
+}
+
+function detect(env: Environment): Values {
+  if (env.GITHUB_ACTIONS === "true") return fromGitHub(env);
+  if (env.GITLAB_CI === "true") return fromGitLab(env);
+  if (env.BITBUCKET_BUILD_NUMBER !== undefined) return fromBitbucket(env);
+  if (env.CIRCLECI === "true") return fromCircleCi(env);
+
+  return {};
+}
+
+/**
+ * Builds the neutral run context from the provider's own environment variables when run inside a supported one, with explicit `overrides` taking precedence. Nothing is guessed: a value neither the environment nor the caller supplies stays absent, and the runner fails at the first step or condition that reads it.
+ */
+export function resolveContext(env: Environment, overrides: Readonly<Values>): RunContext {
+  return { ...detect(env), ...overrides };
 }

@@ -20,9 +20,9 @@ export interface CommandExecutor {
 }
 
 /**
- * The neutral context values for one run, supplied by whoever hosts the runner.
+ * The neutral context values for one run, supplied by whoever hosts the runner. A host supplies the values its provider can, and a value a step or condition actually reads but the host did not supply is an error at that point, so a command that needs no context runs wherever it is hosted.
  */
-export type RunContext = Readonly<Record<ContextKey, string>>;
+export type RunContext = Readonly<Partial<Record<ContextKey, string>>>;
 
 export type Outcome = "success" | "failure" | "skipped";
 

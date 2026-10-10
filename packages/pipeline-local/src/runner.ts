@@ -3,6 +3,7 @@ import {
   compilePredicate,
   expandMatrix,
   renderTemplate,
+  type ContextKey,
   type Job,
   type JobReport,
   type MatrixCombination,
@@ -27,8 +28,19 @@ interface Scope {
 
 type Condition = (scope: Scope) => boolean;
 
+function contextValue(context: RunContext, key: ContextKey): string {
+  const value = context[key];
+  if (value === undefined) {
+    throw new Error(
+      `the context value ${key} was read but the host did not supply it; pass --context ${key}=<value>`,
+    );
+  }
+
+  return value;
+}
+
 function operandValue(operand: Operand, scope: Scope): string {
-  if (operand.kind === "context") return scope.context[operand.key];
+  if (operand.kind === "context") return contextValue(scope.context, operand.key);
   if (operand.kind === "matrix") return String(scope.matrix[operand.name]);
 
   return operand.value;
@@ -83,7 +95,9 @@ function resolveEnv(
     Object.entries(env ?? {}).map(([key, value]) => [
       key,
       renderTemplate(value, (token) =>
-        token.kind === "context" ? scope.context[token.key] : String(scope.matrix[token.name]),
+        token.kind === "context"
+          ? contextValue(scope.context, token.key)
+          : String(scope.matrix[token.name]),
       ),
     ]),
   );
@@ -152,7 +166,8 @@ async function runStep(plan: JobPlan, scope: Scope, step: Step, index: number): 
 async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise<JobReport> {
   const scope: Scope = { context: plan.options.context, matrix };
   const { job, id } = plan;
-  if (plan.failsGate) {
+  const conditionHolds = plan.jobCondition(scope);
+  if (conditionHolds && plan.failsGate) {
     return {
       id,
       name: job.name,
@@ -161,7 +176,7 @@ async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise
       steps: job.steps.map((step) => ({ name: stepName(step), outcome: "skipped" })),
     };
   }
-  if (!plan.mayRun || !plan.jobCondition(scope)) {
+  if (!plan.mayRun || !conditionHolds) {
     return {
       id,
       name: job.name,

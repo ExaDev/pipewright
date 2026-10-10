@@ -1,5 +1,7 @@
 import { parseArgs } from "node:util";
 
+import { ZodError } from "zod";
+
 import {
   deriveRequiredChecks,
   planRequiredChecks,
@@ -162,6 +164,16 @@ function token(io: Io): () => Promise<string> {
   };
 }
 
+function loadErrorFrom(path: string, error: ZodError): PipelineLoadError {
+  return new PipelineLoadError(
+    error.issues.map((issue) => ({
+      message: issue.message,
+      file: path,
+      pointer: pointerOf(issue.path),
+    })),
+  );
+}
+
 function isTypeScript(path: string): boolean {
   return path.endsWith(".ts") || path.endsWith(".mts");
 }
@@ -176,21 +188,20 @@ function pointerOf(path: readonly PropertyKey[]): string {
 async function load(io: Io, path: string): Promise<LoadedPipeline> {
   if (!isTypeScript(path)) return loadPipeline(path, io.reader);
 
-  const exports = await io.importModule(path);
+  let exports: unknown;
+  try {
+    exports = await io.importModule(path);
+  } catch (error) {
+    // definePipeline validates while the module is evaluated, so a violation surfaces here rather than at the parse below.
+    if (error instanceof ZodError) throw loadErrorFrom(path, error);
+    throw error;
+  }
   const candidate =
     typeof exports === "object" && exports !== null && "default" in exports
       ? exports.default
       : undefined;
   const result = pipelineSchema.safeParse(candidate);
-  if (!result.success) {
-    throw new PipelineLoadError(
-      result.error.issues.map((issue) => ({
-        message: issue.message,
-        file: path,
-        pointer: pointerOf(issue.path),
-      })),
-    );
-  }
+  if (!result.success) throw loadErrorFrom(path, result.error);
 
   return { pipeline: result.data, files: [path] };
 }
