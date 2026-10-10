@@ -2,6 +2,7 @@
   "name": "ci-adapters",
   "description": "Workspace root. Never published: it holds the workspace, the shared tooling configuration and the repository's own self-hosted pipeline definition.",
   "devDependencies": {
+    "@ci-adapters/pipeline-contract": "0.0.0",
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
     "@eslint/js": "10.0.1",
@@ -30,9 +31,9 @@
     "url": "git+https://github.com/ExaDev/ci-adapters.git"
   },
   "scripts": {
-    "ci:check": "node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.json --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
-    "ci:emit": "node packages/cli/src/bin.ts emit --pipeline ci/ci.pipeline.json --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
-    "ci:local": "node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.json --local --skip-provider-steps --job lint --job typecheck --job test --job drift",
+    "ci:check": "node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
+    "ci:emit": "node packages/cli/src/bin.ts emit --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
+    "ci:local": "node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.ts --local --skip-provider-steps --job lint --job typecheck --job test --job drift",
     "lint": "eslint . --max-warnings 0",
     "prepare": "husky",
     "schema": "node packages/cli/src/bin.ts schema > schemas/pipeline.schema.json && node packages/cli/src/bin.ts schema --authoring > schemas/pipeline.authoring.schema.json",

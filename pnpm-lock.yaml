@@ -166,6 +166,9 @@ importers:
 
   .:
     devDependencies:
+      '@ci-adapters/pipeline-contract':
+        specifier: 0.0.0
+        version: link:packages/pipeline-contract
       '@commitlint/cli':
         specifier: 21.2.3
         version: 21.2.3(@types/node@26.6.4)(conventional-commits-parser@7.1.2)(typescript@6.0.3)
@@ -251,6 +254,24 @@ importers:
       '@ci-adapters/platform-github':
         specifier: 0.0.0
         version: link:../platform-github
+
+  packages/pipeline-bitbucket:
+    dependencies:
+      '@ci-adapters/pipeline-contract':
+        specifier: 0.0.0
+        version: link:../pipeline-contract
+      '@ci-adapters/yaml-emit':
+        specifier: 0.0.0
+        version: link:../yaml-emit
+
+  packages/pipeline-circleci:
+    dependencies:
+      '@ci-adapters/pipeline-contract':
+        specifier: 0.0.0
+        version: link:../pipeline-contract
+      '@ci-adapters/yaml-emit':
+        specifier: 0.0.0
+        version: link:../yaml-emit
 
   packages/pipeline-contract:
     dependencies:
