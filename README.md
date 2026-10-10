@@ -113,6 +113,7 @@ packages/
   platform-contract         read and control interfaces, reference fake, conformance kit, wait helper
   platform-github           read-only reader, controller, Zod codecs for the wire format
   check-names               required check names derived from a pipeline
+  pipeline-graph            a pipeline as a process-graph model, and run state as its overlay
   yaml-emit                 deterministic YAML with comments
   cli                       composition root
 ci/                         this repository's own pipeline definition, in TypeScript
@@ -122,7 +123,7 @@ schemas/                    JSON Schemas derived from the model
 
 Research and sources are in [`docs/research.md`](docs/research.md).
 
-The structure is one contract package per concern with adapters beside it. Each contract ships a reference fake and a conformance kit that every adapter runs, so adapters cannot drift from the spec. The pipeline half and the platform half share nothing; `check-names` is the only package that imports both.
+The structure is one contract package per concern with adapters beside it. Each contract ships a reference fake and a conformance kit that every adapter runs, so adapters cannot drift from the spec. The pipeline half and the platform half share nothing; `check-names` and `pipeline-graph` are the only packages that import both.
 
 ## Development
 
