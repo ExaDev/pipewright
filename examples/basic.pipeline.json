@@ -1,5 +1,5 @@
 {
-  "$schema": "../schemas/pipeline.authoring.schema.json",
+  "$schema": "https://unpkg.com/@pipewright/pipeline-contract/dist/pipeline.authoring.schema.json",
   "description": "A pipeline authored as JSON. The repository's own pipeline is TypeScript; both formats compile to the same model.",
   "jobs": {
     "test": {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { main, resolveContext, type Io } from "../src/index.ts";
 
-const SCHEMA = "../schemas/pipeline.schema.json";
+const SCHEMA = "https://unpkg.com/@pipewright/pipeline-contract/dist/pipeline.schema.json";
 
 const pipeline = {
   $schema: SCHEMA,
@@ -460,7 +460,7 @@ describe("import and convert", () => {
       ),
     ).toBe(0);
     const document = h.files.get("ci/ci.pipeline.json");
-    expect(document).toContain('"$schema": "pipeline.schema.json"');
+    expect(document).toContain(`"$schema": "${SCHEMA}"`);
 
     const again = harness({ files: { "ci/ci.pipeline.json": document ?? "" } });
     expect(await main(["emit", ...EMIT], again.io)).toBe(0);

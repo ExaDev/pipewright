@@ -2,6 +2,11 @@ import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
+import {
+  pipelineAuthoringJsonSchema,
+  pipelineJsonSchema,
+} from "../packages/pipeline-contract/src/index.ts";
+
 /**
  * Compiles every workspace package to its own `dist`: JavaScript and declarations, which is what gets published. The workspace itself runs from source, so this is only for a release and for the check that a packed package installs.
  *
@@ -36,3 +41,14 @@ for (const name of readdirSync(packagesDirectory)) {
     if (rewritten !== text) writeFileSync(file, rewritten);
   }
 }
+
+// The JSON Schemas are derived from the model and shipped inside the contract package, which is where a document's `$schema` resolves once the package is published.
+const contractDist = join(packagesDirectory, "pipeline-contract", "dist");
+writeFileSync(
+  join(contractDist, "pipeline.schema.json"),
+  `${JSON.stringify(pipelineJsonSchema(), null, 2)}\n`,
+);
+writeFileSync(
+  join(contractDist, "pipeline.authoring.schema.json"),
+  `${JSON.stringify(pipelineAuthoringJsonSchema(), null, 2)}\n`,
+);

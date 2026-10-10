@@ -81,12 +81,10 @@ const drift = defineJob(
   "drift",
   check({
     name: "Generated files",
-    description: "Fails when a generated file differs from what the tool emits now.",
+    description: "Fails when a generated workflow differs from what the tool emits now.",
     run: [
       `${TOOL} check --pipeline ${PIPELINE_FILE} --provider github-actions --tool-command "${TOOL}"`,
       `${TOOL} check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "${TOOL}"`,
-      `${TOOL} schema | diff -u schemas/pipeline.schema.json -`,
-      `${TOOL} schema --authoring | diff -u schemas/pipeline.authoring.schema.json -`,
     ].join(" && "),
   }),
 );

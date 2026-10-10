@@ -94,7 +94,7 @@ node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider githu
 node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.ts --local --skip-provider-steps --job lint
 node packages/cli/src/bin.ts import --provider github-actions --file .github/workflows/ci.yml --output ci/ci.pipeline.ts
 node packages/cli/src/bin.ts convert --from github-actions --file .github/workflows/ci.yml --to gitlab-ci
-node packages/cli/src/bin.ts export --pipeline ci/ci.pipeline.ts --schema ../schemas/pipeline.schema.json
+node packages/cli/src/bin.ts export --pipeline ci/ci.pipeline.ts
 node packages/cli/src/bin.ts schema --authoring
 node packages/cli/src/bin.ts check-names --pipeline ci/ci.pipeline.ts --provider github-actions --scope gates
 node packages/cli/src/bin.ts platform runs --repo OWNER/REPO --sha SHA
@@ -122,7 +122,6 @@ packages/
   cli                       composition root
 ci/                         this repository's own pipeline definition, in TypeScript
 examples/                   a pipeline authored as JSON
-schemas/                    JSON Schemas derived from the model
 ```
 
 Research and sources are in [`docs/research.md`](docs/research.md).
@@ -144,7 +143,6 @@ pnpm run build              # compile every package to dist, which is what a rel
 pnpm run test:e2e           # dispatch an emitted workflow on GitHub and watch it (needs GH_TOKEN, REPOSITORY, E2E_REF)
 pnpm run ci:local   # this repository's own pipeline, through its own runner
 pnpm run ci:check   # fails if the generated workflow has drifted
-pnpm run schema     # regenerate the JSON Schemas
 ```
 
 Packages are workspace members run from source through Node's type stripping, so development and CI need no build. A release compiles each package to `dist` (`pnpm run build`), because Node does not strip types in files under `node_modules`. Node 22.18 or later.
@@ -153,7 +151,7 @@ Packages are workspace members run from source through Node's type stripping, so
 
 `.github/workflows/ci.yml` is generated from `ci/ci.pipeline.ts` and is not edited by hand. A job fails if it, or either JSON Schema, differs from what the tool emits. The test job renders in the wrapper form, so CI runs the tests through this tool's own runner, one job reads its own run back through the platform adapter, and the pre-push hook runs the same pipeline locally.
 
-The generated workflows and the schemas are the repository's one exception to not committing generated content, and it holds for three reasons: GitHub runs only workflows that exist as files in the repository, a JSON pipeline's `$schema` must resolve to a document, and the drift check fails when a committed copy differs from what the tool would write, so neither can diverge from its TypeScript source. The schemas stop being committed when the packages are first published, because `$schema` then resolves to a stable package URL.
+The generated workflows are committed because GitHub runs only workflows that exist as files in the repository, and the drift check fails when a committed copy differs from what the tool would write, so it cannot diverge from its TypeScript source. The JSON Schemas are not committed: they are derived from the model at build time and shipped in `@pipewright/pipeline-contract`, which is where a document's `$schema` resolves.
 
 ## Constraints
 

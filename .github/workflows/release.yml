@@ -1,0 +1,45 @@
+# Written by hand, not generated: the pipeline model has no tag trigger, so this one workflow cannot be compiled from a pipeline. It is the only such file.
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+permissions:
+  contents: read
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The registry's trusted publishing exchanges this job's OIDC identity for a short-lived publish credential, so no token is stored. Nothing else in the workflow holds a write permission.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version-file: .tool-versions
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Check
+        run: pnpm run lint && pnpm run typecheck && pnpm run test
+      - name: Set the version from the tag
+        run: node scripts/set-version.ts "${GITHUB_REF_NAME#v}"
+      - name: Build
+        run: pnpm run build
+      - name: Pack and install
+        run: pnpm run test:pack
+      - name: Publish
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          for directory in packages/*/; do
+            (cd "$directory" && pnpm pack --pack-destination "$RUNNER_TEMP/tarballs")
+          done
+          for tarball in "$RUNNER_TEMP"/tarballs/*.tgz; do
+            npm publish "$tarball" --access public --provenance
+          done

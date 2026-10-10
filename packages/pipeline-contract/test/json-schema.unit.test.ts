@@ -88,7 +88,12 @@ describe("authoring JSON Schema", () => {
   const authoring = validator(pipelineAuthoringJsonSchema());
 
   it("accepts a fragment with no required fields", () => {
-    expect(authoring({ $schema: "../schemas/pipeline.schema.json", env: { A: "b" } })).toBe(true);
+    expect(
+      authoring({
+        $schema: "https://unpkg.com/@pipewright/pipeline-contract/dist/pipeline.schema.json",
+        env: { A: "b" },
+      }),
+    ).toBe(true);
   });
 
   it("accepts extends, parameters and a parameter reference in a scalar position", () => {

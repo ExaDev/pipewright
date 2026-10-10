@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { PipelineLoadError, loadPipeline, type FileReader } from "../src/index.ts";
 
-const SCHEMA = "../schemas/pipeline.schema.json";
+const SCHEMA = "https://unpkg.com/@pipewright/pipeline-contract/dist/pipeline.schema.json";
 const INHERITED_TIMEOUT = 5;
 const SUPPLIED_MINUTES = 7;
 
