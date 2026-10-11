@@ -21,6 +21,7 @@ export type NodeRunner = (signal?: AbortSignal) => Promise<NodeInvocation>;
  * The environment variable a supplied input arrives as: `INPUT_` before the input's name, with spaces replaced by underscores and the result upper-cased, which is the derivation GitHub's own runner applies to every input it passes. The name's other characters, a hyphen among them, keep their own shape.
  * @see https://github.com/actions/runner/blob/main/src/Runner.Worker/Handlers/Handler.cs, AddInputsToEnvironment
  * @see https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+ * @see https://web.archive.org/web/20250615225859/https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
  */
 export function inputEnvironmentName(name: string): string {
   return `INPUT_${name.replaceAll(" ", "_").toUpperCase()}`;
