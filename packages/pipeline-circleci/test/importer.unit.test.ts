@@ -30,10 +30,6 @@ const WORKFLOW = "workflows:\n  ci:\n    jobs:\n      - build\n";
 
 const REJECTS = [
   {
-    name: "orbs",
-    text: `version: 2.1\norbs:\n  node: circleci/node@5\njobs:\n${JOB}${WORKFLOW}`,
-  },
-  {
     name: "more than one workflow",
     text: `version: 2.1\njobs:\n${JOB}workflows:\n  one:\n    jobs: [build]\n  two:\n    jobs: [build]\n`,
   },
@@ -177,12 +173,25 @@ describe("CircleCI import", () => {
     expect(pipeline.triggers).toEqual([{ kind: "push", branches: ["main"] }]);
   });
 
-  it("expands a merge key before reading a job", async () => {
+  it("carries orbs at pipeline level and re-emits them unchanged", async () => {
+    const pipeline = await importText(
+      `version: 2.1\norbs:\n  node: circleci/node@5\njobs:\n${JOB}${WORKFLOW}`,
+    );
+    const [emitted] = await createCircleCiCompiler().compile(pipeline, { source: "s" });
+
+    expect(pipeline.native).toEqual({ circleci: { orbs: { node: "circleci/node@5" } } });
+    expect(emitted?.content).toContain("orbs:");
+    expect(emitted?.content).toContain("circleci/node@5");
+  });
+
+  it("expands a merge key before reading a job, carrying the anchor holder", async () => {
     const pipeline = await importText(
       `version: 2.1\ndefaults: &defaults\n  docker:\n    - image: x\njobs:\n  build:\n    <<: *defaults\n    steps:\n      - run: make\n${WORKFLOW}`,
-    ).catch((error: unknown) => error);
+    );
 
-    // A top-level anchor holder is a setting the model has no place for, which is rejected by name.
-    expect(pipeline).toBeInstanceOf(UnsupportedNativeError);
+    expect(pipeline.native).toEqual({ circleci: { defaults: { docker: [{ image: "x" }] } } });
+    expect(Object.values(pipeline.jobs)[0]?.native).toMatchObject({
+      circleci: { docker: [{ image: "x" }] },
+    });
   });
 });

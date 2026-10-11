@@ -14,6 +14,8 @@ import {
   type PipelineCompiler,
   type Step,
   type TemplateToken,
+  mergeNative,
+  nativeOf,
 } from "@pipewright/pipeline-contract";
 import { renderYaml } from "@pipewright/yaml-emit";
 
@@ -381,7 +383,7 @@ export function createCircleCiCompiler(): PipelineCompiler {
         {
           path: FILE,
           content: renderYaml(
-            { version: CONFIG_VERSION, jobs, workflows },
+            mergeNative({ version: CONFIG_VERSION, jobs, workflows }, nativeOf(pipeline, PROVIDER)),
             comments,
             generatedHeaderLines(options.source),
           ),

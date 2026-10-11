@@ -271,14 +271,12 @@ function branchesOf(condition: unknown, pointer: Pointer): string[] {
 function importConfiguration(file: EmittedFile): Pipeline {
   const { value, comments } = readYaml(file.content);
   const document = recordAt(value, [], "the configuration");
+  // Top-level settings other than the jobs and the workflow change what the whole file does, so they are carried at pipeline level, version included when the compiler would write another one.
+  const carried: Record<string, unknown> = {};
   for (const key of Object.keys(document)) {
-    if (key !== "version" && key !== "jobs" && key !== "workflows") {
-      fail([key], `the ${key} setting, which has no place in the model`);
-    }
+    if (key !== "version" && key !== "jobs" && key !== "workflows") carried[key] = document[key];
   }
-  if (document.version !== CONFIG_VERSION) {
-    return fail(["version"], "a configuration version other than the one the compiler writes");
-  }
+  if (document.version !== CONFIG_VERSION) carried.version = document.version;
   const jobs = recordAt(document.jobs, ["jobs"], "the jobs");
   const workflows = recordAt(document.workflows, ["workflows"], "the workflows");
   const names = Object.keys(workflows);
@@ -451,6 +449,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
       : branchesOf(workflow.when, ["workflows", workflowName, "when"]);
 
   return validateImported(PROVIDER, {
+    ...(Object.keys(carried).length === 0 ? {} : { native: { [PROVIDER]: carried } }),
     name: workflowName,
     ...(description === undefined ? {} : { description }),
     triggers: [{ kind: "push", ...(branches === undefined ? {} : { branches }) }],
@@ -461,7 +460,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
 /**
  * Reads a `.circleci/config.yml` into the neutral model: the inverse of `createCircleCiCompiler`.
  *
- * Read: one workflow, whose name is the pipeline's, with an optional branch condition as the push trigger; its jobs, each with the executor and other job keys kept on `native.circleci`, `requires` as `needs` (every requirement at the `terminal` status as an always-running job), a matrix with its alias and the axis values in the display name, run, checkout and other steps, and environments over the sha, ref and run id. A job with no runner label is how the model states that the executor is the job's own. What CircleCI owns and the model carries verbatim is kept: any step that is not a plain run or checkout becomes a `provider` step. What has nowhere to be carried is rejected with its JSON pointer: orbs, commands, executors and other top-level settings, more than one workflow, a workflow name the compiler would rewrite, workflow job settings such as `filters` and `context`, a job no workflow runs, an environment substitution outside the neutral vocabulary, and a call to this tool's runner.
+ * Read: one workflow, whose name is the pipeline's, with an optional branch condition as the push trigger; its jobs, each with the executor and other job keys kept on `native.circleci`, `requires` as `needs` (every requirement at the `terminal` status as an always-running job), a matrix with its alias and the axis values in the display name, run, checkout and other steps, and environments over the sha, ref and run id. A job with no runner label is how the model states that the executor is the job's own. What CircleCI owns and the model carries verbatim is kept: any step that is not a plain run or checkout becomes a `provider` step. Orbs, commands, executors and other top-level settings are carried at pipeline level. What has nowhere to be carried is rejected with its JSON pointer: more than one workflow, a workflow name the compiler would rewrite, workflow job settings such as `filters` and `context`, a job no workflow runs, an environment substitution outside the neutral vocabulary, and a call to this tool's runner.
  */
 export function createCircleCiImporter(): PipelineImporter {
   return {
