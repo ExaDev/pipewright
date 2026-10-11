@@ -13,6 +13,8 @@ import {
   type PipelineCompiler,
   type Step,
   joinShellSteps,
+  mergeNative,
+  nativeOf,
 } from "@pipewright/pipeline-contract";
 import { commentPath, renderYaml } from "@pipewright/yaml-emit";
 import { dag } from "process-graph";
@@ -434,7 +436,7 @@ export function createBitbucketPipelinesCompiler(): PipelineCompiler {
         {
           path: FILE,
           content: renderYaml(
-            { pipelines: ordered },
+            mergeNative({ pipelines: ordered }, nativeOf(pipeline, PROVIDER)),
             comments,
             generatedHeaderLines(options.source),
           ),
