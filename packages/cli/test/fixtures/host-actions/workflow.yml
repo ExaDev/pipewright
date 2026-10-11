@@ -1,0 +1,27 @@
+name: Host actions
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate
+        id: generate
+        run: |
+          echo "flag=yes" >> "$GITHUB_OUTPUT"
+          echo "token-present=${{ secrets.API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+      - name: Use the composite action
+        uses: ./actions/composite
+        with:
+          message: from-${{ steps.generate.outputs.flag }}
+      - name: Use the node action
+        uses: ./actions/node
+        with:
+          text: wrote-${{ github.ref_name }}
+      - name: Record the hand-off
+        if: steps.generate.outputs.flag == 'yes'
+        run: echo "hand-off=${{ steps.generate.outputs.flag }} token=${{ steps.generate.outputs.token-present }}" >> hand-off.txt
+      - name: Never taken
+        if: steps.generate.outputs.flag == 'no'
+        run: |
+          touch never.txt
+          exit 1

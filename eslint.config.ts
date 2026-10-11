@@ -18,6 +18,8 @@ export default defineConfig(
       "schemas",
       // Golden files are the exact bytes an adapter must emit.
       "packages/*/test/golden",
+      // Action fixtures are files a host run executes as data, like the tarball a fetched action arrives in.
+      "packages/cli/test/fixtures",
     ],
   },
   {
