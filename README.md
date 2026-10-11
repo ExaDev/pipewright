@@ -14,9 +14,11 @@ A workflow file mixes two things. The orchestration (triggers, job graph, matrix
 
 **Run directly.** `run` executes the pipeline through an in-process runner that asks an injected executor to run each command. Nothing is generated. A single job, a step range or one matrix combination can be run alone. Around each step the runner applies the provider's file commands, as a hosted runner does: the step writes to `GITHUB_OUTPUT`, `GITHUB_ENV`, `GITHUB_PATH` and `GITHUB_STEP_SUMMARY`, and its stdout is read for `::add-mask::` and the log-level commands, so outputs reach the step's record, environment and paths reach the job's later steps, and masked values are not echoed.
 
+GitHub's own parts of a pipeline run on the host too. A provider step carrying a `uses:` reference is resolved, a composite action's steps are interpreted and a node action's entry runs under the CLI's own node, with the action's `pre` and `post` phases placed around the job's steps the way the hosted runner places them. `${{ }}` expressions in command text, environments and conditions are evaluated with the run's context: step outputs and environment written by earlier steps, the results of needed jobs, and secrets supplied by `--secret name=value` or `--secret name`, which reads the environment variable of that name and never puts the value on a command line. Local `./` references resolve against the workspace and an `owner/repo@ref` reference is fetched as a tarball and extracted for the run's lifetime; the platform token, wherever the run has one, is supplied to expressions as `secrets.GITHUB_TOKEN` and sent with the fetch. What needs a container stays the provider's: a `docker://` reference is skipped by `--skip-provider-steps` and fails the run without it, and the same flag skips whole actions, for a host that has already supplied the toolchain those steps would install.
+
 **Query the platform.** A separate read-only contract lists runs, checks, logs and the checks a branch requires. It does not depend on the pipeline model.
 
-**Import a native file.** `import` reads a provider's file into a pipeline, as TypeScript or JSON, and `convert` writes another provider's files from it. What the model cannot express is rejected with the file and pointer, never approximated.
+**Import a native file.** `import` reads a provider's file into a pipeline, as TypeScript or JSON, and `convert` writes another provider's files from it. What the model cannot express is rejected with the file and pointer, never approximated. A GitHub workflow imported as a pipeline runs through `import` then `run --local`: its actions, expressions, output hand-offs and `if` gates execute on the host for the supported subset, and what the host cannot run is rejected naming the construct rather than approximated.
 
 ## Authoring
 
@@ -100,7 +102,7 @@ node packages/cli/src/bin.ts check-names --pipeline ci/ci.pipeline.ts --provider
 node packages/cli/src/bin.ts platform runs --repo OWNER/REPO --sha SHA
 ```
 
-`--pipeline` takes a `.ts` module or a `.json` document. `run` takes its context (event, ref, sha and so on) from the environment when it detects GitHub Actions or GitLab CI, or from `--context key=value`. A missing value is an error, not a guess. `--local` supplies the context of a manual run on a branch called `local`.
+`--pipeline` takes a `.ts` module or a `.json` document. `run` takes its context (event, ref, sha and so on) from the environment when it detects GitHub Actions or GitLab CI, or from `--context key=value`. A missing value is an error, not a guess. `--local` supplies the context of a manual run on a branch called `local`. `run` takes secrets with `--secret name=value`, or `--secret name` to read the environment variable of that name; a secret an expression reads but the run was not given is an error naming it, and secret values are never printed, logged or stored.
 
 Platform commands read the token from `GH_TOKEN`; the adapter reads no files or other variables for it.
 
