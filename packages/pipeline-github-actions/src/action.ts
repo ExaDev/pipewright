@@ -2,7 +2,7 @@ import { jsonPointerOf } from "@pipewright/pipeline-contract";
 import { z } from "zod";
 
 /**
- * The metadata file of an action (`action.yml`, or `action.yaml`), read as data. A fetched tree is never executed: this schema describes what a composite action declares, and the interpretation in `composite.ts` is the only place that turns it into steps.
+ * The metadata file of an action (`action.yml`, or `action.yaml`), read as data. A fetched tree is never executed: these schemas describe what a composite or node action declares, and the interpretation in `composite.ts` and `node.ts` are the only places that turn one into steps.
  * @see https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
  * @see https://web.archive.org/web/20250615225859/https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
  */
@@ -26,11 +26,22 @@ const inputSchema = z.strictObject({
   default: scalarSchema.optional(),
   deprecationMessage: z.string().optional(),
 });
+export type ActionInput = z.output<typeof inputSchema>;
 
 /**
  * A `continue-on-error` value: a boolean, or the text of an expression that evaluates to one.
  */
 const continueOnErrorSchema = z.union([z.boolean(), z.string()]);
+
+/**
+ * The keys every action declares around the way it runs, whichever runtime `runs.using` names. They are one mapping so the two forms of action cannot drift apart: an input, its default and its `required` request mean the same thing to a composite action's steps and to a node action's entry file.
+ */
+const actionKeys = {
+  name: z.string().min(1),
+  description: z.string(),
+  inputs: z.record(z.string().regex(INPUT_ID), inputSchema).optional(),
+  branding: z.strictObject({ icon: z.string(), color: z.string() }).optional(),
+};
 
 /**
  * A step that runs a command. `shell` is required whenever `run` is written, which is GitHub's own rule for composite steps and the reason it is not optional here.
@@ -69,10 +80,7 @@ export type CompositeStep = z.output<typeof compositeStepSchema>;
  * The metadata of an action whose `runs.using` is `composite`. The keys GitHub documents and this package does not read (`branding`, the declared `inputs`' descriptions, `runs.outputs`) are carried as data, because they describe the action rather than change how its steps run. Keys GitHub does not document for a composite action (a step `timeout-minutes`, `runs.image`) are rejected by the strict objects, which is the same stance the importer takes with a workflow.
  */
 export const compositeActionSchema = z.strictObject({
-  name: z.string().min(1),
-  description: z.string(),
-  inputs: z.record(z.string().regex(INPUT_ID), inputSchema).optional(),
-  branding: z.strictObject({ icon: z.string(), color: z.string() }).optional(),
+  ...actionKeys,
   runs: z.strictObject({
     using: z.literal("composite"),
     steps: z.array(compositeStepSchema).min(1),
@@ -88,6 +96,33 @@ export const compositeActionSchema = z.strictObject({
   }),
 });
 export type CompositeAction = z.output<typeof compositeActionSchema>;
+
+/**
+ * The runtimes a node action's `runs.using` names. The metadata syntax documents `node20` and `node24`; `node16` and `node12` are gone from the documentation but remain runtimes the runner names, so an action pinned to them still expands. The declared runtime is a label the host's node port may read: the entry file runs under whichever node the host supplies, never a binary this package names.
+ * @see https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionManifestManager.cs, the node12/node16/node20/node24 branch of runs.using
+ */
+const NODE_RUNTIMES = ["node20", "node16", "node12", "node24"] as const;
+
+/**
+ * The metadata of an action whose `runs.using` names a node runtime: `main` is the entry file the runtime executes, and `pre` and `post` are entry files that run around the job's steps when `pre-if` and `post-if` allow, both conditions defaulting to `always()`. A `pre` a local action declares is rejected where the expansion places it, because GitHub documents `pre` as not supported for local actions. Keys the node form does not document (`runs.image`, `runs.steps`) are rejected by the strict object, which is the same stance the composite schema takes.
+ * @see https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+ * @see https://web.archive.org/web/20250615225859/https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
+ */
+export const nodeActionSchema = z.strictObject({
+  ...actionKeys,
+  runs: z.strictObject({
+    using: z.enum(NODE_RUNTIMES),
+    main: z.string().min(1),
+    pre: z.string().min(1).optional(),
+    "pre-if": z.string().min(1).optional(),
+    post: z.string().min(1).optional(),
+    "post-if": z.string().min(1).optional(),
+  }),
+});
+export type NodeAction = z.output<typeof nodeActionSchema>;
+
+/** The `runs.using` values whose action this package executes itself, for dispatch before a document is validated as one form or the other. */
+export const NODE_USINGS = new Set<string>(NODE_RUNTIMES);
 
 /** Where a metadata file's node is wrong, and what is wrong with it. */
 export interface MetadataIssue {
@@ -149,7 +184,7 @@ export function parseCompositeStep(
 }
 
 /**
- * Raised when a `uses` value is not one of the forms a reference can take. The expansion path wraps this into `CompositeActionError`; the message stands alone when the parser is used directly.
+ * Raised when a `uses` value is not one of the forms a reference can take. The expansion path wraps this into `ActionExpansionError`; the message stands alone when the parser is used directly.
  */
 export class ActionReferenceError extends Error {
   /** The `uses` value as written. */
