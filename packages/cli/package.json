@@ -1,17 +1,17 @@
 {
   "name": "@pipewright/cli",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "bin": {
     "pipewright": "./src/bin.ts"
   },
   "dependencies": {
-    "@pipewright/check-names": "0.1.7",
-    "@pipewright/pipeline-bitbucket": "0.2.1",
-    "@pipewright/pipeline-circleci": "0.2.1",
-    "@pipewright/pipeline-contract": "0.3.0",
-    "@pipewright/pipeline-github-actions": "0.5.1",
-    "@pipewright/pipeline-gitlab-ci": "0.2.1",
-    "@pipewright/pipeline-local": "0.2.0",
+    "@pipewright/check-names": "0.1.8",
+    "@pipewright/pipeline-bitbucket": "0.2.2",
+    "@pipewright/pipeline-circleci": "0.2.2",
+    "@pipewright/pipeline-contract": "0.4.0",
+    "@pipewright/pipeline-github-actions": "0.6.0",
+    "@pipewright/pipeline-gitlab-ci": "0.2.2",
+    "@pipewright/pipeline-local": "0.3.0",
     "@pipewright/platform-contract": "0.1.0",
     "@pipewright/platform-github": "0.1.1",
     "zod": "4.6.5"

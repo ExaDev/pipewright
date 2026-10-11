@@ -1,3 +1,19 @@
+## [0.6.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.5.1...@pipewright/pipeline-github-actions@0.6.0) (2026-10-11)
+
+### Features
+
+* **github-actions:** export the vocabulary a run host maps contexts through ([99cac2a](https://github.com/ExaDev/pipewright/commit/99cac2a1d9ca98ae702ae8b38494a49c0350c7bc))
+
+### Bug Fixes
+
+* **github-actions:** accept the author a published action declares ([c4c08a4](https://github.com/ExaDev/pipewright/commit/c4c08a4251e68246cdd487d0d48f50c3ae3068a6))
+* **github-actions:** accept the metadata shapes published node actions declare ([82b1e29](https://github.com/ExaDev/pipewright/commit/82b1e29e7389690cdcb0fda21bcb103addcb66c0))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.4.0
+
 ## [0.5.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.5.0...@pipewright/pipeline-github-actions@0.5.1) (2026-10-11)
 
 

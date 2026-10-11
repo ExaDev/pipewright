@@ -1,3 +1,13 @@
+## [0.4.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.3.0...@pipewright/pipeline-contract@0.4.0) (2026-10-11)
+
+### Features
+
+* **contract:** add the step host port to the runner's run options ([6c5933a](https://github.com/ExaDev/pipewright/commit/6c5933afd76c69e5dab92599ab758a151d3f155b))
+
+### Bug Fixes
+
+* **local:** prepare only the steps a run's range will execute ([b11e5a2](https://github.com/ExaDev/pipewright/commit/b11e5a251f1f0a7a568487c12e1068684608a349))
+
 ## [0.3.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.2.0...@pipewright/pipeline-contract@0.3.0) (2026-10-11)
 
 ### Features

@@ -1,3 +1,28 @@
+## [0.3.0](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.2.0...@pipewright/cli@0.3.0) (2026-10-11)
+
+### Features
+
+* **cli:** run an imported workflow's actions end to end on the host ([602bfdd](https://github.com/ExaDev/pipewright/commit/602bfddd417618fe2cc3c1cf06c63f60be973b4b))
+
+### Bug Fixes
+
+* **local:** prepare only the steps a run's range will execute ([b11e5a2](https://github.com/ExaDev/pipewright/commit/b11e5a251f1f0a7a568487c12e1068684608a349))
+
+### Tests
+
+* **cli:** resolve a real action reference through the fetching resolver ([682fa09](https://github.com/ExaDev/pipewright/commit/682fa092867946c0d596c51a30f4d6594ab1f762))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.4.0
+- Updated @pipewright/pipeline-bitbucket to 0.2.2
+- Updated @pipewright/pipeline-circleci to 0.2.2
+- Updated @pipewright/pipeline-github-actions to 0.6.0
+- Updated @pipewright/pipeline-gitlab-ci to 0.2.2
+- Updated @pipewright/pipeline-local to 0.3.0
+- Updated @pipewright/check-names to 0.1.8
+
 ## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.7...@pipewright/cli@0.2.0) (2026-10-11)
 
 ### Features

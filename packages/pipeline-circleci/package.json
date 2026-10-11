@@ -1,8 +1,8 @@
 {
   "name": "@pipewright/pipeline-circleci",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "dependencies": {
-    "@pipewright/pipeline-contract": "0.3.0",
+    "@pipewright/pipeline-contract": "0.4.0",
     "@pipewright/yaml-emit": "0.1.0"
   },
   "exports": {

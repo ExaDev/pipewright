@@ -1,3 +1,18 @@
+## [0.3.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-local@0.2.0...@pipewright/pipeline-local@0.3.0) (2026-10-11)
+
+### Features
+
+* **local:** run the steps a host prepares and resolves for a job ([1ebcee8](https://github.com/ExaDev/pipewright/commit/1ebcee8666b972dd8b89c17172ea4bebb67da0d1))
+
+### Bug Fixes
+
+* **local:** prepare only the steps a run's range will execute ([b11e5a2](https://github.com/ExaDev/pipewright/commit/b11e5a251f1f0a7a568487c12e1068684608a349))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.4.0
+
 ## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-local@0.1.3...@pipewright/pipeline-local@0.2.0) (2026-10-11)
 
 ### Features

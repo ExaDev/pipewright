@@ -1,3 +1,10 @@
+## [0.2.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-gitlab-ci@0.2.1...@pipewright/pipeline-gitlab-ci@0.2.2) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.4.0
+
 ## [0.2.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-gitlab-ci@0.2.0...@pipewright/pipeline-gitlab-ci@0.2.1) (2026-10-11)
 
 

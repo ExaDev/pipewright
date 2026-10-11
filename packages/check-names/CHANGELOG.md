@@ -1,3 +1,12 @@
+## [0.1.8](https://github.com/ExaDev/pipewright/compare/@pipewright/check-names@0.1.7...@pipewright/check-names@0.1.8) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.4.0
+- Updated @pipewright/pipeline-github-actions to 0.6.0
+- Updated @pipewright/pipeline-gitlab-ci to 0.2.2
+
 ## [0.1.7](https://github.com/ExaDev/pipewright/compare/@pipewright/check-names@0.1.6...@pipewright/check-names@0.1.7) (2026-10-11)
 
 
