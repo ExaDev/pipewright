@@ -39,6 +39,8 @@ const continueOnErrorSchema = z.union([z.boolean(), z.string()]);
 const actionKeys = {
   name: z.string().min(1),
   description: z.string(),
+  // The author the syntax page documents as optional, carried as data: nothing that runs reads it.
+  author: z.string().optional(),
   inputs: z.record(z.string().regex(INPUT_ID), inputSchema).optional(),
   branding: z.strictObject({ icon: z.string(), color: z.string() }).optional(),
 };
@@ -90,7 +92,7 @@ export const compositeStepSchema = z.union([runStepSchema, usesStepSchema]);
 export type CompositeStep = z.output<typeof compositeStepSchema>;
 
 /**
- * The metadata of an action whose `runs.using` is `composite`. The keys GitHub documents and this package does not read (`branding`, the declared `inputs`' descriptions, `runs.outputs`) are carried as data, because they describe the action rather than change how its steps run. Keys GitHub does not document for a composite action (a step `timeout-minutes`, `runs.image`) are rejected by the strict objects, which is the same stance the importer takes with a workflow.
+ * The metadata of an action whose `runs.using` is `composite`. The keys GitHub documents and this package does not read (`author`, `branding`, the declared `inputs`' descriptions, `runs.outputs`) are carried as data, because they describe the action rather than change how its steps run. Keys GitHub does not document for a composite action (a step `timeout-minutes`, `runs.image`) are rejected by the strict objects, which is the same stance the importer takes with a workflow.
  */
 export const compositeActionSchema = z.strictObject({
   ...actionKeys,
