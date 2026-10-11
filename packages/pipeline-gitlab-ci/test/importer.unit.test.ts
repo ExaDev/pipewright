@@ -354,5 +354,15 @@ describe("GitLab CI import", () => {
     expect(pipeline.jobs.a?.runsOn).toEqual(["linux"]);
     expect(pipeline.jobs.a?.native).toEqual({ "gitlab-ci": { image: "node:22" } });
     expect(pipeline.jobs.b?.native).toEqual({ "gitlab-ci": { inherit: { default: false } } });
+    expect(pipeline.jobs.b?.runsOn).toEqual([]);
+  });
+
+  it("gives a job the default tags only when its inherit.default allows tags", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}default:\n  tags: [privileged]\na:\n  script: [x]\n  inherit:\n    default: [image]\nb:\n  script: [y]\n  inherit:\n    default: [tags]\n`,
+    );
+
+    expect(pipeline.jobs.a?.runsOn).toEqual([]);
+    expect(pipeline.jobs.b?.runsOn).toEqual(["privileged"]);
   });
 });
