@@ -39,6 +39,8 @@ interface RecordingExecutor extends CommandExecutor {
 /** What the kit's scripted executor answers one step with: the stdout it produced, and what it wrote to the command files its environment names. */
 export interface StepScript {
   readonly stdout: string;
+  /** What the scripted command writes to stderr, so a case can cover its masking. */
+  readonly stderr?: string;
   readonly writes: Readonly<Partial<StepFileContents>>;
 }
 
@@ -73,6 +75,7 @@ function recordingExecutor(
       return Promise.resolve({
         exitCode: failing(execution.command) ? 1 : 0,
         stdout: answer.stdout,
+        stderr: answer.stderr ?? "",
       });
     },
   };

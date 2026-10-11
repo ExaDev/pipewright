@@ -17,6 +17,8 @@ export interface CommandResult {
   readonly exitCode: number;
   /** Everything the command wrote to stdout, which the runner reads for workflow commands and echoes through the run's output after masking. */
   readonly stdout: string;
+  /** Everything the command wrote to stderr, which carries no workflow commands but can carry a masked value, so the runner emits it through the same masks. */
+  readonly stderr: string;
 }
 
 /** The severity a log entry carries. `info` is a step's ordinary output. */

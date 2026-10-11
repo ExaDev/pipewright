@@ -219,10 +219,14 @@ describe("the local runner's file commands", () => {
           write(execution, "GITHUB_ENV", scratch, "STEP_ENV=written\n");
           write(execution, "GITHUB_OUTPUT", scratch, "out=here\n");
 
-          return Promise.resolve({ exitCode: 0, stdout: "::add-mask::shh\nshh out there\n" });
+          return Promise.resolve({
+            exitCode: 0,
+            stdout: "::add-mask::shh\nshh out there\n",
+            stderr: "shh on stderr\n",
+          });
         }
 
-        return Promise.resolve({ exitCode: 0, stdout: "" });
+        return Promise.resolve({ exitCode: 0, stdout: "", stderr: "" });
       },
     };
     const pipeline = pipelineSchema.parse({
@@ -248,7 +252,7 @@ describe("the local runner's file commands", () => {
       context: {},
     });
     expect(report.jobs[0]?.steps[0]?.outputs).toEqual({ out: "here" });
-    expect(output.lines).toEqual(["info:*** out there"]);
+    expect(output.lines).toEqual(["info:*** out there", "info:*** on stderr"]);
     // The env the pipeline declares for the step wins over what an earlier step wrote, as the provider's runner applies the file below the declared env.
     expect(executed[1]?.env.STEP_ENV).toBe("declared");
   });
@@ -315,7 +319,7 @@ describe("the local runner's file commands", () => {
             });
             child.on("error", fail);
             child.on("close", (code) => {
-              done({ exitCode: code ?? 1, stdout });
+              done({ exitCode: code ?? 1, stdout, stderr: "" });
             });
           });
         },
@@ -366,7 +370,7 @@ describe("the local runner's file commands", () => {
     const scratch = memoryScratch();
     const executor: CommandExecutor = {
       async execute() {
-        return Promise.resolve({ exitCode: 0, stdout: "::no-such-command::x\n" });
+        return Promise.resolve({ exitCode: 0, stdout: "::no-such-command::x\n", stderr: "" });
       },
     };
     const pipeline = pipelineSchema.parse({

@@ -89,8 +89,8 @@ const io: Io = {
       return new Promise((done, fail) => {
         // A run step stops at its first failing command, as it does under GitHub's `bash -e`, so a multi-line step cannot pass with an early command failed.
         const child = spawn("sh", ["-e", "-c", execution.command], {
-          // stdout is piped, not inherited, because the runner reads it for workflow commands and echoes it after masking; stderr has no commands in it and stays on the terminal as it happens.
-          stdio: ["inherit", "pipe", "inherit"],
+          // Both streams are piped, not inherited, because either can carry a value a step masked, so the runner emits both through its masks; a step's output appears when the step ends.
+          stdio: ["inherit", "pipe", "pipe"],
           cwd:
             execution.workingDirectory === undefined
               ? cwd
@@ -106,13 +106,18 @@ const io: Io = {
           ...(signal === undefined ? {} : { signal }),
         });
         child.stdout.setEncoding("utf8");
+        child.stderr.setEncoding("utf8");
         let stdout = "";
+        let stderr = "";
         child.stdout.on("data", (chunk: string) => {
           stdout += chunk;
         });
+        child.stderr.on("data", (chunk: string) => {
+          stderr += chunk;
+        });
         child.on("error", fail);
         child.on("close", (code) => {
-          done({ exitCode: code ?? 1, stdout });
+          done({ exitCode: code ?? 1, stdout, stderr });
         });
       });
     },
