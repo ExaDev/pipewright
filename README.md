@@ -12,7 +12,7 @@ A workflow file mixes two things. The orchestration (triggers, job graph, matrix
 
 **Emit native files.** `emit` compiles a pipeline to the provider's own syntax. `check` fails when a committed file no longer matches what the tool would write. Use this where the provider must read orchestration from the repository.
 
-**Run directly.** `run` executes the pipeline through an in-process runner that asks an injected executor to run each command. Nothing is generated. A single job, a step range or one matrix combination can be run alone.
+**Run directly.** `run` executes the pipeline through an in-process runner that asks an injected executor to run each command. Nothing is generated. A single job, a step range or one matrix combination can be run alone. Around each step the runner applies the provider's file commands, as a hosted runner does: the step writes to `GITHUB_OUTPUT`, `GITHUB_ENV`, `GITHUB_PATH` and `GITHUB_STEP_SUMMARY`, and its stdout is read for `::add-mask::` and the log-level commands, so outputs reach the step's record, environment and paths reach the job's later steps, and masked values are not echoed.
 
 **Query the platform.** A separate read-only contract lists runs, checks, logs and the checks a branch requires. It does not depend on the pipeline model.
 

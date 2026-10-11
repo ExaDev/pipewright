@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { CommandExecution, StepScratch } from "@pipewright/pipeline-contract";
+
 import { main, resolveContext, type Io } from "../src/index.ts";
 
 const SCHEMA = "https://unpkg.com/@pipewright/pipeline-contract/dist/pipeline.schema.json";
@@ -30,6 +32,13 @@ interface Harness {
   readonly err: string[];
   readonly files: Map<string, string>;
   readonly commands: string[];
+  readonly executions: CommandExecution[];
+}
+
+/** What each executed command leaves behind: the stdout it produced and the contents it wrote to the command files its environment names. */
+interface HarnessScript {
+  readonly stdout: string;
+  readonly writes: Partial<Record<"output" | "env" | "path" | "summary", string>>;
 }
 
 interface HarnessOptions {
@@ -37,6 +46,44 @@ interface HarnessOptions {
   readonly modules?: Record<string, unknown>;
   readonly env?: Readonly<Record<string, string | undefined>>;
   readonly failing?: (command: string) => boolean;
+  readonly script?: (execution: CommandExecution) => HarnessScript;
+}
+
+/** The scratch over the harness's own file store, so a scripted executor can write the command files by the paths the runner passed. */
+function storeScratch(store: Map<string, string>): StepScratch {
+  let stepCount = 0;
+
+  return {
+    async create() {
+      const files = {
+        output: `.scratch/${String(stepCount)}/output`,
+        env: `.scratch/${String(stepCount)}/env`,
+        path: `.scratch/${String(stepCount)}/path`,
+        summary: `.scratch/${String(stepCount)}/summary`,
+      };
+      stepCount += 1;
+      for (const path of [files.output, files.env, files.path, files.summary]) {
+        store.set(path, "");
+      }
+
+      return Promise.resolve(files);
+    },
+    async read(files) {
+      const content = (path: string): string => {
+        const value = store.get(path);
+        if (value === undefined) throw new Error(`no such file ${path}`);
+
+        return value;
+      };
+
+      return Promise.resolve({
+        output: content(files.output),
+        env: content(files.env),
+        path: content(files.path),
+        summary: content(files.summary),
+      });
+    },
+  };
 }
 
 function harness(options: HarnessOptions = {}): Harness {
@@ -45,6 +92,7 @@ function harness(options: HarnessOptions = {}): Harness {
     env = {},
     failing = () => false,
     modules = {},
+    script = (): HarnessScript => ({ stdout: "", writes: {} }),
   } = options;
   const store = new Map(
     Object.entries(files).map(([path, value]) => [
@@ -55,6 +103,7 @@ function harness(options: HarnessOptions = {}): Harness {
   const out: string[] = [];
   const err: string[] = [];
   const commands: string[] = [];
+  const executions: CommandExecution[] = [];
   const io: Io = {
     cwd: "/repo",
     env,
@@ -79,11 +128,30 @@ function harness(options: HarnessOptions = {}): Harness {
 
       return Promise.resolve();
     },
+    scratch: storeScratch(store),
     executor: {
       async execute(execution) {
         commands.push(execution.command);
+        executions.push(execution);
+        const answer = script(execution);
+        const variables = {
+          output: "GITHUB_OUTPUT",
+          env: "GITHUB_ENV",
+          path: "GITHUB_PATH",
+          summary: "GITHUB_STEP_SUMMARY",
+        } as const;
+        for (const file of ["output", "env", "path", "summary"] as const) {
+          const content = answer.writes[file];
+          if (content === undefined) continue;
+          const path = execution.env[variables[file]];
+          if (path === undefined) throw new Error(`the runner did not pass ${variables[file]}`);
+          store.set(path, content);
+        }
 
-        return Promise.resolve({ exitCode: failing(execution.command) ? 1 : 0 });
+        return Promise.resolve({
+          exitCode: failing(execution.command) ? 1 : 0,
+          stdout: answer.stdout,
+        });
       },
     },
     async importModule(path) {
@@ -95,7 +163,7 @@ function harness(options: HarnessOptions = {}): Harness {
     fetch: async () => Promise.reject(new Error("network is not available in this test")),
   };
 
-  return { io, out, err, files: store, commands };
+  return { io, out, err, files: store, commands, executions };
 }
 
 const EMIT = ["--pipeline", "ci/ci.pipeline.json", "--provider", "github-actions"];
@@ -289,6 +357,50 @@ describe("run", () => {
     expect(await main(["run", "--pipeline", "ci/ci.pipeline.json"], h.io)).toBe(1);
     expect(h.err.join("")).toContain("refName");
     expect(h.commands).toEqual([]);
+  });
+
+  it("writes a step's environment file entries into later steps' environments", async () => {
+    const oneJob = {
+      ...pipeline,
+      jobs: {
+        build: {
+          name: "Build",
+          runsOn: ["ubuntu-latest"],
+          steps: [
+            { kind: "run", run: "pnpm run lint" },
+            { kind: "run", run: "echo gate" },
+          ],
+        },
+      },
+    };
+    const h = harness({
+      files: { "ci/ci.pipeline.json": oneJob },
+      script: (execution) =>
+        execution.command === "pnpm run lint"
+          ? { stdout: "", writes: { env: "FROM_STEP=set\n" } }
+          : { stdout: "", writes: {} },
+    });
+    expect(await main(["run", "--pipeline", "ci/ci.pipeline.json", ...context], h.io)).toBe(0);
+    const gate = h.executions.find((execution) => execution.command === "echo gate");
+    expect(gate?.env.FROM_STEP).toBe("set");
+  });
+
+  it("echoes a step's stdout with masked values hidden and routed levels placed", async () => {
+    const h = harness({
+      script: (execution) =>
+        execution.command === "pnpm run lint"
+          ? {
+              stdout:
+                "::add-mask::s3cret\nthe token is s3cret\n::warning file=app.ts,line=2,endLine=4,title=Check::mind the gap\n",
+              writes: { summary: "## Lint\n" },
+            }
+          : { stdout: "", writes: {} },
+    });
+    expect(await main(["run", "--pipeline", "ci/ci.pipeline.json", ...context], h.io)).toBe(0);
+    const printed = h.out.join("");
+    expect(printed).toContain("the token is ***");
+    expect(printed).toContain("warning app.ts:2-4 (Check): mind the gap\n");
+    expect(printed).toContain("## Lint\n");
   });
 });
 
