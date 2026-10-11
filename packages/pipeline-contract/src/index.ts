@@ -36,6 +36,7 @@ export {
 } from "./schema.ts";
 export { compilePredicate, type Operand, type PredicateHandlers } from "./predicate.ts";
 export { predicateOf, type Condition } from "./condition.ts";
+export { joinShellSteps, splitShellEntry } from "./shell-steps.ts";
 export {
   diffEmitted,
   generatedHeaderLines,

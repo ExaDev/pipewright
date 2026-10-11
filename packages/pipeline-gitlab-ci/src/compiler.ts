@@ -18,6 +18,7 @@ import {
   type PredicateHandlers,
   type Step,
   type Trigger,
+  joinShellSteps,
 } from "@pipewright/pipeline-contract";
 import { renderYaml } from "@pipewright/yaml-emit";
 import { dag } from "process-graph";
@@ -28,7 +29,6 @@ import {
   PROVIDER,
   RESERVED_NAMES,
   escapeRegex,
-  FAIL_FAST,
 } from "./vocabulary.ts";
 
 function isEventKind(value: string): value is EventKind {
@@ -218,8 +218,8 @@ function jobOf(input: JobInput): JobOutput {
   const script: string[] = [];
   /** The script entry that consecutive `run` steps are being joined into, since the lines of a GitLab script share one shell. */
   let openRun: number | undefined;
-  /** The script entries written from `run` steps, which are the ones that must stop at their first failing command. */
-  const runEntries = new Set<number>();
+  /** The run steps of each script entry written from them, joined into the entry's text once the job's steps are read. */
+  const runSteps = new Map<number, string[]>();
   let gitDepth: string | undefined;
 
   let index = 0;
@@ -258,15 +258,15 @@ function jobOf(input: JobInput): JobOutput {
           openRun = undefined;
           continue;
         }
-        // The lines of a script run in one shell, so consecutive run steps are written as one entry whose lines are theirs, which is what the importer reads back as one step.
+        // The lines of a script run in one shell, so consecutive run steps are written as one entry, with a status check between steps that the importer reads back as the steps' boundaries.
         const label = step.description ?? step.name;
         if (openRun === undefined) {
           openRun = script.length;
-          runEntries.add(openRun);
-          script.push(step.run);
+          runSteps.set(openRun, [step.run]);
+          script.push("");
           if (label !== undefined) comments.set(`${key}/script/${String(openRun)}`, label);
         } else {
-          script[openRun] = `${script[openRun] ?? ""}\n${step.run}`;
+          runSteps.get(openRun)?.push(step.run);
           const path = `${key}/script/${String(openRun)}`;
           const joined = [comments.get(path), label].filter((text) => text !== undefined);
           if (joined.length > 0) comments.set(path, joined.join("\n"));
@@ -341,9 +341,11 @@ function jobOf(input: JobInput): JobOutput {
       ...(pipeline.concurrency?.cancelInProgress === false && group !== undefined
         ? { resource_group: group }
         : {}),
-      script: script.map((entry, at) =>
-        runEntries.has(at) && entry.includes("\n") ? `${FAIL_FAST}\n${entry}` : entry,
-      ),
+      script: script.map((entry, at) => {
+        const steps = runSteps.get(at);
+
+        return steps === undefined ? entry : joinShellSteps(steps);
+      }),
       ...(job.native?.["gitlab-ci"] ?? {}),
     },
   };

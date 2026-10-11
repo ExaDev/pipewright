@@ -12,6 +12,7 @@ import {
   type Pipeline,
   type PipelineCompiler,
   type Step,
+  joinShellSteps,
 } from "@pipewright/pipeline-contract";
 import { commentPath, renderYaml } from "@pipewright/yaml-emit";
 import { dag } from "process-graph";
@@ -71,6 +72,8 @@ function scriptOf(context: ScriptContext): {
   const script: unknown[] = [];
   /** The script entry that consecutive `run` steps are being joined into, since the commands of a Bitbucket step share one shell. */
   let openRun: number | undefined;
+  /** The run steps of each script entry written from them, joined into the entry's text once the job's steps are read. */
+  const runSteps = new Map<number, string[]>();
   let cloneDepth: string | number | undefined;
   let index = 0;
   while (index < job.steps.length) {
@@ -127,19 +130,27 @@ function scriptOf(context: ScriptContext): {
         );
         openRun = undefined;
       } else {
-        // The commands of a step run in one shell, so consecutive run steps are written as one entry whose lines are theirs, which is what the importer reads back as one step.
+        // The commands of a step run in one shell, so consecutive run steps are written as one entry, with a status check between steps that the importer reads back as the steps' boundaries.
         if (openRun === undefined) {
           openRun = script.length;
-          script.push(step.run);
+          runSteps.set(openRun, [step.run]);
+          script.push("");
         } else {
-          script[openRun] = `${String(script[openRun])}\n${step.run}`;
+          runSteps.get(openRun)?.push(step.run);
         }
         index += 1;
       }
     }
   }
 
-  return { script, cloneDepth };
+  return {
+    script: script.map((entry, at) => {
+      const steps = runSteps.get(at);
+
+      return steps === undefined ? entry : joinShellSteps(steps);
+    }),
+    cloneDepth,
+  };
 }
 
 interface PlaceInput {

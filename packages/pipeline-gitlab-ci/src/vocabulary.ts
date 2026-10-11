@@ -3,11 +3,6 @@ import type { ContextKey, EventKind } from "@pipewright/pipeline-contract";
 export const PROVIDER = "gitlab-ci";
 
 /**
- * GitLab reports only the last command's status for a script entry of several lines, so a failure earlier in the entry would pass. A neutral run step stops at its first failing command, which the compiler states by starting every multi-line entry it writes with this line and the importer removes again.
- */
-export const FAIL_FAST = "set -e";
-
-/**
  * The variable each neutral context key stands for. The compiler writes this table and the importer reads it back, so the two cannot disagree.
  */
 export const CONTEXT_VARIABLE: Readonly<Record<ContextKey, string>> = {
