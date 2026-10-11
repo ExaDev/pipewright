@@ -34,6 +34,37 @@ runs:
 `,
   };
 
+  it("accepts the root outputs and a null default a published action declares", async () => {
+    // The shapes actions/checkout itself declares: outputs at the root with descriptions only, and inputs whose default is written with no value.
+    const files: Files = {
+      "action.yml": `
+name: Checkout
+description: Checks a repository out
+outputs:
+  ref:
+    description: The ref that was checked out
+  commit:
+    description: The commit SHA that was checked out
+inputs:
+  repository:
+    description: Repository name with owner
+    default:
+  ref:
+    description: The ref to checkout
+runs:
+  using: node24
+  main: dist/index.js
+  post: dist/index.js
+`,
+    };
+    const { steps, post } = await expanded(
+      usesStep("exadev/checkout@v1", { repository: "exadev/pipewright" }),
+      resolverOf({}, { "exadev/checkout@v1": files }),
+    );
+    expect(steps[0]?.kind).toBe("run");
+    expect(post).toHaveLength(1);
+  });
+
   it("expands the main entry into a run step with the inputs and the action path", async () => {
     const { steps, pre, post } = await expanded(
       usesStep("exadev/greet@v1", { "cache-key": "build-main" }),
