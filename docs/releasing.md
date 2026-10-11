@@ -1,21 +1,32 @@
 # Releasing
 
-A release publishes every workspace package under the `@pipewright` scope from one tag, with provenance, through npm trusted publishing. No registry token is stored anywhere.
+Every push to `main` releases the packages whose own directory changed, with provenance, through npm trusted publishing. There is no tag to push and no token to store. It is the same arrangement as ExaDev's other monorepos: `@exadev/semantic-release-workspace` runs semantic-release once per package.
 
-## What a tag does
+## What a push to main does
 
-Pushing a tag `vMAJOR.MINOR.PATCH` runs `.github/workflows/release.yml`, which runs in the `release` environment (waiting for a reviewer's approval where required reviewers are configured) and refuses a commit that is not on `main`. It installs, runs lint, typecheck and the unit tests, stamps the tag's version onto every package and each dependency on a sibling (`scripts/set-version.ts`), builds `dist` (`pnpm run build`), packs and installs the tarballs into an empty directory (`pnpm run test:pack`), and then publishes each tarball with `npm publish --provenance`. The working tree always carries `0.0.0`; the version exists only in the build that is published.
+`.github/workflows/release.yml` (generated from `ci/release.pipeline.ts`) checks out the whole history, installs, runs lint, typecheck and the unit tests, and then runs `pnpm release`. For each package, in dependency order, the orchestrator:
 
-Packages are packed with pnpm before publishing, because pnpm applies each manifest's `publishConfig` (the `dist` exports and the `pipewright` binary), which `npm publish` of a directory does not.
+1. reads the conventional commits that touched that package's directory since its last `@pipewright/<name>@<version>` tag;
+2. chooses the next version from them (`feat` is minor, `fix` and every other accepted type is patch, a breaking change is major, as in `commit-types.ts`), and a package whose sibling dependency released gets a patch release;
+3. writes the version, changelog and updated sibling ranges in one commit to `main`, tags each released package and publishes it with provenance, and creates a GitHub Release.
 
-## What the owner does
+A package is published from its own directory by `npm publish`. Its `prepack` script (`scripts/prepack.ts`) builds `dist` and writes the manifest's `publishConfig` `exports` and `bin` over the source ones, and `postpack` puts the source manifest back, so the workspace keeps running from `src` and what is published runs from `dist`.
 
-These are registry settings, so they are done by a person and never by the workflow or an agent.
+Commit messages are validated by commitlint against `commit-types.ts`, the same list the release reads, so a type cannot pass validation and then not release.
 
-1. Own the `@pipewright` scope on npm (an organisation of that name).
-2. Create a GitHub environment named `release` in the repository (Settings, Environments), restrict its deployment branches and tags to `v*`, and add required reviewers so a release waits for approval. The release job runs in it and the npm trusted publisher is bound to it. Required reviewers are available to public repositories and on paid plans. A private repository without them is not a supported place to run this workflow: the tag restriction is a paid feature there too, so anyone with Write could tag a commit on `main` and publish. Limit Write to release maintainers there, or do not publish from a workflow.
-3. For each package, add a trusted publisher in the package's settings on npmjs.com: provider GitHub Actions, organisation `ExaDev`, repository `pipewright`, workflow `release.yml`, environment `release`. A package must exist on the registry before its settings page does, so the first version of each is published once by hand (`npm publish --access public` from a packed tarball while logged in), after which every later release is the tag.
-4. Push the tag: `git tag v0.1.0 && git push origin v0.1.0`.
+## Dependencies
+
+Every dependency, third-party or sibling, is an exact pin in each package's manifest, and `pnpm run deps:lint` (part of `pnpm run lint`) fails when one dependency is pinned to two versions. A `catalog:` or `workspace:` specifier cannot be published by `npm publish`, and the orchestrator refuses it.
+
+## What the owner does once
+
+These are registry and repository settings, so they are a person's to apply.
+
+1. Own the `@pipewright` scope on npm.
+2. For each package, register the trusted publisher in its settings on npmjs.com: provider GitHub Actions, organisation `ExaDev`, repository `pipewright`, workflow `release.yml`, environment `release` (`npm-reserve @pipewright/<name> --trust ExaDev/pipewright --workflow release.yml --environment release` does this, and reserves the name first).
+3. Keep the `release` GitHub environment's deployment branches limited to `main`. The job runs in it, so the registry accepts a publish only from this workflow on `main`.
+
+Anything pushed to `main` after that releases. To start at a version other than 1.0.0, create a baseline tag `@pipewright/<name>@0.0.0` on the commit before the first release.
 
 ## Schemas
 

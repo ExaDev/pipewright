@@ -145,7 +145,7 @@ pnpm run ci:local   # this repository's own pipeline, through its own runner
 pnpm run ci:check   # fails if the generated workflow has drifted
 ```
 
-Packages are workspace members run from source through Node's type stripping, so development and CI need no build. A release compiles each package to `dist` (`pnpm run build`), because Node does not strip types in files under `node_modules`. Node 22.18 or later.
+Packages are workspace members run from source through Node's type stripping, so development and CI need no build. A release compiles each package to `dist` (`pnpm run build`, run by each package's `prepack`), because Node does not strip types in files under `node_modules`; every push to `main` releases the changed packages ([`docs/releasing.md`](docs/releasing.md)). Node 22.18 or later.
 
 ### This repository uses itself
 
