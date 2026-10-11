@@ -1,3 +1,14 @@
+## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.1.1...@pipewright/pipeline-bitbucket@0.1.2) (2026-10-11)
+
+### Bug Fixes
+
+* **importers:** read what real GitLab, Bitbucket and GitHub files commonly write ([597bb00](https://github.com/ExaDev/pipewright/commit/597bb00abc96ad0b8edba22bdad653d85498750a))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.1.2
+
 ## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.1.0...@pipewright/pipeline-bitbucket@0.1.1) (2026-10-11)
 
 ### Bug Fixes

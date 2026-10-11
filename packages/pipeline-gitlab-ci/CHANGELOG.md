@@ -1,3 +1,15 @@
+## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-gitlab-ci@0.1.1...@pipewright/pipeline-gitlab-ci@0.1.2) (2026-10-11)
+
+### Bug Fixes
+
+* **gitlab-ci:** apply default runner tags only to jobs whose inherit.default allows them ([c5ae96b](https://github.com/ExaDev/pipewright/commit/c5ae96b86494b6e956a4ee409f60716b544cfd7d))
+* **importers:** read what real GitLab, Bitbucket and GitHub files commonly write ([597bb00](https://github.com/ExaDev/pipewright/commit/597bb00abc96ad0b8edba22bdad653d85498750a))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.1.2
+
 ## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-gitlab-ci@0.1.0...@pipewright/pipeline-gitlab-ci@0.1.1) (2026-10-11)
 
 ### Bug Fixes

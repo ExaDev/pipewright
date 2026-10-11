@@ -1,3 +1,16 @@
+## [0.1.3](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.2...@pipewright/cli@0.1.3) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.1.2
+- Updated @pipewright/pipeline-bitbucket to 0.1.2
+- Updated @pipewright/pipeline-circleci to 0.1.2
+- Updated @pipewright/pipeline-github-actions to 0.1.2
+- Updated @pipewright/pipeline-gitlab-ci to 0.1.2
+- Updated @pipewright/pipeline-local to 0.1.2
+- Updated @pipewright/check-names to 0.1.2
+
 ## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.1...@pipewright/cli@0.1.2) (2026-10-11)
 
 ### Bug Fixes
