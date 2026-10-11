@@ -1,3 +1,20 @@
+## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.1...@pipewright/cli@0.1.2) (2026-10-11)
+
+### Bug Fixes
+
+* **cli:** run each step's commands with errexit so an early failure fails the step ([0121910](https://github.com/ExaDev/pipewright/commit/01219109e90d8dd686175be1061e907c4f74dcd5))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.1.1
+- Updated @pipewright/pipeline-bitbucket to 0.1.1
+- Updated @pipewright/pipeline-circleci to 0.1.1
+- Updated @pipewright/pipeline-github-actions to 0.1.1
+- Updated @pipewright/pipeline-gitlab-ci to 0.1.1
+- Updated @pipewright/pipeline-local to 0.1.1
+- Updated @pipewright/check-names to 0.1.1
+
 ## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.0...@pipewright/cli@0.1.1) (2026-10-11)
 
 

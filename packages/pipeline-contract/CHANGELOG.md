@@ -1,3 +1,9 @@
+## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.1.0...@pipewright/pipeline-contract@0.1.1) (2026-10-11)
+
+### Bug Fixes
+
+* check each run step's status explicitly where steps share a script entry ([ff3f469](https://github.com/ExaDev/pipewright/commit/ff3f4693daaeadda65054a8c35933627c26bc609))
+
 ## [0.1.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.0.0...@pipewright/pipeline-contract@0.1.0) (2026-10-11)
 
 ### Features

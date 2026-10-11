@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-local@0.1.0...@pipewright/pipeline-local@0.1.1) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.1.1
+
 ## [0.1.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-local@0.0.0...@pipewright/pipeline-local@0.1.0) (2026-10-11)
 
 ### Features

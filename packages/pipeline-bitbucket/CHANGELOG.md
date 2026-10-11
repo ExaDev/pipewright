@@ -1,3 +1,15 @@
+## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.1.0...@pipewright/pipeline-bitbucket@0.1.1) (2026-10-11)
+
+### Bug Fixes
+
+* check each run step's status explicitly where steps share a script entry ([ff3f469](https://github.com/ExaDev/pipewright/commit/ff3f4693daaeadda65054a8c35933627c26bc609))
+* write consecutive run steps as one script entry on GitLab and Bitbucket ([bc87727](https://github.com/ExaDev/pipewright/commit/bc877278490d6773be75606f9dda587a68ab8d23))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.1.1
+
 ## [0.1.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.0.0...@pipewright/pipeline-bitbucket@0.1.0) (2026-10-11)
 
 ### Features
