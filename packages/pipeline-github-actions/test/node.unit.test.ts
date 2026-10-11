@@ -40,6 +40,7 @@ runs:
       "action.yml": `
 name: Checkout
 description: Checks a repository out
+author: GitHub
 outputs:
   ref:
     description: The ref that was checked out
