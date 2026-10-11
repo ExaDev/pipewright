@@ -44,7 +44,7 @@ export function parseKeyValueFile(fileName: string, content: string): FileEntry[
       }
       const end = lines.indexOf(delimiter, offset + 1);
       if (end === -1) {
-        throw new Error(`${at} opens a heredoc for ${key} that no later line closes`);
+        throw new Error(`${at} opens a heredoc that no later line closes`);
       }
       entries.push({ key, value: lines.slice(offset + 1, end).join("\n") });
       consumed = end + 1;
@@ -129,8 +129,9 @@ function parseAnnotation(command: string, properties: string): Annotation | unde
     } else if (name === "title") {
       annotation.title = value;
     } else if (name === "line" || name === "endLine") {
+      // The value is never quoted in the message, because a property's value can carry a value a step masked.
       if (!/^\d+$/.test(value)) {
-        throw new Error(`::${command}:: property ${name} is not a line number: "${value}"`);
+        throw new Error(`::${command}:: property ${name} is not a line number`);
       }
       annotation[name] = Number(value);
     } else {

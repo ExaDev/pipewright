@@ -414,6 +414,36 @@ describe("the local runner's file commands", () => {
     expect(output.lines).toEqual(["error:leaked [***.ts *** token]"]);
   });
 
+  it("registers each decoded line of a multiline mask", async () => {
+    const scratch = memoryScratch();
+    const executor: CommandExecutor = {
+      async execute() {
+        return Promise.resolve({
+          exitCode: 0,
+          stdout: "::add-mask::shh%0Atwo\nshh and two\n",
+          stderr: "",
+        });
+      },
+    };
+    const output = recordedOutput();
+    const pipeline = pipelineSchema.parse({
+      name: "CI",
+      triggers: [{ kind: "push" }],
+      jobs: {
+        build: {
+          name: "Build",
+          runsOn: ["x"],
+          steps: [{ kind: "run", run: "echo" }],
+        },
+      },
+    });
+
+    await createLocalRunner().run(pipeline, { executor, scratch, output, context: {} });
+
+    // A mask of several lines hides each line of it in later output, which is filtered a line at a time.
+    expect(output.lines).toEqual(["info:*** and ***"]);
+  });
+
   it("cleans the scratch when a run throws", async () => {
     const scratch = memoryScratch();
     const executor: CommandExecutor = {
