@@ -1,6 +1,6 @@
 import type { ContextKey } from "./context.ts";
 import type { MatrixCombination } from "./matrix.ts";
-import type { Pipeline } from "./schema.ts";
+import type { Job, Pipeline, Step } from "./schema.ts";
 
 /**
  * One command a runner asks its host to run. The runner never spawns processes itself, so the same runner executes in a CI job, on a laptop or under test.
@@ -89,6 +89,67 @@ export interface CommandExecutor {
 }
 
 /**
+ * What one step of the job produced, kept beside the step itself so a host can read the identity a provider gave it, which the report alone no longer carries once a provider step can resolve to several.
+ */
+export interface StepRecord {
+  readonly step: Step;
+  readonly outcome: Outcome;
+  /** The outputs the step declared through its output file; for a step a host resolved into several, every output they wrote. */
+  readonly outputs: Readonly<Record<string, string>>;
+}
+
+/** The run's state a job's steps are prepared against, before any of them has run. */
+export interface JobView {
+  readonly context: RunContext;
+  readonly matrix: MatrixCombination;
+  /** The result of each job this one needs that has run, by job id. A job this run does not execute is absent, so a provider's expression reads it the way an absent value reads. */
+  readonly needs: Readonly<Record<string, Outcome>>;
+  /** The environment the job's steps inherit before any of them adds to it: the pipeline's and the job's own values, rendered for this combination. */
+  readonly env: Readonly<Record<string, string>>;
+}
+
+/** A job view plus what the job's steps have left behind so far. */
+export interface StepView extends JobView {
+  /** Every step of this job that has settled, in order, each with the outcome and outputs the run recorded. */
+  readonly steps: readonly StepRecord[];
+}
+
+/** One command a host resolved a provider step into: everything the runner needs, with no expression of the provider's left unevaluated. */
+export interface PreparedStep {
+  /** The name the step's report entries and log lines carry. */
+  readonly name: string;
+  readonly command: string;
+  /** The step's own environment, final values; the runner composes the pipeline's, the job's and what earlier steps wrote around it. */
+  readonly env: Readonly<Record<string, string>>;
+  readonly workingDirectory: string | undefined;
+}
+
+/** What a host answers when the run reaches a provider step. */
+export type StepResolution =
+  /** The steps to run where the provider step stood, in order; each gets the runner's file commands and its own report entry, and the first failure stops the rest. */
+  | { readonly kind: "steps"; readonly steps: readonly PreparedStep[] }
+  | { readonly kind: "skipped" }
+  /** A provider step this host does not run; the runner rejects the run naming the construct. */
+  | { readonly kind: "unhandled"; readonly construct: string };
+
+/** A job's steps as the host prepares them: the list to run and any environment the host adds at job level. */
+export interface JobExpansion {
+  readonly steps: readonly Step[];
+  /** Job-level environment the host supplies for this provider's steps, final values, composed over the pipeline's and the job's own. */
+  readonly env: Readonly<Record<string, string>>;
+}
+
+/**
+ * The host's port for provider steps, which have no meaning outside their provider. A host that supplies one takes over both moments a provider step is reached: before the job runs, when the steps are prepared (a host places the phases an imported action declares around the job's own steps and adds whatever job-level environment its provider carries), and when the run reaches one of the steps the preparation left in place, when the host resolves it into what runs. The runner calls no other port in between, so a host's expressions evaluate against exactly the view each call receives.
+ */
+export interface StepHost {
+  /** Called once per job and matrix combination that will run, before any of its steps. */
+  readonly expand: (job: Job, view: JobView) => Promise<JobExpansion>;
+  /** Called when the run reaches a provider step the preparation left in place. */
+  readonly resolve: (step: Step, view: StepView) => Promise<StepResolution>;
+}
+
+/**
  * The neutral context values for one run, supplied by whoever hosts the runner. A host supplies the values its provider can, and a value a step or condition actually reads but the host did not supply is an error at that point, so a command that needs no context runs wherever it is hosted.
  */
 export type RunContext = Readonly<Partial<Record<ContextKey, string>>>;
@@ -132,6 +193,8 @@ export interface RunOptions {
   readonly steps?: { readonly from: number; readonly to: number };
   /** Report steps owned by a provider as skipped instead of rejecting them, for a host that has supplied the toolchain those steps would install. */
   readonly skipProviderSteps?: boolean;
+  /** The host's port for provider steps. Supplied, it replaces the upfront rejection of a provider step: the host prepares the job's steps before it runs and resolves each provider step when the run reaches it. */
+  readonly host?: StepHost;
   readonly signal?: AbortSignal;
 }
 
