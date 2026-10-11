@@ -159,6 +159,36 @@ describe("expandAction", () => {
     });
   });
 
+  it("treats a default written with no value as no default", async () => {
+    const files: Files = {
+      "action.yml": `
+name: Sparse
+description: Maps inputs the way published actions declare them
+inputs:
+  mode:
+    description: How to run
+    default:
+  extra:
+    description: An extra flag
+    required: true
+runs:
+  using: composite
+  steps:
+    - run: echo mode=\${{ inputs.mode }} extra=\${{ inputs.extra }}
+      shell: bash
+`,
+    };
+    const { steps } = await expanded(
+      usesStep("exadev/sparse@v1", { extra: "--fast" }),
+      resolverOf({}, { "exadev/sparse@v1": files }),
+    );
+    expect(steps[0]).toMatchObject({ run: "echo mode= extra=--fast" });
+    const rejected = await rejectionOf(
+      expanded(usesStep("exadev/sparse@v1"), resolverOf({}, { "exadev/sparse@v1": files })),
+    );
+    expect(rejected.message).toContain('the required input "extra"');
+  });
+
   it("expands a remote action's nesting, running a nested node action and carrying a docker reference", async () => {
     const OUTER: Files = {
       "action.yml": `

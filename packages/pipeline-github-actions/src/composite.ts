@@ -264,7 +264,8 @@ function mapInputs(
       // The first matching key in document order wins when two differ only by case, which is the closest a mapping without duplicate keys can come to the runner's dictionary.
       value ??= entry;
     }
-    if (value === undefined && input.default !== undefined) {
+    // A `default` written with no value reads as null and means no default, so it is absent rather than the text "null".
+    if (value === undefined && input.default !== undefined && input.default !== null) {
       value = evaluateTemplate(scalarText(input.default), ambient);
     }
     if (value === undefined && input.required === true) {

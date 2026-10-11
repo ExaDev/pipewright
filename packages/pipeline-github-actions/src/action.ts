@@ -18,12 +18,12 @@ const envSchema = z.record(z.string().min(1), scalarSchema);
 const INPUT_ID = /^[A-Za-z_][A-Za-z0-9_-]*$/;
 
 /**
- * One declared input. GitHub documents no type for an action's inputs (unlike a reusable workflow's `workflow_call` inputs): every value an action receives is a string, and `default` is a string or a YAML scalar that reads as one. `required` is a request, not an enforcement: the runner supplies an empty string when a required input arrives unset, so enforcement is this package's decision, taken in `composite.ts`.
+ * One declared input. GitHub documents no type for an action's inputs (unlike a reusable workflow's `workflow_call` inputs): every value an action receives is a string, and `default` is a string or a YAML scalar that reads as one. A `default` written with no value reads as null and means no default, which actions in wide use declare (`actions/checkout` among them). `required` is a request, not an enforcement: the runner supplies an empty string when a required input arrives unset, so enforcement is this package's decision, taken in `composite.ts`.
  */
 const inputSchema = z.strictObject({
   description: z.string(),
   required: z.boolean().optional(),
-  default: scalarSchema.optional(),
+  default: z.union([scalarSchema, z.null()]).optional(),
   deprecationMessage: z.string().optional(),
 });
 export type ActionInput = z.output<typeof inputSchema>;
@@ -42,6 +42,19 @@ const actionKeys = {
   inputs: z.record(z.string().regex(INPUT_ID), inputSchema).optional(),
   branding: z.strictObject({ icon: z.string(), color: z.string() }).optional(),
 };
+
+/**
+ * A composite action's outputs, each a `${{ }}` expression over the steps that produced them, declared under `runs`. Carried as data only: evaluating one needs the outputs those steps wrote at run time, which no expansion of the steps can know beforehand.
+ */
+const compositeOutputsSchema = z.record(
+  z.string().min(1),
+  z.strictObject({ value: z.string(), description: z.string().optional() }),
+);
+
+/**
+ * A node action's outputs, declared at the root of its metadata. Each carries a description only: the entry sets the value at run time through its output file, so there is no expression to read.
+ */
+const nodeOutputsSchema = z.record(z.string().min(1), z.strictObject({ description: z.string() }));
 
 /**
  * A step that runs a command. `shell` is required whenever `run` is written, which is GitHub's own rule for composite steps and the reason it is not optional here.
@@ -84,15 +97,7 @@ export const compositeActionSchema = z.strictObject({
   runs: z.strictObject({
     using: z.literal("composite"),
     steps: z.array(compositeStepSchema).min(1),
-    /**
-     * The action's outputs, each a `${{ }}` expression over the steps that produced them. They are carried as data only: evaluating one needs the outputs those steps wrote at run time, which no expansion of the steps can know beforehand.
-     */
-    outputs: z
-      .record(
-        z.string().min(1),
-        z.strictObject({ value: z.string(), description: z.string().optional() }),
-      )
-      .optional(),
+    outputs: compositeOutputsSchema.optional(),
   }),
 });
 export type CompositeAction = z.output<typeof compositeActionSchema>;
@@ -104,12 +109,14 @@ export type CompositeAction = z.output<typeof compositeActionSchema>;
 const NODE_RUNTIMES = ["node20", "node16", "node12", "node24"] as const;
 
 /**
+ * An action's outputs, each a `${{ }}` expression over the steps that produced them. A node action declares them at the root of its metadata and a composite action under its `runs`, which is where GitHub's own syntax page puts each, and they are carried as data only: evaluating one needs the outputs those steps wrote at run time, which no expansion of the steps can know beforehand.
  * The metadata of an action whose `runs.using` names a node runtime: `main` is the entry file the runtime executes, and `pre` and `post` are entry files that run around the job's steps when `pre-if` and `post-if` allow, both conditions defaulting to `always()`. A `pre` a local action declares is rejected where the expansion places it, because GitHub documents `pre` as not supported for local actions. Keys the node form does not document (`runs.image`, `runs.steps`) are rejected by the strict object, which is the same stance the composite schema takes.
  * @see https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
  * @see https://web.archive.org/web/20250615225859/https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions
  */
 export const nodeActionSchema = z.strictObject({
   ...actionKeys,
+  outputs: nodeOutputsSchema.optional(),
   runs: z.strictObject({
     using: z.enum(NODE_RUNTIMES),
     main: z.string().min(1),
