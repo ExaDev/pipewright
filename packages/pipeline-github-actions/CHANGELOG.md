@@ -1,3 +1,9 @@
+## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.1.2...@pipewright/pipeline-github-actions@0.2.0) (2026-10-11)
+
+### Features
+
+* **github-actions:** evaluate expressions and contexts for imported workflows ([1003d23](https://github.com/ExaDev/pipewright/commit/1003d236da4225372b325438f3059f054a396001)), closes [#73](https://github.com/ExaDev/pipewright/issues/73)
+
 ## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.1.1...@pipewright/pipeline-github-actions@0.1.2) (2026-10-11)
 
 ### Bug Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@pipewright/pipeline-github-actions",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "dependencies": {
     "@pipewright/pipeline-contract": "0.1.2",
     "@pipewright/yaml-emit": "0.1.0",
