@@ -28,7 +28,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: main
           fetch-depth: 0
+          persist-credentials: false
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
@@ -40,8 +42,30 @@ jobs:
         run: npm install --global npm@11.5.1
       - name: Check
         run: pnpm run lint && pnpm run typecheck && pnpm run test
+      - name: Provision the deploy key
+        env:
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+          BASH_ENV: ""
+        run: |-
+          install -d -m 700 "$RUNNER_TEMP/release-ssh"
+          (umask 077 && printf '%s\n' "${RELEASE_DEPLOY_KEY%$'\n'}" > "$RUNNER_TEMP/release-ssh/id")
+          printf '%s\n' 'github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' > "$RUNNER_TEMP/release-ssh/known_hosts"
+          GIT_SSH_COMMAND="/usr/bin/ssh -i $RUNNER_TEMP/release-ssh/id -o IdentitiesOnly=yes -o UserKnownHostsFile=$RUNNER_TEMP/release-ssh/known_hosts -o StrictHostKeyChecking=yes" /usr/bin/git push --dry-run --no-verify "git@github.com:$GITHUB_REPOSITORY.git" "HEAD:refs/heads/release-key-probe-$GITHUB_RUN_ID"
       - name: Release
         run: pnpm release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GIT_CONFIG_COUNT: "1"
+          GIT_CONFIG_KEY_0: url.git@github.com:.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/
+          GIT_SSH_COMMAND: /usr/bin/ssh -i ${{ runner.temp }}/release-ssh/id -o IdentitiesOnly=yes -o UserKnownHostsFile=${{ runner.temp }}/release-ssh/known_hosts -o StrictHostKeyChecking=yes
+          NPM_CONFIG_PROVENANCE: "true"
+          NPM_TOKEN: ""
+          NODE_AUTH_TOKEN: ""
+          HUSKY: "0"
+      - name: Remove the deploy key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/release-ssh"
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       NPM_CONFIG_PROVENANCE: "true"

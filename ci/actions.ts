@@ -4,6 +4,7 @@ import type { StepInput } from "@pipewright/pipeline-contract";
  * Third-party actions pinned to a commit, because a tag is a mutable reference and every job that uses these holds a token. The tag each commit was resolved from is in the name.
  */
 export const ACTIONS = {
+  checkoutV7: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
   pnpmSetupV6: "pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86",
   setupNodeV7: "actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
 } as const;
