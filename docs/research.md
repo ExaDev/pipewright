@@ -87,7 +87,7 @@ GitHub's own migration tool, run as a container through the `gh actions-importer
 
 ## Things established by running them
 
-- **Rulesets are unavailable to this repository.** The rules endpoint answers 403 with "Upgrade to GitHub Pro or make this repository public" for a private repository on a free organisation plan. A required-check comparison therefore cannot run against it, and the self-hosting pipeline reads its own run back instead.
+- **Rulesets can be unavailable to a repository.** The rules endpoint answers 403 with "Upgrade to GitHub Pro or make this repository public" for a private repository on a plan without them. A required-check comparison cannot run there, and the self-hosting pipeline reads its own run back instead.
 - **A pull request's workflow commit is the merge commit.** No run reports it as its head, so listing runs by `github.sha` finds nothing on a pull request. The head is `github.event.pull_request.head.sha`.
 - **The tool cannot run before its dependencies are installed.** A wrapper job's runner invocation absorbed the install step and failed to resolve the workspace's own packages. The install step is marked native.
 - **GitHub counts a job skipped because a dependency failed as successful**, and a skipped job does not block a required check. A gate job therefore runs regardless and fails explicitly. [using conditions to control job execution](https://docs.github.com/en/actions/using-jobs/using-conditions-to-control-job-execution)
