@@ -11,10 +11,11 @@ import type {
   StepScratch,
   StepSummary,
 } from "./runner.ts";
+import { describeStepHostConformance } from "./runner-host-conformance.ts";
 import { pipelineSchema, type Pipeline } from "./schema.ts";
 import { samplePipeline, type TestApi } from "./conformance.ts";
 
-const CONTEXT: RunContext = {
+export const CONTEXT: RunContext = {
   event: "push",
   refName: "main",
   baseRefName: "",
@@ -32,7 +33,7 @@ const FILE_VARIABLES: Readonly<Record<keyof StepFileContents, string>> = {
   summary: "GITHUB_STEP_SUMMARY",
 };
 
-interface RecordingExecutor extends CommandExecutor {
+export interface RecordingExecutor extends CommandExecutor {
   readonly executed: CommandExecution[];
 }
 
@@ -51,7 +52,7 @@ interface ExecutorBehaviour {
   readonly script?: (execution: CommandExecution) => StepScript;
 }
 
-function recordingExecutor(
+export function recordingExecutor(
   scratch: MemoryScratch,
   behaviour: ExecutorBehaviour = {},
 ): RecordingExecutor {
@@ -81,12 +82,12 @@ function recordingExecutor(
   };
 }
 
-interface MemoryScratch extends StepScratch {
+export interface MemoryScratch extends StepScratch {
   /** The scratch's store, keyed by path, so the scripted executor can stand in for the command that writes its files. */
   readonly written: Map<string, string>;
 }
 
-function memoryScratch(): MemoryScratch {
+export function memoryScratch(): MemoryScratch {
   const written = new Map<string, string>();
   let stepCount = 0;
 
@@ -136,12 +137,12 @@ function memoryScratch(): MemoryScratch {
   };
 }
 
-interface RecordingOutput extends RunOutput {
+export interface RecordingOutput extends RunOutput {
   readonly entries: LogEntry[];
   readonly summaries: StepSummary[];
 }
 
-function recordingOutput(): RecordingOutput {
+export function recordingOutput(): RecordingOutput {
   const entries: LogEntry[] = [];
   const summaries: StepSummary[] = [];
 
@@ -158,11 +159,11 @@ function recordingOutput(): RecordingOutput {
 }
 
 /** The ports a run needs besides its executor, fresh for each case so no state leaks between them. */
-function ports(): { scratch: MemoryScratch; output: RecordingOutput } {
+export function ports(): { scratch: MemoryScratch; output: RecordingOutput } {
   return { scratch: memoryScratch(), output: recordingOutput() };
 }
 
-function check(condition: boolean, message: string): void {
+export function check(condition: boolean, message: string): void {
   if (!condition) throw new Error(message);
 }
 
@@ -170,6 +171,7 @@ function check(condition: boolean, message: string): void {
  * Registers the behavioural spec every `PipelineRunner` must meet, driven through a recording executor so no process is spawned.
  */
 export function describeRunnerConformance(api: TestApi, makeRunner: () => PipelineRunner): void {
+  describeStepHostConformance(api, makeRunner);
   api.describe("PipelineRunner conformance", () => {
     api.it("runs jobs in needs order", async () => {
       const { scratch, output } = ports();
