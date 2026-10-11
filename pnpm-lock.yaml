@@ -189,7 +189,7 @@ importers:
         version: 3.1.29(@semantic-release/changelog@7.0.0(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3)))(@semantic-release/commit-analyzer@13.0.1(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3))(supports-color@7.2.0))(@semantic-release/git@11.0.1(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3))(supports-color@7.2.0))(@semantic-release/github@12.0.10(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3))(supports-color@7.2.0))(@semantic-release/npm@13.2.0(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3)))(@semantic-release/release-notes-generator@14.1.1(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3))(supports-color@7.2.0))(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3))(supports-color@7.2.0)(typescript@6.0.3)
       '@pipewright/pipeline-contract':
         specifier: 0.0.0
-        version: link:packages/pipeline-contract
+        version: 0.0.0
       '@semantic-release/changelog':
         specifier: 7.0.0
         version: 7.0.0(semantic-release@25.0.9(supports-color@7.2.0)(typescript@6.0.3))
@@ -257,44 +257,44 @@ importers:
   packages/check-names:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
     devDependencies:
       '@pipewright/pipeline-github-actions':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-github-actions
       '@pipewright/pipeline-gitlab-ci':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-gitlab-ci
 
   packages/cli:
     dependencies:
       '@pipewright/check-names':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../check-names
       '@pipewright/pipeline-bitbucket':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-bitbucket
       '@pipewright/pipeline-circleci':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-circleci
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
       '@pipewright/pipeline-github-actions':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-github-actions
       '@pipewright/pipeline-gitlab-ci':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-gitlab-ci
       '@pipewright/pipeline-local':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-local
       '@pipewright/platform-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../platform-contract
       '@pipewright/platform-github':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../platform-github
       zod:
         specifier: 4.6.5
@@ -313,10 +313,10 @@ importers:
   packages/pipeline-bitbucket:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../yaml-emit
       process-graph:
         specifier: 1.0.0
@@ -325,10 +325,10 @@ importers:
   packages/pipeline-circleci:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../yaml-emit
 
   packages/pipeline-contract:
@@ -353,19 +353,19 @@ importers:
   packages/pipeline-github-actions:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../yaml-emit
 
   packages/pipeline-gitlab-ci:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../yaml-emit
       process-graph:
         specifier: 1.0.0
@@ -374,10 +374,10 @@ importers:
   packages/pipeline-graph:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
       '@pipewright/platform-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../platform-contract
       process-graph:
         specifier: 1.0.0
@@ -386,7 +386,7 @@ importers:
   packages/pipeline-local:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../pipeline-contract
 
   packages/platform-contract:
@@ -398,7 +398,7 @@ importers:
   packages/platform-github:
     dependencies:
       '@pipewright/platform-contract':
-        specifier: 0.0.0
+        specifier: 0.1.0
         version: link:../platform-contract
       zod:
         specifier: 4.6.5
@@ -749,6 +749,9 @@ packages:
 
   '@oxc-project/types@0.152.0':
     resolution: {integrity: sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw==}
+
+  '@pipewright/pipeline-contract@0.0.0':
+    resolution: {integrity: sha512-g/nQgZDBJwMsw9OEpqwE7UR9F5wNBFlEnLFByEV/8JUVFoovmiAPsAhI9vPWWiUR1yT8QeA1MlGcq63HNrSSFw==}
 
   '@pkgr/core@0.3.6':
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
@@ -3254,6 +3257,8 @@ snapshots:
       '@octokit/openapi-types': 29.0.1
 
   '@oxc-project/types@0.152.0': {}
+
+  '@pipewright/pipeline-contract@0.0.0': {}
 
   '@pkgr/core@0.3.6': {}
 

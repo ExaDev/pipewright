@@ -1,9 +1,9 @@
 {
   "name": "@pipewright/pipeline-graph",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "dependencies": {
-    "@pipewright/pipeline-contract": "0.0.0",
-    "@pipewright/platform-contract": "0.0.0",
+    "@pipewright/pipeline-contract": "0.1.0",
+    "@pipewright/platform-contract": "0.1.0",
     "process-graph": "1.0.0"
   },
   "exports": {

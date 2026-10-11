@@ -1,12 +1,12 @@
 {
   "name": "@pipewright/check-names",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "dependencies": {
-    "@pipewright/pipeline-contract": "0.0.0"
+    "@pipewright/pipeline-contract": "0.1.0"
   },
   "devDependencies": {
-    "@pipewright/pipeline-github-actions": "0.0.0",
-    "@pipewright/pipeline-gitlab-ci": "0.0.0"
+    "@pipewright/pipeline-github-actions": "0.1.0",
+    "@pipewright/pipeline-gitlab-ci": "0.1.0"
   },
   "exports": {
     ".": "./src/index.ts"
