@@ -361,4 +361,35 @@ describe("the local runner's file commands", () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  it("cleans the scratch when a run throws", async () => {
+    const scratch = memoryScratch();
+    const executor: CommandExecutor = {
+      async execute() {
+        return Promise.resolve({ exitCode: 0, stdout: "::no-such-command::x\n" });
+      },
+    };
+    const pipeline = pipelineSchema.parse({
+      name: "CI",
+      triggers: [{ kind: "push" }],
+      jobs: {
+        build: {
+          name: "Build",
+          runsOn: ["x"],
+          steps: [{ kind: "run", run: "echo" }],
+        },
+      },
+    });
+
+    // An unknown workflow command throws between the step's execution and its files being read, and the run still releases the step's files and disposes the scratch.
+    await expect(
+      createLocalRunner().run(pipeline, {
+        executor,
+        scratch,
+        output: recordedOutput(),
+        context: {},
+      }),
+    ).rejects.toThrow("unknown workflow command");
+    expect(scratch.written.size).toBe(0);
+  });
 });

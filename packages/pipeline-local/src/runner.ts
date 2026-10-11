@@ -16,6 +16,7 @@ import {
   type RunContext,
   type RunOptions,
   type Step,
+  type StepFileContents,
   type StepReport,
 } from "@pipewright/pipeline-contract";
 
@@ -258,9 +259,14 @@ async function runStep(
     },
     plan.options.signal,
   );
-  processStdout(plan, state, step, result.stdout);
-  const contents = await plan.options.scratch.read(files);
-  await plan.options.scratch.release(files);
+  let contents: StepFileContents;
+  try {
+    processStdout(plan, state, step, result.stdout);
+    contents = await plan.options.scratch.read(files);
+  } finally {
+    // The files go even when reading or the command stream throws, so a failure leaves nothing a later process can read.
+    await plan.options.scratch.release(files);
+  }
 
   return {
     outcome: result.exitCode === 0 ? "success" : "failure",
@@ -372,37 +378,42 @@ export function createLocalRunner(): PipelineRunner {
       );
       const outcomes = new Map<string, Outcome>();
 
-      const jobReports = await inSequence(ids, async (id) => {
-        const job = pipeline.jobs[id];
-        if (job === undefined) throw new Error(`unknown job ${id}`);
-        checkPortable(id, job, options);
+      let jobReports;
+      try {
+        jobReports = await inSequence(ids, async (id) => {
+          const job = pipeline.jobs[id];
+          if (job === undefined) throw new Error(`unknown job ${id}`);
+          checkPortable(id, job, options);
 
-        const needsSatisfied =
-          selected !== undefined ||
-          (job.needs ?? []).every((needed) => outcomes.get(needed) === "success");
-        const plan: JobPlan = {
-          id,
-          job,
-          pipeline,
-          options,
-          jobCondition:
-            selected === undefined ? conditionOf(job.when, `/jobs/${id}/when`) : () => true,
-          stepConditions: job.steps.map((step, index) =>
-            conditionOf(step.when, `/jobs/${id}/steps/${String(index)}/when`),
-          ),
-          mayRun: job.needsPolicy === "always" || needsSatisfied,
-          failsGate: job.needsPolicy === "gate" && !needsSatisfied,
-        };
-        const reports = await inSequence(combinationsOf(job, id, options), async (matrix) =>
-          runCombination(plan, matrix),
-        );
-        outcomes.set(id, aggregate(reports));
+          const needsSatisfied =
+            selected !== undefined ||
+            (job.needs ?? []).every((needed) => outcomes.get(needed) === "success");
+          const plan: JobPlan = {
+            id,
+            job,
+            pipeline,
+            options,
+            jobCondition:
+              selected === undefined ? conditionOf(job.when, `/jobs/${id}/when`) : () => true,
+            stepConditions: job.steps.map((step, index) =>
+              conditionOf(step.when, `/jobs/${id}/steps/${String(index)}/when`),
+            ),
+            mayRun: job.needsPolicy === "always" || needsSatisfied,
+            failsGate: job.needsPolicy === "gate" && !needsSatisfied,
+          };
+          const reports = await inSequence(combinationsOf(job, id, options), async (matrix) =>
+            runCombination(plan, matrix),
+          );
+          outcomes.set(id, aggregate(reports));
 
-        return reports;
-      });
+          return reports;
+        });
+      } finally {
+        // The scratch root goes even when a job threw, so a failed run leaves nothing behind.
+        await options.scratch.dispose();
+      }
 
       const reports = jobReports.flat();
-      await options.scratch.dispose();
 
       return { jobs: reports, ok: reports.every((report) => report.outcome !== "failure") };
     },
