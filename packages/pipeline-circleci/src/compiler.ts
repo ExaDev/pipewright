@@ -335,6 +335,12 @@ export function createCircleCiCompiler(): PipelineCompiler {
         );
       }
       const workflows: Record<string, unknown> = {};
+      if (pipeline.triggers.length === 0) {
+        unsupported(
+          "/triggers",
+          "a pipeline with no triggers, because a workflow is what a trigger selects",
+        );
+      }
       for (const [index, trigger] of pipeline.triggers.entries()) {
         const pointer = `/triggers/${String(index)}`;
         switch (trigger.kind) {

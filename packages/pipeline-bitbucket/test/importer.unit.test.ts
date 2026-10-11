@@ -33,7 +33,7 @@ const STEP = "      - step:\n          name: A\n          script:\n            -
 const REJECTS = [
   {
     name: "a setting the model has no place for",
-    text: `image: node:22\npipelines:\n  default:\n${STEP}`,
+    text: `definitions:\n  caches:\n    node: node_modules\npipelines:\n  default:\n${STEP}`,
   },
   {
     name: "a pipeline for a tag",
@@ -259,5 +259,24 @@ describe("Bitbucket Pipelines import", () => {
       { kind: "run", run: "npm test" },
     ]);
     expect(second?.content).toBe(first.content);
+  });
+
+  it("carries the default image on each step that names none", async () => {
+    const pipeline = await importText(
+      "image: node:22\npipelines:\n  default:\n    - step:\n        name: A\n        script: [a]\n    - step:\n        name: B\n        image: python:3\n        script: [b]\n",
+    );
+    const [first, second] = Object.values(pipeline.jobs);
+
+    expect(first?.native).toEqual({ "bitbucket-pipelines": { image: "node:22" } });
+    expect(first?.steps[1]).toMatchObject({ kind: "provider" });
+    expect(second?.native).toEqual({ "bitbucket-pipelines": { image: "python:3" } });
+  });
+
+  it("reads a default clone as each step's checkout", async () => {
+    const pipeline = await importText(
+      "clone:\n  depth: 5\npipelines:\n  default:\n    - step:\n        script: [a]\n",
+    );
+
+    expect(Object.values(pipeline.jobs)[0]?.steps[0]).toEqual({ kind: "checkout", fetchDepth: 5 });
   });
 });

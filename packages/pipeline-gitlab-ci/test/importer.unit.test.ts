@@ -32,10 +32,6 @@ const JOB = "  script:\n    - echo\n  tags:\n    - linux\n";
 
 const REJECTS = [
   {
-    name: "a file with no workflow rules",
-    text: `build:\n${JOB}`,
-  },
-  {
     name: "a job that extends a hidden job",
     text: `${WORKFLOW}.base:\n${JOB}build:\n  extends: .base\n${JOB}`,
   },
@@ -319,5 +315,44 @@ describe("GitLab CI import", () => {
     ]);
     expect(second?.content).toBe(first.content);
     expect(first.content).toMatch(/set -e\n\s+cd web\n\s+__pipewright_status=\$\?;/);
+  });
+
+  it("reads a file with no workflow section as the provider's default sources, which is no triggers", async () => {
+    const pipeline = await importText(`build:\n${JOB}`);
+
+    expect(pipeline.triggers).toEqual([]);
+    expect(pipeline.name).toBe("gitlab-ci");
+  });
+
+  it("writes no workflow rules for a pipeline with no triggers", async () => {
+    const pipeline = await importText(`build:\n${JOB}`);
+    const [file] = await createGitLabCiCompiler().compile(pipeline, { source: "s" });
+
+    expect(file?.content).not.toContain("rules:\n    - if: $CI_PIPELINE_SOURCE");
+    expect(file?.content).toContain("workflow:");
+  });
+
+  it("carries a top-level image and before_script on each job that does not set them", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}image: node:22\nbefore_script:\n  - npm ci\na:\n${JOB}b:\n${JOB}  image: python:3\n`,
+    );
+
+    expect(pipeline.jobs.a?.native).toEqual({
+      "gitlab-ci": { image: "node:22", before_script: ["npm ci"] },
+    });
+    expect(pipeline.jobs.b?.native).toEqual({
+      "gitlab-ci": { image: "python:3", before_script: ["npm ci"] },
+    });
+    expect(pipeline.jobs.a?.steps[1]).toMatchObject({ kind: "provider" });
+  });
+
+  it("reads default as the same defaults, and honours inherit:default:false", async () => {
+    const pipeline = await importText(
+      `${WORKFLOW}default:\n  image: node:22\n  tags: [linux]\na:\n  script: [x]\nb:\n  script: [y]\n  inherit:\n    default: false\n`,
+    );
+
+    expect(pipeline.jobs.a?.runsOn).toEqual(["linux"]);
+    expect(pipeline.jobs.a?.native).toEqual({ "gitlab-ci": { image: "node:22" } });
+    expect(pipeline.jobs.b?.native).toEqual({ "gitlab-ci": { inherit: { default: false } } });
   });
 });

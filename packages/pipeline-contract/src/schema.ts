@@ -143,7 +143,8 @@ const pipelineShape = z.strictObject({
   name: z.string().min(1),
   description,
   form: formSchema.optional(),
-  triggers: z.array(triggerSchema).min(1),
+  /** What starts the pipeline. Empty means the provider's own default sources, which GitLab states by writing no workflow rules and which a provider that must be told what to run on (GitHub, Bitbucket, CircleCI) rejects. */
+  triggers: z.array(triggerSchema),
   permissions: permissionsSchema.optional(),
   concurrency: z
     .strictObject({

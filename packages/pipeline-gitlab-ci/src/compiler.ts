@@ -424,9 +424,13 @@ export function createGitLabCiCompiler(): PipelineCompiler {
       const document: Record<string, unknown> = {
         workflow: {
           name: pipeline.name,
-          rules: pipeline.triggers.map((trigger, index) => ({
-            if: workflowRule(trigger, index),
-          })),
+          ...(pipeline.triggers.length === 0
+            ? {}
+            : {
+                rules: pipeline.triggers.map((trigger, index) => ({
+                  if: workflowRule(trigger, index),
+                })),
+              }),
           ...(pipeline.concurrency?.cancelInProgress === true
             ? { auto_cancel: { on_new_commit: "interruptible" } }
             : {}),

@@ -276,6 +276,13 @@ function jobOf(id: string, job: Job, wrapper: WrapperContext | undefined): Rende
 }
 
 function triggersOf(pipeline: Pipeline, comments: Map<string, string>): Record<string, unknown> {
+  if (pipeline.triggers.length === 0) {
+    throw new UnsupportedFeatureError(
+      PROVIDER,
+      "/triggers",
+      "a pipeline with no triggers, because a workflow must name what starts it",
+    );
+  }
   const on: Record<string, unknown> = {};
   const schedules: { cron: string }[] = [];
   const claim = (key: string, index: number, description: string | undefined): void => {

@@ -359,4 +359,22 @@ jobs:
       native: { run: "./deploy" },
     });
   });
+
+  it("reads a schedule trigger, whose settings are a list", async () => {
+    const pipeline = await importText(
+      "on:\n  schedule:\n    - cron: '0 3 * * *'\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
+    );
+
+    expect(pipeline.triggers).toEqual([{ kind: "schedule", cron: "0 3 * * *" }]);
+  });
+
+  it("rejects a pipeline with no triggers when compiled, since a workflow must name what starts it", async () => {
+    const pipeline = await importText(
+      "on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
+    );
+
+    await expect(
+      createGitHubActionsCompiler().compile({ ...pipeline, triggers: [] }, { source: "s" }),
+    ).rejects.toMatchObject({ pointer: "/triggers" });
+  });
 });
