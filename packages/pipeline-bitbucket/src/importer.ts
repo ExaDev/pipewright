@@ -234,6 +234,8 @@ interface Triggers {
   readonly triggers: Record<string, unknown>[];
   /** Every pipeline the file declares, which must all run the same steps. */
   readonly sources: Source[];
+  /** Pipelines for refs the model's trigger kinds do not name, carried verbatim. */
+  readonly carriedPipelines: Record<string, unknown>;
 }
 
 function triggersOf(pipelines: Record<string, unknown>): Triggers {
@@ -248,9 +250,12 @@ function triggersOf(pipelines: Record<string, unknown>): Triggers {
       triggers.push(trigger);
     }
   };
-  const allowed = new Set(["default", "branches", "pull-requests", "custom"]);
+  // Pipelines for tags and bookmarks run the same steps on other refs, which the model's trigger kinds do not name, so they are carried at pipeline level under `pipelines` and merge back on emit.
+  const carriedPipelines: Record<string, unknown> = {};
+  const allowed = new Set(["default", "branches", "pull-requests", "custom", "tags", "bookmarks"]);
   for (const key of Object.keys(pipelines)) {
     if (!allowed.has(key)) fail(["pipelines", key], `the ${key} pipelines`);
+    if (key === "tags" || key === "bookmarks") carriedPipelines[key] = pipelines[key];
   }
 
   if (pipelines.default !== undefined) {
@@ -301,7 +306,7 @@ function triggersOf(pipelines: Record<string, unknown>): Triggers {
     declare({ kind: "manual" }, ["pipelines", "custom", MANUAL_PIPELINE], "a custom pipeline");
   }
 
-  return { triggers, sources };
+  return { triggers, sources, carriedPipelines };
 }
 
 function readAt(root: Record<string, unknown>, path: Pointer): unknown {
@@ -316,15 +321,17 @@ function readAt(root: Record<string, unknown>, path: Pointer): unknown {
 function importConfiguration(file: EmittedFile): Pipeline {
   const { value, comments } = readYaml(file.content);
   const document = recordAt(value, [], "the configuration");
-  // `image` is the default for every step that names none, so each such step carries it, which keeps its meaning and its place in the step.
+  // `image` is the default for every step that names none, so each such step carries it, which keeps its meaning and its place in the step. Any other top-level setting changes what the whole file does, so it is carried at pipeline level.
+  const carried: Record<string, unknown> = {};
   for (const key of Object.keys(document)) {
-    if (key !== "pipelines" && key !== "image" && key !== "clone") {
-      fail([key], `the ${key} setting, which has no place in the model`);
-    }
+    if (key !== "pipelines" && key !== "image" && key !== "clone") carried[key] = document[key];
   }
-  const { triggers, sources } = triggersOf(
+  const { triggers, sources, carriedPipelines } = triggersOf(
     recordAt(document.pipelines, ["pipelines"], "the pipelines"),
   );
+  if (Object.keys(carriedPipelines).length > 0) {
+    carried.pipelines = carriedPipelines;
+  }
   const [first] = sources;
   if (first === undefined) return fail(["pipelines"], "a configuration with no pipeline");
 
@@ -380,6 +387,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
     name: FILE.replace(/\.ya?ml$/, ""),
     ...(description === undefined ? {} : { description }),
     triggers,
+    ...(Object.keys(carried).length === 0 ? {} : { native: { [PROVIDER]: carried } }),
     jobs: Object.fromEntries(jobs),
   });
 }
@@ -387,7 +395,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
 /**
  * Reads a `bitbucket-pipelines.yml` into the neutral model: the inverse of `createBitbucketPipelinesCompiler`.
  *
- * Read: the default, branch, pull-request and manual pipelines as triggers, provided every one runs the same steps; the sequence of steps and parallel groups as the job graph, each step depending on the whole group before it; a trailing `final` step as an always-running job; names, timeouts, deployment environments, self-hosted runner labels, clone depth, and script lines and pipes. A matrix the compiler expanded reads back as the separate steps it was written as. What Bitbucket owns and the model carries verbatim is kept on the job's `native` mapping (any other step key, runner labels that name no self-hosted runner, a clone with settings beyond depth). What has nowhere to be carried is rejected with its JSON pointer: top-level settings such as `image` and `definitions`, tag and bookmark pipelines, custom pipelines other than the manual one, a pull-request pipeline for a branch pattern, triggers that run different steps, stages, and a call to this tool's runner. A step with no name is named for its position, and the pipeline for its file.
+ * Read: the default, branch, pull-request and manual pipelines as triggers, provided every one runs the same steps; the sequence of steps and parallel groups as the job graph, each step depending on the whole group before it; a trailing `final` step as an always-running job; names, timeouts, deployment environments, self-hosted runner labels, clone depth, and script lines and pipes. A matrix the compiler expanded reads back as the separate steps it was written as. What Bitbucket owns and the model carries verbatim is kept on the job's `native` mapping (any other step key, runner labels that name no self-hosted runner, a clone with settings beyond depth). Top-level settings and tag and bookmark pipelines are carried at pipeline level. What has nowhere to be carried is rejected with its JSON pointer: custom pipelines other than the manual one, a pull-request pipeline for a branch pattern, triggers that run different steps, stages, and a call to this tool's runner. A step with no name is named for its position, and the pipeline for its file.
  */
 export function createBitbucketPipelinesImporter(): PipelineImporter {
   return {

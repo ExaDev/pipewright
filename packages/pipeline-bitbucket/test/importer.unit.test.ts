@@ -32,14 +32,6 @@ const STEP = "      - step:\n          name: A\n          script:\n            -
 
 const REJECTS = [
   {
-    name: "a setting the model has no place for",
-    text: `definitions:\n  caches:\n    node: node_modules\npipelines:\n  default:\n${STEP}`,
-  },
-  {
-    name: "a pipeline for a tag",
-    text: `pipelines:\n  tags:\n    "v*":\n${STEP}`,
-  },
-  {
     name: "a custom pipeline that is not the manual one",
     text: `pipelines:\n  custom:\n    deploy:\n${STEP}`,
   },
@@ -270,6 +262,22 @@ describe("Bitbucket Pipelines import", () => {
     expect(first?.native).toEqual({ "bitbucket-pipelines": { image: "node:22" } });
     expect(first?.steps[1]).toMatchObject({ kind: "provider" });
     expect(second?.native).toEqual({ "bitbucket-pipelines": { image: "python:3" } });
+  });
+
+  it("carries definitions and tag pipelines at pipeline level, re-emitting them", async () => {
+    const pipeline = await importText(
+      `definitions:\n  caches:\n    node: node_modules\npipelines:\n  default:\n${STEP}  tags:\n    "v*":\n${STEP}`,
+    );
+    const [emitted] = await createBitbucketPipelinesCompiler().compile(pipeline, { source: "s" });
+
+    expect(pipeline.native).toMatchObject({
+      "bitbucket-pipelines": { definitions: { caches: { node: "node_modules" } } },
+    });
+    const carriedPipelines = pipeline.native?.["bitbucket-pipelines"]?.pipelines;
+    expect(carriedPipelines).toHaveProperty("tags");
+    expect(emitted?.content).toContain("caches:");
+    expect(emitted?.content).toContain("tags:");
+    expect(emitted?.content).toContain("v*:");
   });
 
   it("reads a default clone as each step's checkout", async () => {
