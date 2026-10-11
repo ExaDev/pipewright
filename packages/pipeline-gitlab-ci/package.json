@@ -1,8 +1,8 @@
 {
   "name": "@pipewright/pipeline-gitlab-ci",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "dependencies": {
-    "@pipewright/pipeline-contract": "0.2.0",
+    "@pipewright/pipeline-contract": "0.3.0",
     "@pipewright/yaml-emit": "0.1.0",
     "process-graph": "1.0.0"
   },

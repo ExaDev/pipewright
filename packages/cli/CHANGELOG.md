@@ -1,3 +1,25 @@
+## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.7...@pipewright/cli@0.2.0) (2026-10-11)
+
+### Features
+
+* apply the runner's file commands between steps ([3ef85f1](https://github.com/ExaDev/pipewright/commit/3ef85f12dc32edc02d5af9abba9437c9afae6ca8))
+
+### Bug Fixes
+
+* **runner:** emit a step's stderr through the run's masks ([04b6c2e](https://github.com/ExaDev/pipewright/commit/04b6c2eebe31946bb24684d438a4721513382545))
+* **runner:** remove each step's command files once read and the scratch at the run's end ([92dd4a0](https://github.com/ExaDev/pipewright/commit/92dd4a014d259ede971d7f55c1089d60fce12761))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.3.0
+- Updated @pipewright/pipeline-bitbucket to 0.2.1
+- Updated @pipewright/pipeline-circleci to 0.2.1
+- Updated @pipewright/pipeline-github-actions to 0.5.1
+- Updated @pipewright/pipeline-gitlab-ci to 0.2.1
+- Updated @pipewright/pipeline-local to 0.2.0
+- Updated @pipewright/check-names to 0.1.7
+
 ## [0.1.7](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.6...@pipewright/cli@0.1.7) (2026-10-11)
 
 

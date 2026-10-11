@@ -1,3 +1,25 @@
+## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-local@0.1.3...@pipewright/pipeline-local@0.2.0) (2026-10-11)
+
+### Features
+
+* apply the runner's file commands between steps ([3ef85f1](https://github.com/ExaDev/pipewright/commit/3ef85f12dc32edc02d5af9abba9437c9afae6ca8))
+
+### Bug Fixes
+
+* **runner:** emit a step's stderr through the run's masks ([04b6c2e](https://github.com/ExaDev/pipewright/commit/04b6c2eebe31946bb24684d438a4721513382545))
+* **runner:** mask a log command's annotation fields as its message ([0dd165b](https://github.com/ExaDev/pipewright/commit/0dd165bc7b0ef685dabdf93c49437f35235527ec))
+* **runner:** never quote a command file's line in a parse error ([ae37c0a](https://github.com/ExaDev/pipewright/commit/ae37c0ac8d946d432d596a4958619e404332c4a6))
+* **runner:** quote no malformed property in an annotation error ([2667792](https://github.com/ExaDev/pipewright/commit/2667792a1f00a26deb3351f86f630f8db5c89418))
+* **runner:** quote no step-controlled name in a stream error ([25ce3f6](https://github.com/ExaDev/pipewright/commit/25ce3f6c4bab4e95bd5c75a86f93c0240b2fd00b))
+* **runner:** register each line of a multiline mask and quote no parser value ([245af13](https://github.com/ExaDev/pipewright/commit/245af130279d2801da2df43ad8cd5e5ebc0b2328))
+* **runner:** release a step's files and dispose the scratch when a run throws ([1fe9330](https://github.com/ExaDev/pipewright/commit/1fe93306c30c3fc71c45b1327f7f06f8e014edc3))
+* **runner:** remove each step's command files once read and the scratch at the run's end ([92dd4a0](https://github.com/ExaDev/pipewright/commit/92dd4a014d259ede971d7f55c1089d60fce12761))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.3.0
+
 ## [0.1.3](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-local@0.1.2...@pipewright/pipeline-local@0.1.3) (2026-10-11)
 
 

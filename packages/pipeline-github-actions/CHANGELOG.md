@@ -1,3 +1,10 @@
+## [0.5.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.5.0...@pipewright/pipeline-github-actions@0.5.1) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.3.0
+
 ## [0.5.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.4.0...@pipewright/pipeline-github-actions@0.5.0) (2026-10-11)
 
 ### Features

@@ -1,3 +1,15 @@
+## [0.3.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.2.0...@pipewright/pipeline-contract@0.3.0) (2026-10-11)
+
+### Features
+
+* apply the runner's file commands between steps ([3ef85f1](https://github.com/ExaDev/pipewright/commit/3ef85f12dc32edc02d5af9abba9437c9afae6ca8))
+
+### Bug Fixes
+
+* **runner:** emit a step's stderr through the run's masks ([04b6c2e](https://github.com/ExaDev/pipewright/commit/04b6c2eebe31946bb24684d438a4721513382545))
+* **runner:** quote no step-controlled name in a stream error ([25ce3f6](https://github.com/ExaDev/pipewright/commit/25ce3f6c4bab4e95bd5c75a86f93c0240b2fd00b))
+* **runner:** remove each step's command files once read and the scratch at the run's end ([92dd4a0](https://github.com/ExaDev/pipewright/commit/92dd4a014d259ede971d7f55c1089d60fce12761))
+
 ## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.1.2...@pipewright/pipeline-contract@0.2.0) (2026-10-11)
 
 ### Features

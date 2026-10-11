@@ -1,3 +1,10 @@
+## [0.2.1](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.2.0...@pipewright/pipeline-bitbucket@0.2.1) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.3.0
+
 ## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.1.2...@pipewright/pipeline-bitbucket@0.2.0) (2026-10-11)
 
 ### Features
