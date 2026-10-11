@@ -560,7 +560,7 @@ export function describeRunnerConformance(api: TestApi, makeRunner: () => Pipeli
       },
     );
 
-    api.it("rejects an unknown workflow command, naming it", async () => {
+    api.it("rejects an unknown workflow command without quoting it", async () => {
       const { scratch, output } = ports();
       const executor = recordingExecutor(scratch, {
         script: () => ({
@@ -575,7 +575,9 @@ export function describeRunnerConformance(api: TestApi, makeRunner: () => Pipeli
         thrown = error;
       }
       check(
-        thrown instanceof Error && thrown.message.includes("::group::"),
+        thrown instanceof Error &&
+          thrown.message.includes("unknown workflow command") &&
+          !thrown.message.includes("group"),
         `the unknown command was rejected with ${String(thrown)}`,
       );
     });
