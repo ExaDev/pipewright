@@ -28,3 +28,7 @@ allowBuilds:
   esbuild: true
 
 # Versions are exact pins in each manifest, third-party and sibling alike, as in the sibling repositories: a published manifest must stay installable from the registry, which a `catalog:` specifier is not, and `syncpack lint` fails when one dependency is pinned to two versions, which is what a single catalog entry used to prevent. A bump anywhere is then a visible, reviewable diff.
+
+# The release notes generator loads the changelog preset from pnpm's hoisted store before the root, and its writer is version 8, which only the 9.x preset renders. commitlint's own configuration would otherwise bring 10.x, which needs writer 9, so one version is forced for every consumer.
+overrides:
+  conventional-changelog-conventionalcommits: 9.3.1
