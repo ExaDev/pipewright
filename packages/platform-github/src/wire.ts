@@ -6,54 +6,75 @@ import {
 } from "@pipewright/platform-contract";
 import { z } from "zod";
 
-const STATUS_TO_WIRE = {
-  queued: "queued",
-  running: "in_progress",
-  waiting: "waiting",
-  completed: "completed",
-} as const;
+/**
+ * One correspondence between GitHub's spelling of a value and the neutral one, written once as a list of pairs, so decoding and encoding are derived from the same definition and cannot disagree.
+ */
+class Correspondence<Wire extends string, Neutral extends string> {
+  private readonly toNeutral: ReadonlyMap<string, Neutral>;
 
-/** GitHub reports a run that has not started as any of these. */
-const QUEUED_WIRE: ReadonlySet<string> = new Set(["queued", "requested", "pending"]);
+  private readonly toWire: ReadonlyMap<Neutral, Wire>;
 
-const CONCLUSION_FROM_WIRE: Readonly<Record<string, Conclusion>> = {
-  success: "success",
-  failure: "failure",
-  cancelled: "cancelled",
-  skipped: "skipped",
-  timed_out: "timedOut",
-  action_required: "actionRequired",
-  neutral: "neutral",
-  stale: "stale",
-};
+  constructor(
+    pairs: readonly (readonly [Wire, Neutral])[],
+    aliases: readonly (readonly [string, Neutral])[] = [],
+  ) {
+    this.toNeutral = new Map<string, Neutral>([...pairs, ...aliases]);
+    this.toWire = new Map(pairs.map(([wire, neutral]) => [neutral, wire]));
+  }
 
-const CONCLUSION_TO_WIRE: Readonly<Record<Conclusion, string>> = {
-  success: "success",
-  failure: "failure",
-  cancelled: "cancelled",
-  skipped: "skipped",
-  timedOut: "timed_out",
-  actionRequired: "action_required",
-  neutral: "neutral",
-  stale: "stale",
-};
+  /** The neutral value for a wire spelling, or `undefined` when GitHub sent one this adapter has no meaning for. */
+  decode(wire: string): Neutral | undefined {
+    return this.toNeutral.get(wire);
+  }
 
-const EVENT_FROM_WIRE: Readonly<Record<string, string>> = {
-  push: "push",
-  pull_request: "pullRequest",
-  schedule: "schedule",
-  workflow_dispatch: "manual",
-};
+  /** The wire spelling for a neutral value. */
+  encode(neutral: Neutral): Wire {
+    const wire = this.toWire.get(neutral);
+    if (wire === undefined) throw new Error(`no GitHub spelling is defined for "${neutral}"`);
 
-const EVENT_TO_WIRE: Readonly<Record<string, string>> = Object.fromEntries(
-  Object.entries(EVENT_FROM_WIRE).map(([wire, neutral]) => [neutral, wire]),
+    return wire;
+  }
+}
+
+type NeutralStatus = "queued" | "running" | "waiting" | "completed";
+
+/** GitHub reports a run that has not started as `queued`, `requested` or `pending`; all three decode to `queued`, and `queued` is what is written. */
+const STATUS = new Correspondence<string, NeutralStatus>(
+  [
+    ["queued", "queued"],
+    ["in_progress", "running"],
+    ["waiting", "waiting"],
+    ["completed", "completed"],
+  ],
+  [
+    ["requested", "queued"],
+    ["pending", "queued"],
+  ],
 );
+
+const CONCLUSION = new Correspondence<string, Conclusion>([
+  ["success", "success"],
+  ["failure", "failure"],
+  ["cancelled", "cancelled"],
+  ["skipped", "skipped"],
+  ["timed_out", "timedOut"],
+  ["action_required", "actionRequired"],
+  ["neutral", "neutral"],
+  ["stale", "stale"],
+]);
+
+const EVENT = new Correspondence<string, string>([
+  ["push", "push"],
+  ["pull_request", "pullRequest"],
+  ["schedule", "schedule"],
+  ["workflow_dispatch", "manual"],
+]);
 
 /** The documented ceiling for `per_page` on the endpoints used here. */
 export const GITHUB_MAX_PAGE_SIZE = 100;
 
 export function conclusionFromWire(wire: string): Conclusion {
-  const conclusion = CONCLUSION_FROM_WIRE[wire];
+  const conclusion = CONCLUSION.decode(wire);
   if (conclusion === undefined) {
     throw new Error(`GitHub reported the conclusion "${wire}", which has no neutral meaning`);
   }
@@ -62,19 +83,24 @@ export function conclusionFromWire(wire: string): Conclusion {
 }
 
 export function eventFromWire(wire: string): string {
-  return EVENT_FROM_WIRE[wire] ?? wire;
+  return EVENT.decode(wire) ?? wire;
 }
 
 export function eventToWire(neutral: string): string {
-  return EVENT_TO_WIRE[neutral] ?? neutral;
+  try {
+    return EVENT.encode(neutral);
+  } catch {
+    return neutral;
+  }
 }
 
-export function statusFromWire(wire: string): "queued" | "running" | "waiting" | "completed" {
-  if (QUEUED_WIRE.has(wire)) return "queued";
-  if (wire === "in_progress") return "running";
-  if (wire === "waiting") return "waiting";
-  if (wire === "completed") return "completed";
-  throw new Error(`GitHub reported the status "${wire}", which has no neutral meaning`);
+export function statusFromWire(wire: string): NeutralStatus {
+  const status = STATUS.decode(wire);
+  if (status === undefined) {
+    throw new Error(`GitHub reported the status "${wire}", which has no neutral meaning`);
+  }
+
+  return status;
 }
 
 const wireRunSchema = z.object({
@@ -115,8 +141,8 @@ export const runCodec = z.codec(wireRunSchema, runSchema, {
   encode: (run): WireRun => ({
     id: Number(run.id),
     name: run.name,
-    status: STATUS_TO_WIRE[run.status],
-    conclusion: run.status === "completed" ? CONCLUSION_TO_WIRE[run.conclusion] : null,
+    status: STATUS.encode(run.status),
+    conclusion: run.status === "completed" ? CONCLUSION.encode(run.conclusion) : null,
     head_branch: run.ref,
     head_sha: run.sha,
     event: eventToWire(run.event),
@@ -159,8 +185,8 @@ export const checkCodec = z.codec(
     },
     encode: (check): WireCheck => ({
       name: check.name,
-      status: STATUS_TO_WIRE[check.status],
-      conclusion: check.conclusion === undefined ? null : CONCLUSION_TO_WIRE[check.conclusion],
+      status: STATUS.encode(check.status),
+      conclusion: check.conclusion === undefined ? null : CONCLUSION.encode(check.conclusion),
       html_url: check.url ?? null,
     }),
   },
