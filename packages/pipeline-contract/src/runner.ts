@@ -9,10 +9,73 @@ export interface CommandExecution {
   readonly command: string;
   readonly env: Readonly<Record<string, string>>;
   readonly workingDirectory: string | undefined;
+  /** Directories to search before the host's own `PATH`, most preferred first: the additions the job's earlier steps declared, which only the host can join onto the `PATH` it started from. */
+  readonly pathEntries: readonly string[];
 }
 
 export interface CommandResult {
   readonly exitCode: number;
+  /** Everything the command wrote to stdout, which the runner reads for workflow commands and echoes through the run's output after masking. */
+  readonly stdout: string;
+}
+
+/** The severity a log entry carries. `info` is a step's ordinary output. */
+export type LogLevel = "info" | "debug" | "warning" | "error" | "notice";
+
+/** Where in the repository a log entry points, as the command that raised it stated. */
+export interface Annotation {
+  readonly file?: string;
+  readonly line?: number;
+  readonly endLine?: number;
+  readonly title?: string;
+}
+
+/** One piece of a run's output: a line of a step's stdout after masking, or a command the step routed to a level. */
+export interface LogEntry {
+  readonly job: string;
+  readonly step: string;
+  readonly level: LogLevel;
+  readonly message: string;
+  readonly annotation?: Annotation;
+}
+
+/** A step's summary markdown, as the step wrote it to its summary file. */
+export interface StepSummary {
+  readonly job: string;
+  readonly step: string;
+  readonly text: string;
+}
+
+/**
+ * Where a run's output goes, supplied by whoever hosts the runner: each step's stdout after masking, the levels workflow commands were routed to, and each step's summary. The runner writes nowhere else, so a host that discards it silences the run.
+ */
+export interface RunOutput {
+  readonly log: (entry: LogEntry) => void;
+  readonly summary: (summary: StepSummary) => void;
+}
+
+/** The paths of the command files one step communicates through, named by the environment variable that carries each. */
+export interface StepCommandFiles {
+  readonly output: string;
+  readonly env: string;
+  readonly path: string;
+  readonly summary: string;
+}
+
+/** What a step wrote to its command files. */
+export interface StepFileContents {
+  readonly output: string;
+  readonly env: string;
+  readonly path: string;
+  readonly summary: string;
+}
+
+/**
+ * Allocates and reads the per-step command files, the runner's filesystem boundary: the runner never touches a filesystem itself, so the host creates each step's files empty before the command runs and reads them back after it exits. Both are per step, so one step can never read what another wrote.
+ */
+export interface StepScratch {
+  readonly create: () => Promise<StepCommandFiles>;
+  readonly read: (files: StepCommandFiles) => Promise<StepFileContents>;
 }
 
 export interface CommandExecutor {
@@ -29,6 +92,8 @@ export type Outcome = "success" | "failure" | "skipped";
 export interface StepReport {
   readonly name: string;
   readonly outcome: Outcome;
+  /** The outputs the step declared through its output file, so later steps and the report consumer can read them. */
+  readonly outputs: Readonly<Record<string, string>>;
 }
 
 export interface JobReport {
@@ -48,6 +113,10 @@ export interface RunReport {
 
 export interface RunOptions {
   readonly executor: CommandExecutor;
+  /** Allocates and reads each step's command files, the runner's filesystem boundary. */
+  readonly scratch: StepScratch;
+  /** Receives the run's output: step stdout after masking, the levels commands were routed to, and summaries. */
+  readonly output: RunOutput;
   readonly context: RunContext;
   /** Run only these job ids; every job when omitted. The host has already decided to run them, so their `needs` and job-level `when` are treated as satisfied. */
   readonly only?: readonly string[];

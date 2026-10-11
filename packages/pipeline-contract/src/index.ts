@@ -65,16 +65,24 @@ export { jobGraphOf } from "./graph.ts";
 export { slugOf, uniqueJobIds } from "./slug.ts";
 export { expandMatrix, matrixValues, type MatrixCombination } from "./matrix.ts";
 export {
+  type Annotation,
   type CommandExecution,
   type CommandExecutor,
   type CommandResult,
   type JobReport,
+  type LogEntry,
+  type LogLevel,
   type Outcome,
   type PipelineRunner,
   type RunContext,
   type RunOptions,
+  type RunOutput,
   type RunReport,
+  type StepCommandFiles,
+  type StepFileContents,
   type StepReport,
+  type StepScratch,
+  type StepSummary,
 } from "./runner.ts";
 export { describeRunnerConformance } from "./runner-conformance.ts";
 export type { PredicateNode } from "trilean";

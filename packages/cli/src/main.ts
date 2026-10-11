@@ -22,10 +22,13 @@ import {
   type CommandExecutor,
   type ContextKey,
   type FileReader,
+  type LogEntry,
   type MatrixCombination,
   type Pipeline,
   type PipelineCompiler,
   type PipelineImporter,
+  type RunOutput,
+  type StepScratch,
 } from "@pipewright/pipeline-contract";
 import {
   createBitbucketPipelinesCompiler,
@@ -54,6 +57,8 @@ export interface Io {
   readonly readOptional: (path: string) => Promise<string | undefined>;
   readonly writeFile: (path: string, content: string) => Promise<void>;
   readonly executor: CommandExecutor;
+  /** Allocates and reads each step's command files for `run`; the composition root owns the filesystem. */
+  readonly scratch: StepScratch;
   /** Loads a TypeScript pipeline module and returns its exports. Injected because importing code is a runtime effect the CLI's tests must not perform. */
   readonly importModule: (path: string) => Promise<unknown>;
   readonly fetch: typeof fetch;
@@ -219,6 +224,36 @@ function parseRange(text: string): { from: number; to: number } {
   return { from: Number(match[1]), to: Number(match[2]) };
 }
 
+/**
+ * The run's output as terminal text: a step's own lines as they came, a routed level with the place it pointed at, and each summary's markdown.
+ */
+function cliRunOutput(io: Io): RunOutput {
+  const placed = (entry: LogEntry): string => {
+    const annotation = entry.annotation;
+    if (annotation === undefined) return `${entry.level}: ${entry.message}`;
+    const lines =
+      annotation.line === undefined
+        ? ""
+        : `:${String(annotation.line)}${
+            annotation.endLine === undefined || annotation.endLine === annotation.line
+              ? ""
+              : `-${String(annotation.endLine)}`
+          }`;
+    const title = annotation.title === undefined ? "" : ` (${annotation.title})`;
+
+    return `${entry.level} ${annotation.file ?? ""}${lines}${title}: ${entry.message}`;
+  };
+
+  return {
+    log(entry) {
+      io.stdout(entry.level === "info" ? `${entry.message}\n` : `${placed(entry)}\n`);
+    },
+    summary(step) {
+      io.stdout(step.text.endsWith("\n") ? step.text : `${step.text}\n`);
+    },
+  };
+}
+
 function repository(text: string | undefined): { owner: string; repo: string } {
   const [owner, repo, extra] = required(text, "--repo").split("/");
   if (
@@ -338,6 +373,8 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
         const matrix: MatrixCombination = Object.fromEntries(keyValues(values.matrix, "--matrix"));
         const report = await createLocalRunner().run(pipeline, {
           executor: io.executor,
+          scratch: io.scratch,
+          output: cliRunOutput(io),
           context: resolveContext(io.env, {
             ...(values.local === true ? localContext(pipeline.name) : {}),
             ...contextOverrides(values.context),
