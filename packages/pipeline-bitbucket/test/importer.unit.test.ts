@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   UnsupportedNativeError,
   describeImporterConformance,
+  pipelineSchema,
   type Pipeline,
 } from "@pipewright/pipeline-contract";
 
@@ -229,5 +230,33 @@ describe("Bitbucket Pipelines import", () => {
       provider: "bitbucket-pipelines",
       native: { script: ["./deploy"] },
     });
+  });
+
+  it("round-trips a job with several run steps, which share one shell and are written as one", async () => {
+    const compiler = createBitbucketPipelinesCompiler();
+    const pipeline = pipelineSchema.parse({
+      name: "CI",
+      triggers: [{ kind: "push" }],
+      jobs: {
+        build: {
+          name: "Build",
+          runsOn: [],
+          steps: [
+            { kind: "run", run: "cd web" },
+            { kind: "run", run: "npm test" },
+          ],
+        },
+      },
+    });
+    const [first] = await compiler.compile(pipeline, { source: "s" });
+    if (first === undefined) throw new Error("no file emitted");
+    const imported = await createBitbucketPipelinesImporter().import(first);
+    const [second] = await compiler.compile(imported, { source: "s" });
+
+    expect(Object.values(imported.jobs)[0]?.steps).toEqual([
+      { kind: "checkout" },
+      { kind: "run", run: "cd web\nnpm test" },
+    ]);
+    expect(second?.content).toBe(first.content);
   });
 });

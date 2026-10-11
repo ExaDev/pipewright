@@ -215,6 +215,8 @@ function jobOf(input: JobInput): JobOutput {
   const key = keyOf.get(id) ?? job.name;
   const comments = new Map<string, string>();
   const script: string[] = [];
+  /** The script entry that consecutive `run` steps are being joined into, since the lines of a GitLab script share one shell. */
+  let openRun: number | undefined;
   let gitDepth: string | undefined;
 
   let index = 0;
@@ -250,11 +252,21 @@ function jobOf(input: JobInput): JobOutput {
           const from = index;
           while (isCollapsible(job.steps[index])) index += 1;
           script.push(wrapper(from, index - 1, Object.keys(job.matrix ?? {})));
+          openRun = undefined;
           continue;
         }
+        // The lines of a script run in one shell, so consecutive run steps are written as one entry whose lines are theirs, which is what the importer reads back as one step.
         const label = step.description ?? step.name;
-        if (label !== undefined) comments.set(`${key}/script/${String(script.length)}`, label);
-        script.push(step.run);
+        if (openRun === undefined) {
+          openRun = script.length;
+          script.push(step.run);
+          if (label !== undefined) comments.set(`${key}/script/${String(openRun)}`, label);
+        } else {
+          script[openRun] = `${script[openRun] ?? ""}\n${step.run}`;
+          const path = `${key}/script/${String(openRun)}`;
+          const joined = [comments.get(path), label].filter((text) => text !== undefined);
+          if (joined.length > 0) comments.set(path, joined.join("\n"));
+        }
         break;
       }
       case "provider": {
@@ -270,6 +282,7 @@ function jobOf(input: JobInput): JobOutput {
           unsupported(at, "a gitlab-ci provider step other than { script: string[] }");
         } else {
           script.push(...lines);
+          openRun = undefined;
         }
         break;
       }
