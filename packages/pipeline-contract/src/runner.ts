@@ -106,6 +106,8 @@ export interface JobView {
   readonly needs: Readonly<Record<string, Outcome>>;
   /** The environment the job's steps inherit before any of them adds to it: the pipeline's and the job's own values, rendered for this combination. */
   readonly env: Readonly<Record<string, string>>;
+  /** The inclusive range of the job's own step indexes this run will execute, or undefined when it will execute them all. Preparation resolves actions whose steps run, so a step outside the range contributes nothing, not even the phases its action declares. */
+  readonly range: { readonly from: number; readonly to: number } | undefined;
 }
 
 /** A job view plus what the job's steps have left behind so far. */

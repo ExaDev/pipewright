@@ -2,6 +2,7 @@ import { UnsupportedFeatureError } from "./errors.ts";
 import { pipelineSchema, type Pipeline } from "./schema.ts";
 import type { TestApi } from "./conformance.ts";
 import type { PipelineRunner, PreparedStep, StepHost, StepView } from "./runner.ts";
+import type { Step } from "./schema.ts";
 
 import { CONTEXT, check, ports, recordingExecutor } from "./runner-conformance.ts";
 
@@ -235,6 +236,50 @@ export function describeStepHostConformance(api: TestApi, makeRunner: () => Pipe
         host,
       });
       check(preparedCount === 0, "a job that did not run was prepared");
+    });
+
+    api.it("places no phases for steps outside the range the run was given", async () => {
+      const { scratch, output } = ports();
+      const executor = recordingExecutor(scratch);
+      let expanded: number | undefined;
+      const host: StepHost = {
+        async expand(job, view) {
+          // A host resolves the actions of the steps that will run, which is what the range in the view states.
+          expanded = view.range === undefined ? undefined : view.range.from;
+          const within = job.steps.filter(
+            (step, index) =>
+              view.range === undefined || (index >= view.range.from && index <= view.range.to),
+          );
+
+          return Promise.resolve({
+            steps: [
+              ...within.flatMap((step): Step[] =>
+                step.kind === "provider" ? [{ kind: "run", run: "pre" }] : [],
+              ),
+              ...job.steps,
+            ],
+            env: {},
+          });
+        },
+        async resolve() {
+          return Promise.resolve({ kind: "skipped" });
+        },
+      };
+      await makeRunner().run(hostedPipeline(), {
+        executor,
+        scratch,
+        output,
+        context: CONTEXT,
+        host,
+        only: ["build"],
+        steps: { from: 1, to: 1 },
+      });
+      check(expanded === 1, `the host was told the range starts at ${String(expanded)}`);
+      const commands = executor.executed.map((entry) => entry.command);
+      check(
+        !commands.includes("pre") && commands.includes("before"),
+        `a step outside the range contributed a phase: ${commands.join(",")}`,
+      );
     });
 
     api.it("rejects a provider step the host does not handle", async () => {

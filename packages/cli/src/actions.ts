@@ -449,7 +449,11 @@ export function createActionHost(options: HostOptions): ActionHost {
       // A run told to skip provider steps runs none of their actions, so it fetches nothing and places no phases; the job's own environment is still evaluated, because the steps that do run read it.
       const uses = options.skipProviderSteps
         ? []
-        : job.steps.filter((step) => usesOf(step) !== undefined);
+        : job.steps.filter(
+            (step, index) =>
+              usesOf(step) !== undefined &&
+              (view.range === undefined || (index >= view.range.from && index <= view.range.to)),
+          );
       // A job that carries no action and no environment of GitHub's own prepares nothing and fetches nothing.
       if (uses.length === 0 && raw === undefined) {
         return { steps: job.steps, env: {} };
