@@ -141,13 +141,28 @@ describe("GitLab CI import", () => {
     expect(pipeline.jobs.test?.env).toEqual({ V: "{{ matrix.NODE }}" });
   });
 
-  it("expands merge keys before reading", async () => {
+  it("expands merge keys before reading, carrying the hidden template at pipeline level", async () => {
     const pipeline = await importText(
       `${WORKFLOW}.defaults: &defaults\n  tags: [linux]\n  script: [echo]\nbuild:\n  <<: *defaults\n`,
-    ).catch((error: unknown) => error);
+    );
 
-    // A hidden job is a template the model does not resolve, so the file is rejected by name.
-    expect(pipeline).toBeInstanceOf(UnsupportedNativeError);
+    expect(pipeline.native).toEqual({
+      "gitlab-ci": { ".defaults": { tags: ["linux"], script: ["echo"] } },
+    });
+    expect(pipeline.jobs.build?.runsOn).toEqual(["linux"]);
+    expect(pipeline.jobs.build?.steps[1]).toMatchObject({ kind: "run", run: "echo" });
+  });
+
+  it("carries an include at pipeline level and re-emits it unchanged", async () => {
+    const text = `${WORKFLOW}include:\n  - local: templates/jobs.yml\nbuild:\n  script: [echo]\n`;
+    const pipeline = await importText(text);
+    const [emitted] = await createGitLabCiCompiler().compile(pipeline, { source: "s" });
+
+    expect(pipeline.native).toEqual({
+      "gitlab-ci": { include: [{ local: "templates/jobs.yml" }] },
+    });
+    expect(emitted?.content).toContain("include:");
+    expect(emitted?.content).toContain("local: templates/jobs.yml");
   });
 
   it("reads a job with no tags as one with no runner label", async () => {
