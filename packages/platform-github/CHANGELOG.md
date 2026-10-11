@@ -1,3 +1,9 @@
+## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/platform-github@0.1.0...@pipewright/platform-github@0.1.1) (2026-10-11)
+
+### Code Refactoring
+
+* **platform-github:** define each wire correspondence once ([953e03f](https://github.com/ExaDev/pipewright/commit/953e03ff29f2516ad143c52e8a1a4d7e55ed0580))
+
 ## [0.1.0](https://github.com/ExaDev/pipewright/compare/@pipewright/platform-github@0.0.0...@pipewright/platform-github@0.1.0) (2026-10-11)
 
 ### Features

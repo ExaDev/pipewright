@@ -1,6 +1,6 @@
 {
   "name": "@pipewright/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "bin": {
     "pipewright": "./src/bin.ts"
   },
@@ -13,7 +13,7 @@
     "@pipewright/pipeline-gitlab-ci": "0.1.0",
     "@pipewright/pipeline-local": "0.1.0",
     "@pipewright/platform-contract": "0.1.0",
-    "@pipewright/platform-github": "0.1.0",
+    "@pipewright/platform-github": "0.1.1",
     "zod": "4.6.5"
   },
   "devDependencies": {

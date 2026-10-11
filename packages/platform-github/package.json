@@ -1,6 +1,6 @@
 {
   "name": "@pipewright/platform-github",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "dependencies": {
     "@pipewright/platform-contract": "0.1.0",
     "zod": "4.6.5"

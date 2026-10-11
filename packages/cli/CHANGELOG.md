@@ -1,3 +1,10 @@
+## [0.1.1](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.1.0...@pipewright/cli@0.1.1) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/platform-github to 0.1.1
+
 ## [0.1.0](https://github.com/ExaDev/pipewright/compare/@pipewright/cli@0.0.0...@pipewright/cli@0.1.0) (2026-10-11)
 
 ### Features

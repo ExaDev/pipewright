@@ -295,7 +295,7 @@ importers:
         specifier: 0.1.0
         version: link:../platform-contract
       '@pipewright/platform-github':
-        specifier: 0.1.0
+        specifier: 0.1.1
         version: link:../platform-github
       zod:
         specifier: 4.6.5
