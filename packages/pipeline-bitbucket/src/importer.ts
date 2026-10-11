@@ -6,6 +6,7 @@ import {
   type EmittedFile,
   type Pipeline,
   type PipelineImporter,
+  splitShellEntry,
 } from "@pipewright/pipeline-contract";
 import { commentPath, readYaml } from "@pipewright/yaml-emit";
 
@@ -166,14 +167,16 @@ function stepOf(
     if (commands.length === 0) return;
     const lines = commands;
     commands = [];
-    steps.push(
-      // GitHub evaluates `${{ }}` in a command before the shell, so a command carrying one must not reach a GitHub workflow as portable text.
+    // GitHub evaluates `${{ }}` in a command before the shell, so a command carrying one must not reach a GitHub workflow as portable text.
+    if (
       own.length > 0 ||
-        Object.keys(native).length > 0 ||
-        lines.some((line) => RUNTIME_VARIABLE.test(line) || line.includes("${{"))
-        ? { kind: "provider", provider: PROVIDER, native: { script: lines } }
-        : { kind: "run", run: lines.join("\n") },
-    );
+      Object.keys(native).length > 0 ||
+      lines.some((line) => RUNTIME_VARIABLE.test(line) || line.includes("${{"))
+    ) {
+      steps.push({ kind: "provider", provider: PROVIDER, native: { script: lines } });
+    } else {
+      for (const run of splitShellEntry(lines.join("\n"))) steps.push({ kind: "run", run });
+    }
   };
   for (const [index, item] of script.entries()) {
     const at: Pointer = [...pointer, "script", index];

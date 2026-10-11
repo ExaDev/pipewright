@@ -8,6 +8,7 @@ import {
   type Pipeline,
   type PipelineImporter,
   type PredicateNode,
+  splitShellEntry,
 } from "@pipewright/pipeline-contract";
 import { commentPath, readYaml } from "@pipewright/yaml-emit";
 
@@ -18,7 +19,6 @@ import {
   PROVIDER,
   RESERVED_NAMES,
   literalOfRegex,
-  FAIL_FAST,
 } from "./vocabulary.ts";
 
 type Pointer = readonly (string | number)[];
@@ -329,9 +329,13 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
     ...(checksOut
       ? [{ kind: "checkout", ...(fetchDepth === undefined ? {} : { fetchDepth }) }]
       : []),
-    portable
-      ? { kind: "run", run: lines.map(withoutFailFast).join("\n"), ...described }
-      : { kind: "provider", provider: PROVIDER, native: { script: lines }, ...described },
+    ...(portable
+      ? splitShellEntry(lines.join("\n")).map((run, at) => ({
+          kind: "run",
+          run,
+          ...(at === 0 ? described : {}),
+        }))
+      : [{ kind: "provider", provider: PROVIDER, native: { script: lines }, ...described }]),
   ];
 
   return {
@@ -397,15 +401,6 @@ function implicitNeedsOf(
   }
 
   return needs;
-}
-
-/**
- * A script entry as the neutral step's text: the fail-fast line the compiler starts a multi-line entry with is the model's own rule for run steps, so it is not part of the text.
- */
-function withoutFailFast(entry: string): string {
-  const prefix = `${FAIL_FAST}\n`;
-
-  return entry.startsWith(prefix) ? entry.slice(prefix.length) : entry;
 }
 
 const DEFAULT_GROUP = "{{ workflow }}-{{ refName }}";

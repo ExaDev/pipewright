@@ -255,7 +255,8 @@ describe("Bitbucket Pipelines import", () => {
 
     expect(Object.values(imported.jobs)[0]?.steps).toEqual([
       { kind: "checkout" },
-      { kind: "run", run: "cd web\nnpm test" },
+      { kind: "run", run: "cd web" },
+      { kind: "run", run: "npm test" },
     ]);
     expect(second?.content).toBe(first.content);
   });

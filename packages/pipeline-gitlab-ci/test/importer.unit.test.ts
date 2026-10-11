@@ -314,9 +314,10 @@ describe("GitLab CI import", () => {
 
     expect(Object.values(imported.jobs)[0]?.steps).toEqual([
       { kind: "checkout" },
-      { kind: "run", run: "cd web\nnpm test", description: "Enter the package." },
+      { kind: "run", run: "cd web", description: "Enter the package." },
+      { kind: "run", run: "npm test" },
     ]);
     expect(second?.content).toBe(first.content);
-    expect(first.content).toMatch(/set -e\n\s+cd web\n\s+npm test/);
+    expect(first.content).toMatch(/set -e\n\s+cd web\n\s+__pipewright_status=\$\?;/);
   });
 });
