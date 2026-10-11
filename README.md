@@ -156,5 +156,5 @@ The generated workflows are committed because GitHub runs only workflows that ex
 ## Constraints
 
 - Text equality in conditions is case-insensitive, because GitHub's `==` cannot be made case-sensitive. A provider whose `==` is case-sensitive renders a case-insensitive comparison instead.
-- Required-check comparison needs rulesets, which the GitHub API refuses for a private repository on a free organisation plan. The adapter surfaces the 403.
+- Required-check comparison reads the branch's rulesets, which the GitHub API refuses to a repository or plan that does not have them, or to a token that may not read them. The adapter surfaces the 403.
 - This tool never applies a ruleset, secret or settings change. It computes a plan and a person applies it.

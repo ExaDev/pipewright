@@ -199,7 +199,7 @@ const validators = defineJob("validators", {
 const platformSmoke = defineJob("platform-smoke", {
   name: "Platform read path",
   description:
-    "Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. A required-check comparison is not possible here: rulesets are unavailable to a private repository on this organisation's plan, and the API answers 403.",
+    "Reads this very run back through the platform adapter with the workflow token, so the live read path is exercised on every run. It is also what stays possible where the required-check comparison is not, because a repository or plan without rulesets makes the API answer 403.",
   runsOn: [RUNNER],
   timeoutMinutes: READ_BACK_TIMEOUT_MINUTES,
   permissions: { actions: "read", checks: "read", contents: "read" },
