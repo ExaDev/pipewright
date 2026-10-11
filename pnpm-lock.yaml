@@ -262,7 +262,7 @@ importers:
         version: link:../pipeline-contract
     devDependencies:
       '@pipewright/pipeline-github-actions':
-        specifier: 0.3.0
+        specifier: 0.4.0
         version: link:../pipeline-github-actions
       '@pipewright/pipeline-gitlab-ci':
         specifier: 0.2.0
@@ -271,7 +271,7 @@ importers:
   packages/cli:
     dependencies:
       '@pipewright/check-names':
-        specifier: 0.1.4
+        specifier: 0.1.5
         version: link:../check-names
       '@pipewright/pipeline-bitbucket':
         specifier: 0.2.0
@@ -283,7 +283,7 @@ importers:
         specifier: 0.2.0
         version: link:../pipeline-contract
       '@pipewright/pipeline-github-actions':
-        specifier: 0.3.0
+        specifier: 0.4.0
         version: link:../pipeline-github-actions
       '@pipewright/pipeline-gitlab-ci':
         specifier: 0.2.0

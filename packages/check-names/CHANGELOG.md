@@ -1,3 +1,10 @@
+## [0.1.5](https://github.com/ExaDev/pipewright/compare/@pipewright/check-names@0.1.4...@pipewright/check-names@0.1.5) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-github-actions to 0.4.0
+
 ## [0.1.4](https://github.com/ExaDev/pipewright/compare/@pipewright/check-names@0.1.3...@pipewright/check-names@0.1.4) (2026-10-11)
 
 

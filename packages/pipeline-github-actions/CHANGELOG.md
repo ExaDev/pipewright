@@ -1,3 +1,10 @@
+## [0.4.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.3.0...@pipewright/pipeline-github-actions@0.4.0) (2026-10-11)
+
+### Features
+
+* **github-actions:** expand a composite action into neutral steps ([feda4c4](https://github.com/ExaDev/pipewright/commit/feda4c43d3f38fba0cf56e4a1840d09d380ef110)), closes [#74](https://github.com/ExaDev/pipewright/issues/74)
+* **github-actions:** read an action reference and composite action metadata ([c04c120](https://github.com/ExaDev/pipewright/commit/c04c1207fcd158ce0217aa9bde6d562dbbf797aa))
+
 ## [0.3.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.2.0...@pipewright/pipeline-github-actions@0.3.0) (2026-10-11)
 
 ### Features
