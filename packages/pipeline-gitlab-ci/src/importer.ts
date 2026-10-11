@@ -244,7 +244,7 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
   if ("trigger" in job)
     return fail([...pointer, "trigger"], "a job that triggers another pipeline");
   // A job with no tags runs on any runner, which the model states as no runner label.
-  const tagged = job.tags ?? context.defaults.tags;
+  const tagged = inheritsDefault("tags", job) ? context.defaults.tags : job.tags;
   const tags = tagged === undefined ? [] : stringList(tagged);
   if (tags === undefined) return fail([...pointer, "tags"], "tags that are not a list of strings");
   const script = typeof job.script === "string" ? [job.script] : job.script;
@@ -444,23 +444,25 @@ function defaultsOf(document: Record<string, unknown>): Record<string, unknown> 
 }
 
 /**
- * The defaults a job inherits: all of them unless the job's `inherit.default` is `false`, and only the listed ones when it is a list.
+ * Whether a job takes the pipeline default for a key: not when it sets the key itself, nor when its `inherit.default` is `false` or a list that omits the key.
+ */
+function inheritsDefault(key: string, job: Record<string, unknown>): boolean {
+  if (key in job) return false;
+  const inherit = isRecord(job.inherit) ? job.inherit.default : undefined;
+  if (Array.isArray(inherit)) return inherit.includes(key);
+
+  return inherit !== false;
+}
+
+/**
+ * The defaults a job carries as native settings. Runner tags are not among them: they become the job's runner labels.
  */
 function inheritedDefaults(
   defaults: Readonly<Record<string, unknown>>,
   job: Record<string, unknown>,
 ): Record<string, unknown> {
-  const inherit = isRecord(job.inherit) ? job.inherit.default : undefined;
-  const wanted = Array.isArray(inherit) ? new Set(inherit) : undefined;
-
   return Object.fromEntries(
-    Object.entries(defaults).filter(
-      ([key]) =>
-        key !== "tags" &&
-        inherit !== false &&
-        !(key in job) &&
-        (wanted === undefined || wanted.has(key)),
-    ),
+    Object.entries(defaults).filter(([key]) => key !== "tags" && inheritsDefault(key, job)),
   );
 }
 
