@@ -167,7 +167,11 @@ function triggersAt(on: unknown, comments: Comments): Record<string, unknown>[] 
     const at: Pointer = [...pointer, event];
     const description = comments.at("on", event);
     const described = description === undefined ? {} : { description };
-    const settings = config === null || config === undefined ? {} : recordAt(config, at, event);
+    // A schedule is a list of entries, so only the other events' settings are a mapping.
+    const settings =
+      config === null || config === undefined || event === "schedule"
+        ? {}
+        : recordAt(config, at, event);
     switch (event) {
       case "push":
       case "pull_request": {

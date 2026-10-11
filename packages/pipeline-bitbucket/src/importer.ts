@@ -116,10 +116,13 @@ function stepOf(
   placed: Placed,
   name: string,
   comments: ReadonlyMap<string, string>,
+  defaults: { readonly image: unknown; readonly clone: unknown },
 ): Record<string, unknown> {
+  const defaultImage = defaults.image;
   const { body, pointer } = placed;
   // A step that carries settings of Bitbucket's own (a trigger, a condition, an image, services, caches, an after-script) is Bitbucket's as a whole, because another provider would run its script without them.
   const own = Object.keys(body).filter((key) => !STEP_KEYS.has(key));
+  const inheritsImage = defaultImage !== undefined && !("image" in body);
   const script = arrayAt(body.script, [...pointer, "script"], "a script");
   if (script.length === 0) return fail([...pointer, "script"], "a step with an empty script");
 
@@ -145,8 +148,9 @@ function stepOf(
     native.deployment = body.deployment;
   }
 
-  // A clone that is only a depth is the model's checkout. Any other clone setting stays Bitbucket's, and disabling the clone leaves no checkout.
-  const clone = body.clone;
+  /* A clone that is only a depth is the model's checkout. Any other clone setting stays Bitbucket's, and disabling the clone leaves no checkout.
+     A step that sets no `clone` takes the pipeline's default. */
+  const clone = body.clone ?? defaults.clone;
   const depthOnly =
     isRecord(clone) &&
     Object.keys(clone).length === 1 &&
@@ -170,6 +174,7 @@ function stepOf(
     // GitHub evaluates `${{ }}` in a command before the shell, so a command carrying one must not reach a GitHub workflow as portable text.
     if (
       own.length > 0 ||
+      inheritsImage ||
       Object.keys(native).length > 0 ||
       lines.some((line) => RUNTIME_VARIABLE.test(line) || line.includes("${{"))
     ) {
@@ -200,6 +205,7 @@ function stepOf(
   for (const [key, entry] of Object.entries(body)) {
     if (!STEP_KEYS.has(key)) native[key] = entry;
   }
+  if (inheritsImage) native.image = defaultImage;
 
   const description = comments.get(commentPath(...placed.commentSegments));
 
@@ -310,8 +316,11 @@ function readAt(root: Record<string, unknown>, path: Pointer): unknown {
 function importConfiguration(file: EmittedFile): Pipeline {
   const { value, comments } = readYaml(file.content);
   const document = recordAt(value, [], "the configuration");
+  // `image` is the default for every step that names none, so each such step carries it, which keeps its meaning and its place in the step.
   for (const key of Object.keys(document)) {
-    if (key !== "pipelines") fail([key], `the ${key} setting, which has no place in the model`);
+    if (key !== "pipelines" && key !== "image" && key !== "clone") {
+      fail([key], `the ${key} setting, which has no place in the model`);
+    }
   }
   const { triggers, sources } = triggersOf(
     recordAt(document.pipelines, ["pipelines"], "the pipelines"),
@@ -357,7 +366,10 @@ function importConfiguration(file: EmittedFile): Pipeline {
   for (const [level, group] of idGroups.entries()) {
     const previous = level === 0 ? [] : (idGroups[level - 1] ?? []).map((member) => member.id);
     for (const { entry, id, name } of group) {
-      const job = stepOf(entry, name, comments);
+      const job = stepOf(entry, name, comments, {
+        image: document.image,
+        clone: document.clone,
+      });
       jobs.push([id, { ...job, ...(previous.length === 0 ? {} : { needs: previous }) }]);
     }
   }

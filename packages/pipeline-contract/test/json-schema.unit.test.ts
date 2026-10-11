@@ -38,7 +38,11 @@ describe("derived JSON Schema agrees with the Zod schema", () => {
   const structuralCases: [string, (document: Document) => Document, boolean][] = [
     ["the sample pipeline", (document) => document, true],
     ["an unknown top-level key", (document) => ({ ...document, extra: 1 }), false],
-    ["no triggers", (document) => ({ ...document, triggers: [] }), false],
+    [
+      "no triggers, meaning the provider's default sources",
+      (document) => ({ ...document, triggers: [] }),
+      true,
+    ],
     [
       "a missing name",
       (document) => Object.fromEntries(Object.entries(document).filter(([key]) => key !== "name")),

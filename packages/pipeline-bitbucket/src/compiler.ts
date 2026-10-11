@@ -338,6 +338,12 @@ function pipelinesOf(
 ): Record<string, unknown> {
   const pipelines: Record<string, Record<string, unknown> | unknown[]> = {};
   let branches: Record<string, unknown> = {};
+  if (pipeline.triggers.length === 0) {
+    unsupported(
+      "/triggers",
+      "a pipeline with no triggers, because the file must name a pipeline to run",
+    );
+  }
   for (const [index, trigger] of pipeline.triggers.entries()) {
     const pointer = `/triggers/${String(index)}`;
     switch (trigger.kind) {

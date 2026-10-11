@@ -223,6 +223,8 @@ interface JobContext {
   readonly implicitNeeds: ReadonlyMap<string, readonly string[]>;
   /** The pipeline-level variables, which a job inherits and may override. */
   readonly globals: Readonly<Record<string, string>>;
+  /** What GitLab applies to a job that does not set it, which each inheriting job carries. */
+  readonly defaults: Readonly<Record<string, unknown>>;
 }
 
 /** A shell reference to a variable GitLab defines or exports, which another provider's runner does not. */
@@ -242,7 +244,8 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
   if ("trigger" in job)
     return fail([...pointer, "trigger"], "a job that triggers another pipeline");
   // A job with no tags runs on any runner, which the model states as no runner label.
-  const tags = job.tags === undefined ? [] : stringList(job.tags);
+  const tagged = job.tags ?? context.defaults.tags;
+  const tags = tagged === undefined ? [] : stringList(tagged);
   if (tags === undefined) return fail([...pointer, "tags"], "tags that are not a list of strings");
   const script = typeof job.script === "string" ? [job.script] : job.script;
   const lines = stringList(script);
@@ -310,6 +313,9 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
 
   for (const [key, entry] of Object.entries(job)) {
     if (!JOB_KEYS.has(key)) native[key] = entry;
+  }
+  for (const [key, entry] of Object.entries(inheritedDefaults(context.defaults, job))) {
+    native[key] = entry;
   }
 
   const description = context.comments.get(commentPath(name));
@@ -403,21 +409,77 @@ function implicitNeedsOf(
   return needs;
 }
 
+/**
+ * The settings GitLab applies to every job that does not set them itself, which a file writes either at the top level or under `default`. They have no place in the model as pipeline settings, so each job that inherits one carries it, which keeps its meaning.
+ */
+const DEFAULT_KEYS: ReadonlySet<string> = new Set([
+  "image",
+  "services",
+  "before_script",
+  "after_script",
+  "cache",
+  "artifacts",
+  "retry",
+]);
+
+function defaultsOf(document: Record<string, unknown>): Record<string, unknown> {
+  const under = isRecord(document.default) ? document.default : {};
+  for (const key of Object.keys(under)) {
+    // `tags` is the model's runner label, which a job without its own takes from here.
+    if (!DEFAULT_KEYS.has(key) && key !== "tags") {
+      fail(
+        ["default", key],
+        `the default setting ${JSON.stringify(key)}, which has no place in the model`,
+      );
+    }
+  }
+  const collected: Record<string, unknown> = {};
+  if (under.tags !== undefined) collected.tags = under.tags;
+  for (const key of DEFAULT_KEYS) {
+    const value = key in under ? under[key] : document[key];
+    if (value !== undefined) collected[key] = value;
+  }
+
+  return collected;
+}
+
+/**
+ * The defaults a job inherits: all of them unless the job's `inherit.default` is `false`, and only the listed ones when it is a list.
+ */
+function inheritedDefaults(
+  defaults: Readonly<Record<string, unknown>>,
+  job: Record<string, unknown>,
+): Record<string, unknown> {
+  const inherit = isRecord(job.inherit) ? job.inherit.default : undefined;
+  const wanted = Array.isArray(inherit) ? new Set(inherit) : undefined;
+
+  return Object.fromEntries(
+    Object.entries(defaults).filter(
+      ([key]) =>
+        key !== "tags" &&
+        inherit !== false &&
+        !(key in job) &&
+        (wanted === undefined || wanted.has(key)),
+    ),
+  );
+}
+
 const DEFAULT_GROUP = "{{ workflow }}-{{ refName }}";
 
 function importConfiguration(file: EmittedFile): Pipeline {
   const { value, comments } = readYaml(file.content);
   const document = recordAt(value, [], "the configuration");
-  const workflow = recordAt(document.workflow, ["workflow"], "the workflow");
+  // A file with no `workflow` section has GitLab's default pipeline sources, which the model states as no triggers.
+  const workflow =
+    document.workflow === undefined
+      ? {}
+      : recordAt(document.workflow, ["workflow"], "the workflow");
   for (const key of Object.keys(workflow)) {
     if (!WORKFLOW_KEYS.has(key)) fail(["workflow", key], `a workflow key ${JSON.stringify(key)}`);
   }
-  const rules = Array.isArray(workflow.rules) ? workflow.rules : undefined;
-  if (rules === undefined || rules.length === 0) {
-    return fail(
-      ["workflow", "rules"],
-      "a configuration with no workflow rules, because the model needs a trigger",
-    );
+  const rules = Array.isArray(workflow.rules) ? workflow.rules : [];
+  if (workflow.rules !== undefined && rules.length === 0) {
+    return fail(["workflow", "rules"], "workflow rules that are not a non-empty list");
   }
 
   const stages = document.stages === undefined ? DEFAULT_STAGES : stringList(document.stages);
@@ -426,6 +488,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
   const jobs = new Map<string, Record<string, unknown>>();
   for (const [key, entry] of Object.entries(document)) {
     if (key === "workflow" || key === "stages" || key === "variables") continue;
+    if (DEFAULT_KEYS.has(key) || key === "default") continue;
     if (RESERVED_NAMES.has(key)) fail([key], `the ${key} setting, which has no place in the model`);
     if (key.startsWith("."))
       fail([key], "a hidden job, which is a template the model does not resolve");
@@ -443,6 +506,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
     idOf,
     implicitNeeds: implicitNeedsOf(jobs, stages),
     globals,
+    defaults: defaultsOf(document),
   };
   const jobEntries = names.map((name) => [name, jobAt(name, jobs.get(name), context)] as const);
 
