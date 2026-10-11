@@ -154,6 +154,8 @@ const pipelineShape = z.strictObject({
     })
     .optional(),
   env: envSchema.optional(),
+  /** Mappings merged verbatim into the emitted file's top level for one provider. A pipeline-level setting changes what every job does, so a provider the settings do not belong to rejects the pipeline by pointer instead of emitting the jobs without them. */
+  native: z.partialRecord(providerIdSchema, z.record(z.string(), JsonValueSchema)).optional(),
   jobs: z.record(z.string().regex(JOB_ID_PATTERN), jobSchema),
 });
 
