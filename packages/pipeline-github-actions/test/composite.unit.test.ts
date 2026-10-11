@@ -1,119 +1,8 @@
-import type { Step } from "@pipewright/pipeline-contract";
 import { describe, expect, it } from "vitest";
 
 import { ActionReferenceError, parseActionReference } from "../src/action.ts";
-import {
-  COMPOSITE_ACTION_MAX_DEPTH,
-  CompositeActionError,
-  expandCompositeAction,
-  type ActionResolver,
-  type ActionTree,
-} from "../src/composite.ts";
-import { evaluationContextSchema, type EvaluationContext } from "../src/evaluation.ts";
-
-/** The files of one repository or workspace, keyed from its root. */
-type Files = Readonly<Record<string, string>>;
-
-/** Joins a location inside a tree with a path relative to it, the way a filesystem does. */
-function joined(at: string, relative: string): string {
-  const resolved = [...(at === "" ? [] : at.split("/"))];
-  for (const segment of relative.split("/")) {
-    if (segment === "..") resolved.pop();
-    else resolved.push(segment);
-  }
-
-  return resolved.join("/");
-}
-
-/** An in-memory tree over one set of files, served the way a host that holds the whole repository on disk serves it. */
-function treeOf(files: Files, at: string, path: string): ActionTree {
-  return {
-    path,
-    read: async (relative) => Promise.resolve(files[joined(at, relative)]),
-    local: async (relative) =>
-      Promise.resolve(treeOf(files, joined(at, relative), `${path}/${relative}`)),
-  };
-}
-
-/**
- * A host resolver over in-memory trees: local references against one workspace, remote ones against a file set per repository at a ref. A repository being run is served from the workspace's own files, which is what a host with a checkout does.
- */
-function resolverOf(
-  workspace: Files,
-  remotes: Readonly<Record<string, Files>> = {},
-): ActionResolver {
-  return async (reference) => {
-    if (reference.kind === "local") {
-      return Promise.resolve(treeOf(workspace, reference.path, `/workspace/${reference.path}`));
-    }
-    const key =
-      reference.ref === undefined
-        ? `${reference.owner}/${reference.repo}`
-        : `${reference.owner}/${reference.repo}@${reference.ref}`;
-    const files = remotes[key];
-    if (files === undefined) return Promise.reject(new Error(`no fixture for ${key}`));
-
-    return Promise.resolve(
-      treeOf(
-        files,
-        reference.subpath ?? "",
-        `/actions/${key}${reference.subpath === undefined ? "" : `/${reference.subpath}`}`,
-      ),
-    );
-  };
-}
-
-/** A context with the github fields a composite action reads. */
-const CONTEXT: EvaluationContext = evaluationContextSchema.parse({
-  github: {
-    event_name: "push",
-    ref_name: "main",
-    base_ref: "",
-    sha: "abc123def456",
-    repository: "exadev/pipewright",
-    workflow: "CI",
-    run_id: "1536140711",
-  },
-  env: {},
-  job: { status: "success" },
-  steps: {},
-  needs: {},
-  matrix: {},
-  secrets: {},
-  inputs: {},
-});
-
-/** The provider step the importer builds for a workflow step with a `uses`. */
-function usesStep(
-  uses: string,
-  supplied: Readonly<Record<string, string | number | boolean>> = {},
-): Step {
-  return {
-    kind: "provider",
-    provider: "github-actions",
-    native: { uses, ...(Object.keys(supplied).length === 0 ? {} : { with: supplied }) },
-  };
-}
-
-/** Expands a step against a resolver and the fixture context, and rejects anything that throws. */
-async function expanded(step: Step, resolve: ActionResolver): Promise<readonly Step[]> {
-  const steps = await expandCompositeAction(step, { resolve, context: CONTEXT });
-
-  return steps;
-}
-
-/** The error a promise rejected with, so its message and fields can be asserted. */
-async function rejectionOf(promise: Readonly<Promise<unknown>>): Promise<Error> {
-  try {
-    await promise;
-  } catch (error) {
-    if (!(error instanceof Error)) throw error;
-
-    return error;
-  }
-
-  throw new Error("expected the expansion to fail");
-}
+import { ActionExpansionError, COMPOSITE_ACTION_MAX_DEPTH } from "../src/composite.ts";
+import { expanded, rejectionOf, resolverOf, usesStep, type Files } from "./actions.ts";
 
 /** The workspace: one composite action with inputs, defaults, conditions and environments. */
 const WORKSPACE: Files = {
@@ -213,9 +102,9 @@ describe("parseActionReference", () => {
   });
 });
 
-describe("expandCompositeAction", () => {
+describe("expandAction", () => {
   it("expands a local composite action with defaults, conditions and environments", async () => {
-    const steps = await expanded(
+    const { steps } = await expanded(
       usesStep("./.github/actions/build", { flags: "--fast" }),
       resolverOf(WORKSPACE),
     );
@@ -238,7 +127,7 @@ describe("expandCompositeAction", () => {
   });
 
   it("keeps a step whose condition holds and drops one whose does not", async () => {
-    const steps = await expanded(
+    const { steps } = await expanded(
       usesStep("./.github/actions/build", { mode: "release", flags: "-O2" }),
       resolverOf(WORKSPACE),
     );
@@ -257,7 +146,7 @@ describe("expandCompositeAction", () => {
 
   it("expands a same-repository reference served from the checkout", async () => {
     const resolve = resolverOf(WORKSPACE, { "exadev/pipewright@main": WORKSPACE });
-    const steps = await expanded(
+    const { steps } = await expanded(
       usesStep("exadev/pipewright/.github/actions/build@main", { flags: "--ci" }),
       resolve,
     );
@@ -270,7 +159,7 @@ describe("expandCompositeAction", () => {
     });
   });
 
-  it("expands a remote action's nesting, and leaves actions that are not composite as provider steps", async () => {
+  it("expands a remote action's nesting, running a nested node action and carrying a docker reference", async () => {
     const OUTER: Files = {
       "action.yml": `
 name: Outer
@@ -319,11 +208,21 @@ runs:
     const remotes: Readonly<Record<string, Files>> = {
       "exadev/outer@v1": OUTER,
       "actions/cache@v4": {
-        "action.yml":
-          "name: Cache\ndescription: Caches things\nruns:\n  using: node20\n  main: dist/index.js\n",
+        "action.yml": `
+name: Cache
+description: Caches things
+inputs:
+  key:
+    description: The cache key
+runs:
+  using: node20
+  main: dist/index.js
+  post: dist/save/index.js
+  post-if: success()
+`,
       },
     };
-    const steps = await expanded(
+    const { steps, post } = await expanded(
       usesStep("exadev/outer@v1", { name: "pipewright" }),
       resolverOf(WORKSPACE, remotes),
     );
@@ -340,10 +239,10 @@ runs:
         env: { GITHUB_ACTION_PATH: "/actions/exadev/outer@v1/inner" },
       },
       {
-        kind: "provider",
-        provider: "github-actions",
+        kind: "run",
         name: "Cache",
-        native: { uses: "actions/cache@v4", with: { key: "build-${{ github.sha }}" } },
+        run: "'node' '/actions/actions/cache@v4/dist/index.js'",
+        env: { INPUT_KEY: "build-abc123def456", GITHUB_ACTION_PATH: "/actions/actions/cache@v4" },
       },
       {
         kind: "provider",
@@ -356,6 +255,14 @@ runs:
         name: "Finish",
         run: "echo done",
         env: { GITHUB_ACTION_PATH: "/actions/exadev/outer@v1" },
+      },
+    ]);
+    expect(post).toEqual([
+      {
+        kind: "run",
+        name: "Post Cache",
+        run: "'node' '/actions/actions/cache@v4/dist/save/index.js'",
+        env: { INPUT_KEY: "build-abc123def456", GITHUB_ACTION_PATH: "/actions/actions/cache@v4" },
       },
     ]);
   });
@@ -380,8 +287,8 @@ runs:
 `,
     };
     const error = await rejectionOf(expanded(usesStep("./actions/outer"), resolverOf(files)));
-    if (!(error instanceof CompositeActionError)) {
-      throw new Error(`expected CompositeActionError, got ${String(error)}`);
+    if (!(error instanceof ActionExpansionError)) {
+      throw new Error(`expected ActionExpansionError, got ${String(error)}`);
     }
     expect(error.chain).toEqual(["./actions/outer", "./actions/outer/inner", "./actions/outer"]);
     expect(error.message).toContain("already being expanded");
@@ -411,7 +318,7 @@ ${deepest ? "    - run: echo deepest\n      shell: bash" : `    - uses: ./a${Str
       return files;
     };
     const ten = chainOf(COMPOSITE_ACTION_MAX_DEPTH);
-    const within = await expanded(usesStep("./a1"), resolverOf(ten));
+    const { steps: within } = await expanded(usesStep("./a1"), resolverOf(ten));
     expect(within).toEqual([
       {
         kind: "run",
@@ -445,8 +352,8 @@ runs:
 `,
     };
     const error = await rejectionOf(expanded(usesStep("./bad"), resolverOf(files)));
-    if (!(error instanceof CompositeActionError)) {
-      throw new Error(`expected CompositeActionError, got ${String(error)}`);
+    if (!(error instanceof ActionExpansionError)) {
+      throw new Error(`expected ActionExpansionError, got ${String(error)}`);
     }
     expect(error.file).toBe("./bad/action.yml");
     expect(error.pointer).toBe("/runs/steps/0/shell");
@@ -485,18 +392,19 @@ runs:
     expect(unknown.message).toContain("/runs/steps/0");
   });
 
-  it("rejects an action that is not composite, an undeclared input and an unset required one", async () => {
-    const nodeAction: Files = {
-      "action.yml":
-        "name: Setup\ndescription: Sets up\nruns:\n  using: node20\n  main: dist/index.js\n",
+  it("rejects an action whose runs.using names a container image, an undeclared input and an unset required one", async () => {
+    const containerAction: Files = {
+      "action.yml": "name: Scan\ndescription: Scans\nruns:\n  using: docker\n  image: Dockerfile\n",
     };
-    const top = await rejectionOf(
+    const container = await rejectionOf(
       expanded(
-        usesStep("actions/setup@v4"),
-        resolverOf(WORKSPACE, { "actions/setup@v4": nodeAction }),
+        usesStep("exadev/scan@v1"),
+        resolverOf(WORKSPACE, { "exadev/scan@v1": containerAction }),
       ),
     );
-    expect(top.message).toContain('runs.using "node20"');
+    expect(container.message).toContain('runs.using "docker"');
+    expect(container.message).toContain("out of scope on the host");
+    expect(container.message).toContain("/runs/using");
 
     const undeclared = await rejectionOf(
       expanded(
@@ -546,10 +454,7 @@ runs:
 
   it("rejects a step that is not a provider step of this provider", async () => {
     const error = await rejectionOf(
-      expandCompositeAction(
-        { kind: "run", run: "echo hi" },
-        { resolve: resolverOf(WORKSPACE), context: CONTEXT },
-      ),
+      expanded({ kind: "run", run: "echo hi" }, resolverOf(WORKSPACE)),
     );
     expect(error.message).toContain("a step that is not a provider step");
   });
