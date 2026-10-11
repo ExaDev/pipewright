@@ -109,12 +109,17 @@ describe("parseStdoutLine", () => {
       kind: "text",
       text: "::no closing marker",
     });
-    expect(() => parseStdoutLine("::group::name")).toThrow("::group::");
+    // The command's name is step-controlled text and is never quoted in the message.
+    expect(() => parseStdoutLine("::group::name")).toThrow("an unknown workflow command");
   });
 
   it("rejects a property outside the documented set and a line number that is not one", () => {
-    expect(() => parseStdoutLine("::warning column=3::m")).toThrow("column");
-    expect(() => parseStdoutLine("::warning line=three::m")).toThrow("line");
+    expect(() => parseStdoutLine("::warning column=3::m")).toThrow(
+      "::warning:: carries an unknown property",
+    );
+    expect(() => parseStdoutLine("::warning line=three::m")).toThrow(
+      "property line is not a line number",
+    );
   });
 
   it("unescapes the codes the toolkit writes, in one pass so a literal code survives", () => {
@@ -471,7 +476,7 @@ describe("the local runner's file commands", () => {
         output: recordedOutput(),
         context: {},
       }),
-    ).rejects.toThrow("unknown workflow command");
+    ).rejects.toThrow("an unknown workflow command");
     expect(scratch.written.size).toBe(0);
   });
 });

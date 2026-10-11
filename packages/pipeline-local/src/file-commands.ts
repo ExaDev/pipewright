@@ -136,7 +136,8 @@ function parseAnnotation(command: string, properties: string): Annotation | unde
       }
       annotation[name] = Number(value);
     } else {
-      throw new Error(`::${command}:: carries the unknown property ${name}`);
+      // The property's name is step-controlled text, so it is not quoted: a step can put a masked value in it.
+      throw new Error(`::${command}:: carries an unknown property`);
     }
   }
 
@@ -171,7 +172,8 @@ export function parseStdoutLine(line: string): StdoutLine {
     return { kind: "command", command: { kind: "mask", value: message } };
   }
   const level = LOG_LEVELS.find((candidate) => candidate === name);
-  if (level === undefined) throw new Error(`unknown workflow command ::${name}::`);
+  // The command's name is step-controlled text, so it is not quoted: a step can put a masked value in it.
+  if (level === undefined) throw new Error("an unknown workflow command");
 
   return {
     kind: "command",
