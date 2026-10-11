@@ -111,6 +111,37 @@ export function describeCompilerConformance(
       }
     });
 
+    api.it(
+      "emits a pipeline carrying its own settings, and rejects another provider's",
+      async () => {
+        const own = makeCompiler().provider;
+        const carried: Pipeline = {
+          ...sample(),
+          native: { [own]: { include: ["templates.yml"] } },
+        };
+        const files = await makeCompiler().compile(carried, { source: SOURCE });
+        check(files.length > 0, "no files emitted");
+        check(
+          files.some((file) => file.content.includes("templates.yml")),
+          "the pipeline-level carrier entry is not in the emitted file",
+        );
+        const foreign: Pipeline = {
+          ...sample(),
+          native: { [foreignProviderOf(own)]: { include: ["templates.yml"] } },
+        };
+        let rejected: unknown;
+        try {
+          await makeCompiler().compile(foreign, { source: SOURCE });
+        } catch (error) {
+          rejected = error;
+        }
+        check(
+          rejected instanceof UnsupportedFeatureError &&
+            rejected.pointer === `/native/${foreignProviderOf(own)}`,
+          "a pipeline carrying another provider's settings was not rejected by pointer",
+        );
+      },
+    );
     api.it("is deterministic", async () => {
       const first = await makeCompiler().compile(sample(), { source: SOURCE });
       const second = await makeCompiler().compile(sample(), { source: SOURCE });
