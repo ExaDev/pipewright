@@ -508,14 +508,18 @@ function importWorkflow(file: EmittedFile): Pipeline {
     at: (...segments) => table.get(commentPath(...segments)),
   };
   const workflow = recordAt(value, [], "the workflow");
-  onlyKeys(workflow, WORKFLOW_KEYS, [], "a workflow");
+  // Workflow-level keys the model has no field for change what the whole file does, so they are carried at pipeline level rather than rejected.
+  const carried: Record<string, unknown> = {};
+  for (const key of Object.keys(workflow)) {
+    if (!WORKFLOW_KEYS.has(key)) carried[key] = workflow[key];
+  }
   if (workflow.on === undefined) return fail([], "a workflow with no triggers");
   const jobs = recordAt(workflow.jobs, ["jobs"], "the jobs");
   const description = comments.at("name");
   const permissions =
     workflow.permissions === undefined ? undefined : neutralPermissions(workflow.permissions);
   if (workflow.permissions !== undefined && permissions === undefined) {
-    return fail(["permissions"], "permissions in a form the model has no scope or level for");
+    carried.permissions = workflow.permissions;
   }
   const env = workflow.env === undefined ? undefined : neutralEnv(workflow.env, false);
   if (workflow.env !== undefined && env === undefined) {
@@ -524,9 +528,17 @@ function importWorkflow(file: EmittedFile): Pipeline {
       "a workflow environment with an expression outside the neutral vocabulary",
     );
   }
-  const concurrency = concurrencyAt(workflow.concurrency, comments.at("concurrency"));
+  let concurrency: Record<string, unknown> | undefined;
+  try {
+    concurrency = concurrencyAt(workflow.concurrency, comments.at("concurrency"));
+  } catch (error) {
+    // A concurrency group the neutral vocabulary cannot name is GitHub's own setting for the whole file.
+    if (error instanceof UnsupportedNativeError) carried.concurrency = workflow.concurrency;
+    else throw error;
+  }
 
   return validateImported(PROVIDER, {
+    ...(Object.keys(carried).length === 0 ? {} : { native: { [PROVIDER]: carried } }),
     name: typeof workflow.name === "string" ? workflow.name : nameOfPath(file.path),
     ...(description === undefined ? {} : { description }),
     triggers: triggersAt(workflow.on, comments),
@@ -542,7 +554,7 @@ function importWorkflow(file: EmittedFile): Pipeline {
 /**
  * Reads a GitHub Actions workflow into the neutral model: the inverse of `createGitHubActionsCompiler`.
  *
- * Read: triggers (push and pull_request with a branch list, workflow_dispatch, schedule), permissions, concurrency, environments, jobs with `needs`, matrix axes, conditions, timeouts and steps. What GitHub owns and the model carries verbatim is kept, not dropped: a job key the model has no field for, a setting with no neutral form (an `include` matrix, an expression outside the neutral context vocabulary, a permission shorthand) and a condition with no neutral form go into the job's `native` mapping, and a step that is not a plain `run` or the pinned checkout becomes a `provider` step. What has nowhere to be carried is rejected with its JSON pointer in the workflow: a trigger filter other than branches, an event the model has no trigger for, a reusable-workflow job, a runner label computed by an expression, a workflow-level key or environment with no neutral form, and a call to this tool's runner. A file with no `name` is named for its file.
+ * Read: triggers (push and pull_request with a branch list, workflow_dispatch, schedule), permissions, concurrency, environments, jobs with `needs`, matrix axes, conditions, timeouts and steps. What GitHub owns and the model carries verbatim is kept, not dropped: a job key the model has no field for, a setting with no neutral form (an `include` matrix, an expression outside the neutral context vocabulary, a permission shorthand) and a condition with no neutral form go into the job's `native` mapping, and a step that is not a plain `run` or the pinned checkout becomes a `provider` step. A workflow-level key the model has no field for, a permission form its scopes do not cover and a concurrency group the neutral vocabulary cannot name are carried on the pipeline's `native` mapping. What has nowhere to be carried is rejected with its JSON pointer in the workflow: a trigger filter other than branches, an event the model has no trigger for, a reusable-workflow job, a runner label computed by an expression, an environment with no neutral form, and a call to this tool's runner. A file with no `name` is named for its file.
  */
 export function createGitHubActionsImporter(): PipelineImporter {
   return {

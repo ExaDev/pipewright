@@ -46,10 +46,6 @@ const REJECTS = [
     name: "a trigger the model has no place for",
     text: "on: release\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
   },
-  {
-    name: "a workflow-level default",
-    text: "on: push\ndefaults:\n  run:\n    shell: bash\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
-  },
 ];
 
 describeImporterConformance(
@@ -223,12 +219,22 @@ jobs:
     });
   });
 
-  it("names the pointer and provider of the node it rejects", async () => {
-    const error = await rejection(
+  it("carries a workflow-level default at pipeline level, re-emitting it", async () => {
+    const pipeline = await importText(
       "on: push\ndefaults:\n  run:\n    shell: bash\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
     );
+    const [emitted] = await createGitHubActionsCompiler().compile(pipeline, { source: "s" });
 
-    expect(error.pointer).toBe("/defaults");
+    expect(pipeline.native).toEqual({ "github-actions": { defaults: { run: { shell: "bash" } } } });
+    expect(emitted?.content).toContain("shell: bash");
+  });
+
+  it("names the pointer and provider of the node it rejects", async () => {
+    const error = await rejection(
+      "on:\n  push:\n    tags: ['v*']\njobs:\n  a:\n    runs-on: x\n    steps:\n      - run: a\n",
+    );
+
+    expect(error.pointer).toBe("/on/push/tags");
     expect(error.provider).toBe("github-actions");
   });
 
