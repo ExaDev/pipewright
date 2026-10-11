@@ -3,12 +3,12 @@
   "version": "0.0.0",
   "dependencies": {
     "@exadev/json-compose": "1.0.0",
-    "process-graph": "catalog:",
-    "trilean": "catalog:",
-    "zod": "catalog:"
+    "process-graph": "1.0.0",
+    "trilean": "1.7.2",
+    "zod": "4.6.5"
   },
   "devDependencies": {
-    "ajv": "catalog:"
+    "ajv": "8.20.0"
   },
   "exports": {
     ".": "./src/index.ts"
