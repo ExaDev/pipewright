@@ -210,7 +210,11 @@ function recordedOutput(): RunOutputRecorder {
   return {
     lines,
     log(entry) {
-      lines.push(`${entry.level}:${entry.message}`);
+      const annotation =
+        entry.annotation === undefined
+          ? ""
+          : ` [${[entry.annotation.file, entry.annotation.title].filter((field) => field !== undefined).join(" ")}]`;
+      lines.push(`${entry.level}:${entry.message}${annotation}`);
     },
     summary(summary) {
       lines.push(`summary:${summary.text}`);
@@ -374,6 +378,40 @@ describe("the local runner's file commands", () => {
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+
+  it("masks the annotation's file and title as it masks the message", async () => {
+    const scratch = memoryScratch();
+    const executor: CommandExecutor = {
+      async execute() {
+        return Promise.resolve({
+          exitCode: 0,
+          stdout: "::add-mask::hunter2\n::error file=hunter2.ts,title=hunter2 token::leaked\n",
+          stderr: "",
+        });
+      },
+    };
+    const output = recordedOutput();
+    const pipeline = pipelineSchema.parse({
+      name: "CI",
+      triggers: [{ kind: "push" }],
+      jobs: {
+        build: {
+          name: "Build",
+          runsOn: ["x"],
+          steps: [{ kind: "run", run: "echo" }],
+        },
+      },
+    });
+    const report = await createLocalRunner().run(pipeline, {
+      executor,
+      scratch,
+      output,
+      context: {},
+    });
+
+    expect(report.ok).toBe(true);
+    expect(output.lines).toEqual(["error:leaked [***.ts *** token]"]);
   });
 
   it("cleans the scratch when a run throws", async () => {

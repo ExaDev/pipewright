@@ -228,7 +228,18 @@ function processStdout(plan: JobPlan, state: JobRunState, step: Step, stdout: st
         message: applyMasks(parsed.command.message, state.masks),
         ...(parsed.command.annotation === undefined
           ? {}
-          : { annotation: parsed.command.annotation }),
+          : {
+              // The annotation's own strings can carry a masked value as the message can, so they go through the same masks.
+              annotation: {
+                ...parsed.command.annotation,
+                ...(parsed.command.annotation.file === undefined
+                  ? {}
+                  : { file: applyMasks(parsed.command.annotation.file, state.masks) }),
+                ...(parsed.command.annotation.title === undefined
+                  ? {}
+                  : { title: applyMasks(parsed.command.annotation.title, state.masks) }),
+              },
+            }),
       });
       continue;
     }
