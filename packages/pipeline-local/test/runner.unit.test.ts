@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -161,6 +162,18 @@ function memoryScratch(): StepScratch & { readonly written: Map<string, string> 
         summary: content(files.summary),
       });
     },
+    async release(files): Promise<void> {
+      for (const path of [files.output, files.env, files.path, files.summary]) {
+        written.delete(path);
+      }
+
+      return Promise.resolve();
+    },
+    async dispose(): Promise<void> {
+      written.clear();
+
+      return Promise.resolve();
+    },
   };
 }
 
@@ -274,6 +287,12 @@ describe("the local runner's file commands", () => {
 
           return { output, env, path, summary };
         },
+        async release(files) {
+          await rm(dirname(files.output), { recursive: true, force: true });
+        },
+        async dispose() {
+          await rm(root, { recursive: true, force: true });
+        },
       };
       // The real executor's shape from the CLI: spawn `sh -e -c`, pipe stdout, and search the job's path entries before the host's own PATH.
       const executor: CommandExecutor = {
@@ -336,6 +355,8 @@ describe("the local runner's file commands", () => {
       expect(output.lines).toContain("info:token=***");
       expect(output.lines).toContain("info:env applied");
       expect(output.lines).toContain("summary:## Summary\n");
+      // Each step's directory is removed once read and the root at the run's end, so a later step's process cannot read what an earlier one wrote.
+      expect(existsSync(root)).toBe(false);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

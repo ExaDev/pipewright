@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { delimiter as pathDelimiter, dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -21,7 +21,7 @@ async function readOptional(path: string): Promise<string | undefined> {
 }
 
 /**
- * The run's scratch area: one directory per run under the operating system's temporary directory, one empty file per command per step, left in place for the process's life as a hosted runner leaves its `_temp`. Reading a file that is gone is an error, not an empty read, so a step that deletes its own command file is heard.
+ * The run's scratch area: one directory per run under the operating system's temporary directory, one empty file per command per step, removed once the runner has read it and in whole when the run ends, so no step can read another's files and nothing the run wrote outlives it. Reading a file that is gone is an error, not an empty read, so a step that deletes its own command file is heard.
  */
 async function stepScratch(): Promise<StepScratch> {
   const root = await mkdtemp(join(tmpdir(), "pipewright-"));
@@ -56,6 +56,13 @@ async function stepScratch(): Promise<StepScratch> {
       ]);
 
       return { output, env, path, summary };
+    },
+    async release(files) {
+      // A later step's process must not read what an earlier one wrote, so the directory and its files go once the runner has read them.
+      await rm(dirname(files.output), { recursive: true, force: true });
+    },
+    async dispose() {
+      await rm(root, { recursive: true, force: true });
     },
   };
 }

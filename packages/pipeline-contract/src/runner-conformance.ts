@@ -118,6 +118,18 @@ function memoryScratch(): MemoryScratch {
         summary: content(files.summary),
       });
     },
+    async release(files): Promise<void> {
+      for (const path of [files.output, files.env, files.path, files.summary]) {
+        written.delete(path);
+      }
+
+      return Promise.resolve();
+    },
+    async dispose(): Promise<void> {
+      written.clear();
+
+      return Promise.resolve();
+    },
   };
 }
 

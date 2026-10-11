@@ -68,6 +68,20 @@ function storeScratch(store: Map<string, string>): StepScratch {
 
       return Promise.resolve(files);
     },
+    async release(files) {
+      for (const path of [files.output, files.env, files.path, files.summary]) {
+        store.delete(path);
+      }
+
+      return Promise.resolve();
+    },
+    async dispose() {
+      for (const path of [...store.keys()]) {
+        if (path.startsWith(".scratch/")) store.delete(path);
+      }
+
+      return Promise.resolve();
+    },
     async read(files) {
       const content = (path: string): string => {
         const value = store.get(path);
