@@ -31,5 +31,9 @@
     "url": "git+https://github.com/ExaDev/pipewright.git",
     "directory": "packages/pipeline-contract"
   },
+  "scripts": {
+    "postpack": "node ../../scripts/postpack.ts",
+    "prepack": "node ../../scripts/prepack.ts"
+  },
   "type": "module"
 }

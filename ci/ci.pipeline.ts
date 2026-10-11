@@ -85,6 +85,7 @@ const drift = defineJob(
     run: [
       `${TOOL} check --pipeline ${PIPELINE_FILE} --provider github-actions --tool-command "${TOOL}"`,
       `${TOOL} check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "${TOOL}"`,
+      `${TOOL} check --pipeline ci/release.pipeline.ts --provider github-actions --tool-command "${TOOL}"`,
     ].join(" && "),
   }),
 );

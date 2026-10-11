@@ -25,5 +25,9 @@
     "url": "git+https://github.com/ExaDev/pipewright.git",
     "directory": "packages/yaml-emit"
   },
+  "scripts": {
+    "postpack": "node ../../scripts/postpack.ts",
+    "prepack": "node ../../scripts/prepack.ts"
+  },
   "type": "module"
 }

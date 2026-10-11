@@ -5,3 +5,4 @@ coverage/
 .eslintcache
 .husky/_/
 dist/
+.package.json.source

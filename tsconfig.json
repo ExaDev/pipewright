@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.base.json",
   // One program for the whole workspace: packages, the repository's own pipeline definition and the root tooling configs. Type-aware ESLint resolves every linted file through this project, so a file missing from `include` fails the lint outright rather than being skipped.
-  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "ci/**/*.ts", "scripts/**/*.ts", "*.config.ts"]
+  "include": ["packages/*/src/**/*.ts", "packages/*/test/**/*.ts", "ci/**/*.ts", "scripts/**/*.ts", "*.ts", "*.config.ts"]
 }
