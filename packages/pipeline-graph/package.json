@@ -4,7 +4,7 @@
   "dependencies": {
     "@pipewright/pipeline-contract": "0.0.0",
     "@pipewright/platform-contract": "0.0.0",
-    "process-graph": "catalog:"
+    "process-graph": "1.0.0"
   },
   "exports": {
     ".": "./src/index.ts"

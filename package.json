@@ -4,16 +4,16 @@
   "devDependencies": {
     "@commitlint/cli": "21.2.3",
     "@commitlint/config-conventional": "21.2.3",
-    "@commitlint/types": "catalog:",
+    "@commitlint/types": "21.2.3",
     "@eslint/js": "10.0.1",
     "@exadev/eslint-config": "3.0.0",
-    "@exadev/semantic-release-workspace": "catalog:",
+    "@exadev/semantic-release-workspace": "3.1.29",
     "@pipewright/pipeline-contract": "0.0.0",
-    "@semantic-release/changelog": "catalog:",
-    "@semantic-release/commit-analyzer": "catalog:",
-    "@semantic-release/github": "catalog:",
-    "@semantic-release/npm": "catalog:",
-    "@semantic-release/release-notes-generator": "catalog:",
+    "@semantic-release/changelog": "7.0.0",
+    "@semantic-release/commit-analyzer": "13.0.1",
+    "@semantic-release/github": "12.0.10",
+    "@semantic-release/npm": "13.2.0",
+    "@semantic-release/release-notes-generator": "14.1.1",
     "@types/node": "26.6.4",
     "eslint": "10.12.0",
     "eslint-config-prettier": "10.1.8",
@@ -23,7 +23,8 @@
     "jiti": "2.7.0",
     "lint-staged": "17.6.0",
     "prettier": "3.9.9",
-    "semantic-release": "catalog:",
+    "semantic-release": "25.0.9",
+    "syncpack": "15.3.3",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.0",
     "vitest": "5.0.3"
@@ -43,7 +44,7 @@
     "ci:check": "node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts check --pipeline ci/release.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
     "ci:emit": "node packages/cli/src/bin.ts emit --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts emit --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\" && node packages/cli/src/bin.ts emit --pipeline ci/release.pipeline.ts --provider github-actions --tool-command \"node packages/cli/src/bin.ts\"",
     "ci:local": "node packages/cli/src/bin.ts run --pipeline ci/ci.pipeline.ts --local --skip-provider-steps --job lint --job typecheck --job test --job drift",
-    "lint": "eslint . --max-warnings 0",
+    "lint": "eslint . --max-warnings 0 && syncpack lint",
     "prepare": "husky",
     "release": "semantic-release-workspace release --config release-workspace.config.ts",
     "test": "vitest run --project unit",
@@ -52,7 +53,9 @@
     "test:e2e": "vitest run --project e2e",
     "test:integration": "vitest run --project integration",
     "test:pack": "vitest run --project pack",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "deps:lint": "syncpack lint",
+    "deps:fix": "syncpack fix"
   },
   "type": "module"
 }

@@ -27,20 +27,4 @@ minimumReleaseAgeExclude:
 allowBuilds:
   esbuild: true
 
-# One version of each third-party package that more than one workspace package depends on, so they cannot drift. A zod mismatch in particular would split `instanceof` checks and codecs across package boundaries. `prefer` makes `pnpm add` use an entry here when one exists.
-catalogMode: prefer
-catalog:
-  ajv: 8.20.0
-  process-graph: 1.0.0
-  playwright-core: 1.63.0
-  trilean: 1.7.2
-  yaml: 2.9.1
-  zod: 4.6.5
-  '@commitlint/types': 21.2.3
-  '@exadev/semantic-release-workspace': 3.1.29
-  '@semantic-release/changelog': 7.0.0
-  '@semantic-release/commit-analyzer': 13.0.1
-  '@semantic-release/github': 12.0.10
-  '@semantic-release/npm': 13.2.0
-  '@semantic-release/release-notes-generator': 14.1.1
-  semantic-release: 25.0.9
+# Versions are exact pins in each manifest, third-party and sibling alike, as in the sibling repositories: a published manifest must stay installable from the registry, which a `catalog:` specifier is not, and `syncpack lint` fails when one dependency is pinned to two versions, which is what a single catalog entry used to prevent. A bump anywhere is then a visible, reviewable diff.
