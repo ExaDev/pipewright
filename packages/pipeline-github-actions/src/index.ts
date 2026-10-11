@@ -30,3 +30,4 @@ export {
   type ExpressionValue,
 } from "./evaluation.ts";
 export { createGitHubActionsImporter } from "./importer.ts";
+export { CHECKOUT_ACTION, CONTEXT_EXPRESSION, EVENT_NAME, PROVIDER } from "./vocabulary.ts";
