@@ -290,4 +290,32 @@ describe("GitLab CI import", () => {
     expect(pipeline.jobs.deploy?.when).toBeUndefined();
     expect(pipeline.jobs.deploy?.steps[1]).toMatchObject({ kind: "provider" });
   });
+
+  it("round-trips a job with several run steps, which share one shell and are written as one", async () => {
+    const compiler = createGitLabCiCompiler();
+    const pipeline = pipelineSchema.parse({
+      name: "CI",
+      triggers: [{ kind: "push" }],
+      jobs: {
+        build: {
+          name: "Build",
+          runsOn: [],
+          steps: [
+            { kind: "run", run: "cd web", description: "Enter the package." },
+            { kind: "run", run: "npm test" },
+          ],
+        },
+      },
+    });
+    const [first] = await compiler.compile(pipeline, { source: "s" });
+    if (first === undefined) throw new Error("no file emitted");
+    const imported = await createGitLabCiImporter().import(first);
+    const [second] = await compiler.compile(imported, { source: "s" });
+
+    expect(Object.values(imported.jobs)[0]?.steps).toEqual([
+      { kind: "checkout" },
+      { kind: "run", run: "cd web\nnpm test", description: "Enter the package." },
+    ]);
+    expect(second?.content).toBe(first.content);
+  });
 });

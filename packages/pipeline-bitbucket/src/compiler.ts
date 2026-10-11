@@ -69,6 +69,8 @@ function scriptOf(context: ScriptContext): {
 } {
   const { id, job, matrix, wrapper } = context;
   const script: unknown[] = [];
+  /** The script entry that consecutive `run` steps are being joined into, since the commands of a Bitbucket step share one shell. */
+  let openRun: number | undefined;
   let cloneDepth: string | number | undefined;
   let index = 0;
   while (index < job.steps.length) {
@@ -96,8 +98,10 @@ function scriptOf(context: ScriptContext): {
         lines.every((line): line is string => typeof line === "string")
       ) {
         script.push(...lines);
+        openRun = undefined;
       } else if ("pipe" in step.native) {
         script.push(step.native);
+        openRun = undefined;
       } else {
         unsupported(pointer, "a bitbucket-pipelines provider step other than { script } or a pipe");
       }
@@ -121,8 +125,15 @@ function scriptOf(context: ScriptContext): {
         script.push(
           `${wrapper.toolCommand} run --pipeline ${wrapper.source} --job ${id} --steps ${String(from)}-${String(index - 1)}${matrixFlags}`,
         );
+        openRun = undefined;
       } else {
-        script.push(step.run);
+        // The commands of a step run in one shell, so consecutive run steps are written as one entry whose lines are theirs, which is what the importer reads back as one step.
+        if (openRun === undefined) {
+          openRun = script.length;
+          script.push(step.run);
+        } else {
+          script[openRun] = `${String(script[openRun])}\n${step.run}`;
+        }
         index += 1;
       }
     }
