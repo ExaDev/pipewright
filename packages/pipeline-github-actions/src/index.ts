@@ -3,19 +3,23 @@ export {
   ActionReferenceError,
   compositeActionSchema,
   compositeStepSchema,
+  nodeActionSchema,
   parseActionReference,
   type ActionReference,
   type CompositeAction,
   type CompositeStep,
+  type NodeAction,
 } from "./action.ts";
 export {
   COMPOSITE_ACTION_MAX_DEPTH,
-  CompositeActionError,
-  expandCompositeAction,
+  ActionExpansionError,
+  expandAction,
+  type ActionExpansion,
   type ActionResolver,
   type ActionTree,
   type ExpandOptions,
 } from "./composite.ts";
+export { type NodeInvocation, type NodeRunner } from "./node.ts";
 export {
   EvaluationError,
   evaluateCondition,

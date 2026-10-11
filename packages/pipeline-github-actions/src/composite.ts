@@ -2,15 +2,19 @@ import { jsonPointerOf, type Step } from "@pipewright/pipeline-contract";
 import { readYaml } from "@pipewright/yaml-emit";
 
 import {
+  NODE_USINGS,
   compositeActionSchema,
+  nodeActionSchema,
   parseActionReference,
   parseCompositeStep,
+  type ActionInput,
   type ActionReference,
   type CompositeAction,
   type CompositeStep,
   type MetadataIssue,
 } from "./action.ts";
 import { evaluateCondition, evaluateTemplate, type EvaluationContext } from "./evaluation.ts";
+import { nodeExpansionOf, type NodeRunner } from "./node.ts";
 import { PROVIDER } from "./vocabulary.ts";
 
 /**
@@ -30,9 +34,9 @@ interface Location {
 type Fail = (construct: string, at?: Location) => never;
 
 /**
- * Raised when a composite action cannot be expanded: a reference that is not one of the forms a `uses` value can take, metadata that does not match what a composite action declares, a construct the neutral model has no step form for, a cycle, or nesting past the bound. The chain names every reference from the step's own `uses` to the action the failure is in, so a failure deep inside a fetched action can still be located.
+ * Raised when an action cannot be expanded: a reference that is not one of the forms a `uses` value can take, metadata that matches no form of action this package interprets, a construct the neutral model has no step form for, a cycle, or nesting past the bound. The chain names every reference from the step's own `uses` to the action the failure is in, so a failure deep inside a fetched action can still be located.
  */
-export class CompositeActionError extends Error {
+export class ActionExpansionError extends Error {
   /** Every reference the expansion followed, by resolved location, ending with the one the failure is in; a cycle ends by repeating where it closed. Empty when the `uses` value itself could not be read. */
   readonly chain: readonly string[];
 
@@ -47,12 +51,28 @@ export class CompositeActionError extends Error {
       at === undefined ? "" : ` at ${at.file}${at.pointer === undefined ? "" : ` ${at.pointer}`}`;
     const through = chain.length < 2 ? "" : `, through ${chain.join(" -> ")}`;
 
-    super(`cannot expand the composite action: ${construct}${where}${through}`);
-    this.name = "CompositeActionError";
+    super(`cannot expand the action: ${construct}${where}${through}`);
+    this.name = "ActionExpansionError";
     this.chain = chain;
     this.file = at?.file;
     this.pointer = at?.pointer;
   }
+}
+
+/**
+ * The steps one `uses` step becomes: the steps that run where the step stood, and the pre and post steps the caller places around the job's own steps. The placement rule mirrors the runner's own phases: the caller puts `pre` before the job's steps, in the order the actions were expanded, and it concatenates each action's `post` in that same order, reverses the whole sequence, and puts it after the job's steps, so cleanup unwinds in the opposite order the actions ran. An enclosing composite action applies the same rule to the actions nested in it, so a pre or post declared at any depth reaches the job's phases rather than the middle of a step list.
+ * @see https://github.com/actions/runner/blob/main/src/Runner.Worker/JobExtension.cs, where the pre steps join the job before its own steps
+ * @see https://github.com/actions/runner/blob/main/src/Runner.Worker/StepsRunner.cs, where the post steps pop off a stack after them
+ */
+export interface ActionExpansion {
+  /** The steps that run where the `uses` step stood, in the order the action declared them. */
+  readonly steps: readonly Step[];
+
+  /** The `runs.pre` steps this action or one nested in it declared, in expansion order, which the caller places before the job's own steps. */
+  readonly pre: readonly Step[];
+
+  /** The `runs.post` steps this action or one nested in it declared, in expansion order, whose whole collected sequence the caller reverses and places after the job's own steps. */
+  readonly post: readonly Step[];
 }
 
 /**
@@ -80,6 +100,9 @@ export type ActionResolver = (
 export interface ExpandOptions {
   /** The host's resolution port. */
   readonly resolve: ActionResolver;
+
+  /** The host's node port, asked when the expansion reaches a node action. */
+  readonly node: NodeRunner;
 
   /**
    * The context the expressions of the action's steps are evaluated against, with `inputs` replaced by the action's mapped inputs for those steps. A condition that reads the outcome of a step the expansion itself produces reads this caller's view, because outcomes are known at run time only.
@@ -196,7 +219,7 @@ function compositeOf(metadata: Metadata, fail: Fail): CompositeAction {
       message: issue.message,
     }));
 
-    fail(described(issues), { file, pointer: issues[0]?.pointer ?? prefix });
+    fail(described("a composite action", issues), { file, pointer: issues[0]?.pointer ?? prefix });
   }
   const parsed = compositeActionSchema.safeParse(document);
   if (!parsed.success) {
@@ -207,30 +230,29 @@ function compositeOf(metadata: Metadata, fail: Fail): CompositeAction {
       message: issue.message,
     }));
 
-    fail(described(issues), { file, pointer: issues[0]?.pointer });
+    fail(described("a composite action", issues), { file, pointer: issues[0]?.pointer });
   }
 
   return parsed.data;
 }
 
-/** The failure text for a metadata document: every issue as a pointer and a message. */
-function described(issues: readonly MetadataIssue[]): string {
-  return `metadata that does not match a composite action: ${issues
+/** The failure text for a metadata document: every issue as a pointer and a message, named by the form of action it failed to match. */
+function described(form: string, issues: readonly MetadataIssue[]): string {
+  return `metadata that does not match ${form}: ${issues
     .map((issue) => `${issue.pointer} ${issue.message}`)
     .join("; ")}`;
 }
 
 /**
- * Maps the `with` values a caller supplied onto the inputs the action declares. GitHub matches input names without regard to case and supplies an empty string for an optional input that arrived unset, which the runner itself writes in as the implicit default, so both are done here. Two things GitHub tolerates are errors instead, because each one means the workflow and the action disagree: an input the action does not declare (GitHub logs a warning and drops it), and a required input with no supplied value and no default (GitHub passes the empty string the runner substituted). Defaults are evaluated against the calling context rather than the action's own inputs, because that is the view the runner evaluates them with, before the child's inputs context exists.
+ * Maps the `with` values a caller supplied onto the inputs the action declares, whichever form of action declared them. GitHub matches input names without regard to case and supplies an empty string for an optional input that arrived unset, which the runner itself writes in as the implicit default, so both are done here. Two things GitHub tolerates are errors instead, because each one means the workflow and the action disagree: an input the action does not declare (GitHub logs a warning and drops it), and a required input with no supplied value and no default (GitHub passes the empty string the runner substituted). Defaults are evaluated against the calling context rather than the action's own inputs, because that is the view the runner evaluates them with, before the child's inputs context exists.
  * @see https://github.com/actions/runner/blob/main/src/Runner.Worker/ActionRunner.cs, where the step's inputs are evaluated and the defaults merged
  */
 function mapInputs(
-  action: CompositeAction,
+  declared: Readonly<Record<string, ActionInput>>,
   supplied: Readonly<Record<string, string>>,
   ambient: EvaluationContext,
   fail: (construct: string) => never,
 ): Record<string, string> {
-  const declared = action.inputs ?? {};
   const mapped: Record<string, string> = {};
   const matched = new Set<string>();
   for (const [name, input] of Object.entries(declared)) {
@@ -280,9 +302,6 @@ interface Frame {
 
   readonly depth: number;
 
-  /** Whether this frame is a step inside another composite action, whose non-composite action stays a provider step instead of failing the expansion. */
-  readonly nested: boolean;
-
   readonly treeOf: (signal: AbortSignal | undefined) => Promise<ActionTree>;
 }
 
@@ -303,13 +322,13 @@ function providerStepOf(
   };
 }
 
-async function expandFrame(frame: Frame, options: ExpandOptions): Promise<readonly Step[]> {
+async function expandFrame(frame: Frame, options: ExpandOptions): Promise<ActionExpansion> {
   const { ambient, chain, depth } = frame;
   options.signal?.throwIfAborted();
   const identity = identityOf(frame.repo, frame.at);
   const through = [...chain, identity];
   const fail: Fail = (construct, at) => {
-    throw new CompositeActionError(through, construct, at);
+    throw new ActionExpansionError(through, construct, at);
   };
   if (chain.includes(identity)) {
     return fail(`the reference ${identity}, which is already being expanded`);
@@ -322,31 +341,71 @@ async function expandFrame(frame: Frame, options: ExpandOptions): Promise<readon
 
   const tree = await frame.treeOf(options.signal);
   const metadata = await readMetadata(tree, identity, fail);
-  if (metadata.using !== "composite") {
-    if (frame.nested) return [providerStepOf(frame.uses, frame.with, frame.name)];
-
-    return fail(`runs.using "${metadata.using}", which is not "composite"`, {
-      file: metadata.file,
-      pointer: "/runs/using",
-    });
+  if (metadata.using === "docker") {
+    return fail(
+      'runs.using "docker", which needs a container runtime; container actions are out of scope on the host',
+      { file: metadata.file, pointer: "/runs/using" },
+    );
   }
-  const action = compositeOf(metadata, fail);
+  if (metadata.using !== "composite" && !NODE_USINGS.has(metadata.using)) {
+    return fail(
+      `runs.using "${metadata.using}", which names neither a composite action nor a node runtime`,
+      { file: metadata.file, pointer: "/runs/using" },
+    );
+  }
 
   // A `with` value is evaluated where its step appears, before the action's own inputs exist, and every mapped value is a string because the runner builds the child's inputs context from strings however the caller wrote the value.
   const supplied: Record<string, string> = {};
   for (const [key, value] of Object.entries(frame.with)) {
     supplied[key] = evaluateTemplate(scalarText(value), ambient);
   }
-  const inputs = mapInputs(action, supplied, ambient, fail);
+
+  if (metadata.using !== "composite") {
+    const parsed = nodeActionSchema.safeParse(metadata.document);
+    if (!parsed.success) {
+      const issues = parsed.error.issues.map((issue) => ({
+        pointer: jsonPointerOf(
+          issue.path.filter((segment): segment is string | number => typeof segment !== "symbol"),
+        ),
+        message: issue.message,
+      }));
+
+      return fail(described("a node action", issues), {
+        file: metadata.file,
+        pointer: issues[0]?.pointer,
+      });
+    }
+    const action = parsed.data;
+    if (action.runs.pre !== undefined && frame.repo === "") {
+      return fail("runs.pre, which GitHub documents as not supported for a local action", {
+        file: metadata.file,
+        pointer: "/runs/pre",
+      });
+    }
+
+    return nodeExpansionOf({
+      action,
+      path: tree.path,
+      inputs: mapInputs(action.inputs ?? {}, supplied, ambient, fail),
+      name: frame.name,
+      uses: frame.uses,
+      ambient,
+      invocation: await options.node(options.signal),
+    });
+  }
+  const action = compositeOf(metadata, fail);
+  const inputs = mapInputs(action.inputs ?? {}, supplied, ambient, fail);
   const ofAction: EvaluationContext = {
     ...ambient,
     github: { ...ambient.github, action_path: tree.path },
     inputs,
   };
 
-  // The steps expand in the order the action declared them, each through the context the ones before it leave behind, so the awaits chain rather than run side by side.
-  return action.runs.steps.reduce<Promise<readonly Step[]>>(async (previous, step, index) => {
-    const steps = await previous;
+  // The steps expand in the order the action declared them, each through the context the ones before it leave behind, so the awaits chain rather than run side by side. A nested action's pre and post steps join this action's own, because the runner runs a pre or post declared at any depth in the job's own phases rather than between a composite's steps.
+  const nothingExpanded: ActionExpansion = { steps: [], pre: [], post: [] };
+
+  return action.runs.steps.reduce<Promise<ActionExpansion>>(async (previous, step, index) => {
+    const expansion = await previous;
     options.signal?.throwIfAborted();
     const stepAt = (key: string): string => `/runs/steps/${String(index)}/${key}`;
     const stepEnv: Record<string, string> = {};
@@ -359,7 +418,7 @@ async function expandFrame(frame: Frame, options: ExpandOptions): Promise<readon
         ? ofAction
         : { ...ofAction, env: { ...ofAction.env, ...stepEnv } };
     const name = step.name === undefined ? undefined : evaluateTemplate(step.name, stepContext);
-    if (step.if !== undefined && !evaluateCondition(step.if, stepContext)) return steps;
+    if (step.if !== undefined && !evaluateCondition(step.if, stepContext)) return expansion;
     const continueOnError = step["continue-on-error"];
     if (continueOnError !== undefined) {
       const setting =
@@ -389,36 +448,42 @@ async function expandFrame(frame: Frame, options: ExpandOptions): Promise<readon
         });
       }
 
-      return [
-        ...steps,
-        {
-          kind: "run",
-          ...(name === undefined ? {} : { name }),
-          run,
-          // The runner sets GITHUB_ACTION_PATH while an action's commands execute, so it is injected over any value the step itself wrote for it.
-          env: { ...stepEnv, GITHUB_ACTION_PATH: tree.path },
-          ...(step["working-directory"] === undefined
-            ? {}
-            : { workingDirectory: evaluateTemplate(step["working-directory"], stepContext) }),
-        } satisfies Step,
-      ];
+      return {
+        ...expansion,
+        steps: [
+          ...expansion.steps,
+          {
+            kind: "run",
+            ...(name === undefined ? {} : { name }),
+            run,
+            // The runner sets GITHUB_ACTION_PATH while an action's commands execute, so it is injected over any value the step itself wrote for it.
+            env: { ...stepEnv, GITHUB_ACTION_PATH: tree.path },
+            ...(step["working-directory"] === undefined
+              ? {}
+              : { workingDirectory: evaluateTemplate(step["working-directory"], stepContext) }),
+          } satisfies Step,
+        ],
+      };
     }
 
-    return [
-      ...steps,
-      ...(await expandNestedUses(step, {
-        ofAction: stepContext,
-        name,
-        through,
-        depth,
-        frame,
-        tree,
-        metadata,
-        index,
-        options,
-      })),
-    ];
-  }, Promise.resolve([]));
+    const nested = await expandNestedUses(step, {
+      ofAction: stepContext,
+      name,
+      through,
+      depth,
+      frame,
+      tree,
+      metadata,
+      index,
+      options,
+    });
+
+    return {
+      steps: [...expansion.steps, ...nested.steps],
+      pre: [...expansion.pre, ...nested.pre],
+      post: [...expansion.post, ...nested.post],
+    };
+  }, Promise.resolve(nothingExpanded));
 }
 
 /** What a nested `uses` step needs from the loop that read it. */
@@ -446,18 +511,22 @@ interface NestedCall {
 }
 
 /**
- * Expands one `uses` step of a composite action. A nested action that is not composite does not recurse: its step stays a provider step carrying the `uses` and `with` text as written, so a docker or node action remains the host's business and nothing about it is reinterpreted here. A `docker://` reference is carried the same way without being resolved, because there is no tree to read.
+ * Expands one `uses` step of a composite action. A nested action is expanded exactly as a workflow's own step is, whichever form of action it names, so a node action runs under the host's node from inside a composite too. A `docker://` reference is the one thing carried rather than expanded: no tree exists to read, so its step stays a provider step carrying the `uses` and `with` text as written, which is the host's business.
  */
 async function expandNestedUses(
   step: Extract<CompositeStep, { uses: string }>,
   call: NestedCall,
-): Promise<readonly Step[]> {
+): Promise<ActionExpansion> {
   const { ofAction, through, depth, frame, tree, metadata, index, options } = call;
   const fail: Fail = (construct, at) => {
-    throw new CompositeActionError(through, construct, at);
+    throw new ActionExpansionError(through, construct, at);
   };
   if (step.uses.startsWith("docker://")) {
-    return [providerStepOf(step.uses, step.with ?? {}, call.name)];
+    return {
+      steps: [providerStepOf(step.uses, step.with ?? {}, call.name)],
+      pre: [],
+      post: [],
+    };
   }
   let reference: ActionReference;
   try {
@@ -487,7 +556,6 @@ async function expandNestedUses(
       ambient: ofAction,
       chain: through,
       depth: depth + 1,
-      nested: true,
       treeOf:
         reference.kind === "local"
           ? async (): Promise<ActionTree> => tree.local(reference.path)
@@ -518,16 +586,13 @@ function withOf(
 }
 
 /**
- * Expands the composite action a `provider` step names into the steps the model runs. The step's `uses` and `with` are read from its `native` mapping; every declared input is mapped from the supplied `with` or its default; the `${{ }}` expressions of the action's steps are evaluated through the evaluator of `evaluation.ts`, against a context whose `inputs` holds the mapped values and whose `github.action_path` is the directory the host resolved the action to. A nested `uses` recurses, bounded by `COMPOSITE_ACTION_MAX_DEPTH` and rejecting a cycle by naming the whole reference chain; a nested action that is not composite, and a `docker://` reference, stay provider steps carrying the text as written.
+ * Expands the action a `provider` step names into the steps the model runs. The step's `uses` and `with` are read from its `native` mapping; a composite action's steps are expanded in the order it declared them, with every declared input mapped from the supplied `with` or its default and the `${{ }}` expressions evaluated through the evaluator of `evaluation.ts`, against a context whose `inputs` holds the mapped values and whose `github.action_path` is the directory the host resolved the action to; a node action's `main` entry becomes one neutral run step under the host's node invocation, its `with` mapped the same way and carried as `INPUT_*` environment, with its `pre` and `post` entries returned as steps the caller places around the job's own steps per the rule on `ActionExpansion`. A nested `uses` recurses, bounded by `COMPOSITE_ACTION_MAX_DEPTH` and rejecting a cycle by naming the whole reference chain; a nested `docker://` reference stays a provider step carrying the text as written, while metadata whose `runs.using` names neither a composite action nor a node runtime, docker included, is rejected with the file and pointer.
  *
- * Pre: `step` is a `provider` step of this provider whose `native` carries a `uses` string, and `options.context` has passed `evaluationContextSchema`. Post: the returned steps are in the order the action declared them, a step whose `if` evaluated false is left out, and each `run` step carries its own evaluated environment plus `GITHUB_ACTION_PATH`. Errors: throws `CompositeActionError` for anything that cannot be expanded, and lets `EvaluationError` through as the evaluator raised it. The step's own `when` is the caller's to honour: this function expands an action that will run, not one that may not.
+ * Pre: `step` is a `provider` step of this provider whose `native` carries a `uses` string, and `options.context` has passed `evaluationContextSchema`. Post: the returned `steps` are in the order the action declared them, a step whose `if` evaluated false is left out, each composite `run` step carries its own evaluated environment plus `GITHUB_ACTION_PATH`, and each node step carries its inputs as `INPUT_*` plus `GITHUB_ACTION_PATH`. Errors: throws `ActionExpansionError` for anything that cannot be expanded, and lets `EvaluationError` through as the evaluator raised it. The step's own `when` is the caller's to honour: this function expands an action that will run, not one that may not.
  */
-export async function expandCompositeAction(
-  step: Step,
-  options: ExpandOptions,
-): Promise<readonly Step[]> {
+export async function expandAction(step: Step, options: ExpandOptions): Promise<ActionExpansion> {
   const fail = (construct: string): never => {
-    throw new CompositeActionError([], construct);
+    throw new ActionExpansionError([], construct);
   };
   if (step.kind !== "provider") return fail("a step that is not a provider step");
   if (step.provider !== PROVIDER) {
@@ -571,7 +636,6 @@ export async function expandCompositeAction(
       ambient,
       chain: [],
       depth: 1,
-      nested: false,
       treeOf: async (signal: AbortSignal | undefined): Promise<ActionTree> =>
         options.resolve(reference, signal),
     },
