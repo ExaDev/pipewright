@@ -1,11 +1,11 @@
 {
   "name": "@pipewright/check-names",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "dependencies": {
     "@pipewright/pipeline-contract": "0.2.0"
   },
   "devDependencies": {
-    "@pipewright/pipeline-github-actions": "0.4.0",
+    "@pipewright/pipeline-github-actions": "0.5.0",
     "@pipewright/pipeline-gitlab-ci": "0.2.0"
   },
   "exports": {

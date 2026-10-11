@@ -1,3 +1,18 @@
+## [0.5.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.4.0...@pipewright/pipeline-github-actions@0.5.0) (2026-10-11)
+
+### Features
+
+* **github-actions:** model a node action's metadata ([9ffc727](https://github.com/ExaDev/pipewright/commit/9ffc72700b27ab44b3b2a6848c6031c964f756c2))
+* **github-actions:** run a node-based action through the host's node ([32c06a6](https://github.com/ExaDev/pipewright/commit/32c06a63425eefea570f68795d4317389e6465cb))
+
+### Documentation
+
+* **github-actions:** cite the metadata snapshot beside the input derivation ([4fad0af](https://github.com/ExaDev/pipewright/commit/4fad0af0ac5f59647522adc5a8040bb9d39e2c33))
+
+### Tests
+
+* **github-actions:** cover the node action expansion ([3249124](https://github.com/ExaDev/pipewright/commit/3249124a78dbbeb0b6e01394e3f63b401d3c7b2e))
+
 ## [0.4.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.3.0...@pipewright/pipeline-github-actions@0.4.0) (2026-10-11)
 
 ### Features
