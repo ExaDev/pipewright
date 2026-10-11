@@ -13,10 +13,12 @@ import {
   type PipelineRunner,
   type PredicateHandlers,
   type PredicateNode,
+  type PreparedStep,
   type RunContext,
   type RunOptions,
   type Step,
   type StepFileContents,
+  type StepRecord,
   type StepReport,
 } from "@pipewright/pipeline-contract";
 
@@ -145,7 +147,8 @@ interface JobPlan {
   readonly pipeline: Pipeline;
   readonly options: RunOptions;
   readonly jobCondition: Condition;
-  readonly stepConditions: readonly Condition[];
+  /** The result of each job this one needs that this run executed, by id; a job this run does not carry is absent, so a host reading it sees an absent value. */
+  readonly needs: Readonly<Record<string, Outcome>>;
   /** False when an earlier job failed or was skipped and this job does not run regardless. */
   readonly mayRun: boolean;
   /** A gate reports failure when a job it needs did not succeed, rather than being skipped. */
@@ -162,21 +165,17 @@ interface JobRunState {
   readonly masks: string[];
 }
 
-/** The state one matrix combination runs against: what its steps read and what they accumulate. */
-interface CombinationRun {
-  readonly scope: Scope;
-  readonly state: JobRunState;
-}
-
-/** What running one step produced: its report entry and what it handed to the job's later steps. */
+/** What running one command produced: its report entry and what it handed to the job's later steps. */
 interface StepRun {
+  /** The name the command's report entry and log lines carry. */
+  readonly name: string;
   readonly outcome: Outcome;
   readonly outputs: Readonly<Record<string, string>>;
-  /** Entries the step wrote to its environment file, applied to the job's later steps. */
+  /** Entries the command wrote to its environment file, applied to the job's later steps. */
   readonly env: readonly FileEntry[];
-  /** Directories the step added, applied to the job's later steps. */
+  /** Directories the command added, applied to the job's later steps. */
   readonly paths: readonly string[];
-  /** The summary the step wrote, masked, when it wrote one. */
+  /** The summary the command wrote, masked, when it wrote one. */
   readonly summary: string | undefined;
 }
 
@@ -189,12 +188,9 @@ function recordOf(entries: readonly FileEntry[]): Record<string, string> {
 }
 
 /**
- * Reads the workflow command stream from one step's stdout and echoes the rest through the run's output, masked. A mask covers only the lines after the command that registered it, as a runner reading the stream live does.
- */
-/**
  * A step's stderr carries no workflow commands, but it can carry a masked value, so each line is emitted through the masks the run has registered.
  */
-function processStderr(plan: JobPlan, state: JobRunState, step: Step, stderr: string): void {
+function processStderr(plan: JobPlan, state: JobRunState, step: string, stderr: string): void {
   if (stderr === "") return;
   const lines = stderr.split("\n");
   if (lines[lines.length - 1] === "") lines.pop();
@@ -202,14 +198,14 @@ function processStderr(plan: JobPlan, state: JobRunState, step: Step, stderr: st
     const line = ended.endsWith("\r") ? ended.slice(0, -1) : ended;
     plan.options.output.log({
       job: plan.job.name,
-      step: stepName(step),
+      step,
       level: "info",
       message: applyMasks(line, state.masks),
     });
   }
 }
 
-function processStdout(plan: JobPlan, state: JobRunState, step: Step, stdout: string): void {
+function processStdout(plan: JobPlan, state: JobRunState, step: string, stdout: string): void {
   const lines = stdout.split("\n");
   // A trailing newline ends the last line rather than starting an empty one, and a line's own CR is dropped, so a command emitted with CRLF line endings is still read.
   if (lines[lines.length - 1] === "") lines.pop();
@@ -224,7 +220,7 @@ function processStdout(plan: JobPlan, state: JobRunState, step: Step, stdout: st
       }
       plan.options.output.log({
         job: plan.job.name,
-        step: stepName(step),
+        step,
         level: parsed.command.level,
         message: applyMasks(parsed.command.message, state.masks),
         ...(parsed.command.annotation === undefined
@@ -246,71 +242,73 @@ function processStdout(plan: JobPlan, state: JobRunState, step: Step, stdout: st
     }
     plan.options.output.log({
       job: plan.job.name,
-      step: stepName(step),
+      step,
       level: "info",
       message: applyMasks(parsed.text, state.masks),
     });
   }
 }
 
-async function runStep(
+/**
+ * Builds the runner of one command of the job: it runs the command with the runner's file commands around it, fresh command files and the job's composed environment, then reads the stream and the files back. The command's own environment arrives as final values, because a neutral step's are rendered here and a host's resolved steps come already evaluated.
+ */
+function commandRunner(
   plan: JobPlan,
-  combination: CombinationRun,
-  step: Step,
-  index: number,
-): Promise<StepRun> {
-  const { scope, state } = combination;
-  const condition = plan.stepConditions[index];
-  if (condition === undefined || !inRange(plan.options, index) || !condition(scope)) {
-    return { outcome: "skipped", outputs: {}, env: [], paths: [], summary: undefined };
-  }
-  if (step.kind === "provider") {
-    return { outcome: "skipped", outputs: {}, env: [], paths: [], summary: undefined };
-  }
-  if (step.kind !== "run") {
-    return { outcome: "success", outputs: {}, env: [], paths: [], summary: undefined };
-  }
-  const files = await plan.options.scratch.create();
-  const result = await plan.options.executor.execute(
-    {
-      command: step.run,
-      env: {
-        ...state.env,
-        ...resolveEnv(plan.pipeline.env, scope),
-        ...resolveEnv(plan.job.env, scope),
-        ...resolveEnv(step.env, scope),
-        [OUTPUT_VARIABLE]: files.output,
-        [ENV_VARIABLE]: files.env,
-        [PATH_VARIABLE]: files.path,
-        [SUMMARY_VARIABLE]: files.summary,
+  scope: Scope,
+  state: JobRunState,
+  declared: Readonly<Record<string, string>>,
+): (step: PreparedStep) => Promise<StepRun> {
+  return async (step) => {
+    const files = await plan.options.scratch.create();
+    const result = await plan.options.executor.execute(
+      {
+        command: step.command,
+        env: {
+          ...state.env,
+          ...declared,
+          ...step.env,
+          [OUTPUT_VARIABLE]: files.output,
+          [ENV_VARIABLE]: files.env,
+          [PATH_VARIABLE]: files.path,
+          [SUMMARY_VARIABLE]: files.summary,
+        },
+        workingDirectory: step.workingDirectory,
+        pathEntries: [...state.pathEntries],
       },
-      workingDirectory: step.workingDirectory,
-      pathEntries: [...state.pathEntries],
-    },
-    plan.options.signal,
-  );
-  let contents: StepFileContents;
-  try {
-    processStdout(plan, state, step, result.stdout);
-    processStderr(plan, state, step, result.stderr);
-    contents = await plan.options.scratch.read(files);
-  } finally {
-    // The files go even when reading or the command stream throws, so a failure leaves nothing a later process can read.
-    await plan.options.scratch.release(files);
-  }
+      plan.options.signal,
+    );
+    let contents: StepFileContents;
+    try {
+      processStdout(plan, state, step.name, result.stdout);
+      processStderr(plan, state, step.name, result.stderr);
+      contents = await plan.options.scratch.read(files);
+    } finally {
+      // The files go even when reading or the command stream throws, so a failure leaves nothing a later process can read.
+      await plan.options.scratch.release(files);
+    }
 
-  return {
-    outcome: result.exitCode === 0 ? "success" : "failure",
-    outputs: recordOf(parseKeyValueFile(files.output, contents.output)),
-    env: parseKeyValueFile(files.env, contents.env),
-    paths: parsePathFile(contents.path),
-    summary: contents.summary === "" ? undefined : applyMasks(contents.summary, state.masks),
+    return {
+      name: step.name,
+      outcome: result.exitCode === 0 ? "success" : "failure",
+      outputs: recordOf(parseKeyValueFile(files.output, contents.output)),
+      env: parseKeyValueFile(files.env, contents.env),
+      paths: parsePathFile(contents.path),
+      summary: contents.summary === "" ? undefined : applyMasks(contents.summary, state.masks),
+    };
   };
+}
+
+/** The conclusion one step of the job settled to, from the report entries its commands produced: one failure fails it, one skipped entry alone skips it, and anything else succeeded. */
+function concluded(produced: readonly StepReport[]): Outcome {
+  if (produced.some((report) => report.outcome === "failure")) return "failure";
+  if (produced.length === 1 && produced[0]?.outcome === "skipped") return "skipped";
+
+  return "success";
 }
 
 async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise<JobReport> {
   const state: JobRunState = { env: {}, pathEntries: [], masks: [] };
-  const combination: CombinationRun = { scope: { context: plan.options.context, matrix }, state };
+  const scope: Scope = { context: plan.options.context, matrix };
   const { job, id } = plan;
   const skippedSteps = job.steps.map((step) => ({
     name: stepName(step),
@@ -323,11 +321,11 @@ async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise
       id,
       name: job.name,
       matrix,
-      outcome: plan.jobCondition(combination.scope) ? "failure" : "skipped",
+      outcome: plan.jobCondition(scope) ? "failure" : "skipped",
       steps: skippedSteps,
     };
   }
-  if (!plan.mayRun || !plan.jobCondition(combination.scope)) {
+  if (!plan.mayRun || !plan.jobCondition(scope)) {
     return {
       id,
       name: job.name,
@@ -337,27 +335,102 @@ async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise
     };
   }
 
-  const steps = await job.steps.reduce<Promise<StepReport[]>>(async (previous, step, index) => {
-    const reports = await previous;
-    const failed = reports.some((report) => report.outcome === "failure");
-    const run = failed
-      ? { outcome: "skipped" as const, outputs: {}, env: [], paths: [], summary: undefined }
-      : await runStep(plan, combination, step, index);
-    for (const entry of run.env) state.env[entry.key] = entry.value;
-    state.pathEntries = preferredPaths(run.paths, state.pathEntries);
-    if (run.summary !== undefined) {
-      plan.options.output.summary({ job: job.name, step: stepName(step), text: run.summary });
-    }
+  // Preparation happens only for a job that runs, because a host resolves actions, which reads the filesystem and may fetch, and a job that does not run must not reach outside the run.
+  const host = plan.options.host;
+  let steps: readonly Step[] = job.steps;
+  let declared: Record<string, string> = {
+    ...resolveEnv(plan.pipeline.env, scope),
+    ...resolveEnv(plan.job.env, scope),
+  };
+  if (host === undefined) {
+    checkPortable(id, steps, plan.options);
+  } else {
+    const expansion = await host.expand(job, {
+      context: scope.context,
+      matrix,
+      needs: plan.needs,
+      env: { ...declared },
+    });
+    steps = expansion.steps;
+    declared = { ...declared, ...expansion.env };
+  }
+  const conditions: readonly Condition[] = steps.map((step, index) =>
+    conditionOf(step.when, `/jobs/${id}/steps/${String(index)}/when`),
+  );
+  const records: StepRecord[] = [];
+  const command = commandRunner(plan, scope, state, declared);
 
-    return [...reports, { name: stepName(step), outcome: run.outcome, outputs: run.outputs }];
+  const reports = await steps.reduce<Promise<StepReport[]>>(async (previous, step, index) => {
+    const done = await previous;
+    const skip = (): StepReport[] => [{ name: stepName(step), outcome: "skipped", outputs: {} }];
+    // The command a host resolved stops at its own first failure, and a failed step skips the rest of the job.
+    if (done.some((report) => report.outcome === "failure")) return [...done, ...skip()];
+    if (!inRange(plan.options, index) || !(conditions[index] ?? (() => true))(scope)) {
+      return [...done, ...skip()];
+    }
+    const produced: StepReport[] = [];
+    const run = async (prepared: PreparedStep): Promise<void> => {
+      const executed = await command(prepared);
+      for (const entry of executed.env) state.env[entry.key] = entry.value;
+      state.pathEntries = preferredPaths(executed.paths, state.pathEntries);
+      if (executed.summary !== undefined) {
+        plan.options.output.summary({ job: job.name, step: executed.name, text: executed.summary });
+      }
+      produced.push({ name: executed.name, outcome: executed.outcome, outputs: executed.outputs });
+    };
+    if (step.kind === "provider" && host !== undefined) {
+      const resolution = await host.resolve(step, {
+        context: scope.context,
+        matrix,
+        needs: plan.needs,
+        env: { ...state.env, ...declared },
+        steps: [...records],
+      });
+      if (resolution.kind === "unhandled") {
+        throw new UnsupportedFeatureError(
+          PROVIDER,
+          `/jobs/${id}/steps/${String(index)}`,
+          resolution.construct,
+        );
+      }
+      // The commands a host resolves run one at a time and the first failure stops the rest, exactly as the steps of an action do on the provider's own runner.
+      if (resolution.kind === "steps") {
+        await resolution.steps.reduce<Promise<void>>(async (previousCommand, prepared) => {
+          await previousCommand;
+          if (produced.some((report) => report.outcome === "failure")) return;
+          await run(prepared);
+        }, Promise.resolve());
+      } else {
+        produced.push(...skip());
+      }
+    } else if (step.kind === "provider") {
+      produced.push(...skip());
+    } else if (step.kind === "run") {
+      await run({
+        name: stepName(step),
+        command: step.run,
+        env: resolveEnv(step.env, scope),
+        workingDirectory: step.workingDirectory,
+      });
+    } else {
+      // `checkout` is a no-op, because the host has already placed the working tree.
+      produced.push({ name: stepName(step), outcome: "success", outputs: {} });
+    }
+    records.push({
+      step,
+      outcome: concluded(produced),
+      outputs: Object.fromEntries(produced.flatMap((report) => Object.entries(report.outputs))),
+    });
+
+    return [...done, ...produced];
   }, Promise.resolve([]));
 
   return {
     id,
     name: job.name,
     matrix,
-    outcome: steps.some((report) => report.outcome === "failure") ? "failure" : "success",
-    steps,
+    outcome: reports.some((report) => report.outcome === "failure") ? "failure" : "success",
+    steps: reports,
   };
 }
 
@@ -374,8 +447,8 @@ function combinationsOf(job: Job, id: string, options: RunOptions): MatrixCombin
   return combinations;
 }
 
-function checkPortable(id: string, job: Job, options: RunOptions): void {
-  for (const [index, step] of job.steps.entries()) {
+function checkPortable(id: string, steps: readonly Step[], options: RunOptions): void {
+  for (const [index, step] of steps.entries()) {
     if (step.kind === "provider" && inRange(options, index) && options.skipProviderSteps !== true) {
       throw new UnsupportedFeatureError(
         PROVIDER,
@@ -398,7 +471,9 @@ function aggregate(reports: readonly JobReport[]): Outcome {
  *
  * A job with a matrix runs once per combination, sequentially. `checkout` is a no-op, because the host has already placed the working tree.
  *
- * Around each step the runner applies the provider's file commands: it asks the host's scratch for fresh command files and passes their paths in the command's environment, then reads what the step wrote, records its outputs, and carries its environment and path entries to the job's later steps. The step's stdout is read for workflow commands, whose masks and levels are applied to the run's output.
+ * Around each command the runner applies the provider's file commands: it asks the host's scratch for fresh command files and passes their paths in the command's environment, then reads what the command wrote, records its outputs, and carries its environment and path entries to the job's later commands. The command's stdout is read for workflow commands, whose masks and levels are applied to the run's output.
+ *
+ * A `steps` host takes over the provider steps: it is asked to prepare each job that runs, placing its own steps around the job's, and to resolve each provider step the preparation left in place, which may be several commands each receiving the same file-command treatment as a native step.
  */
 export function createLocalRunner(): PipelineRunner {
   return {
@@ -414,7 +489,6 @@ export function createLocalRunner(): PipelineRunner {
         jobReports = await inSequence(ids, async (id) => {
           const job = pipeline.jobs[id];
           if (job === undefined) throw new Error(`unknown job ${id}`);
-          checkPortable(id, job, options);
 
           const needsSatisfied =
             selected !== undefined ||
@@ -426,8 +500,12 @@ export function createLocalRunner(): PipelineRunner {
             options,
             jobCondition:
               selected === undefined ? conditionOf(job.when, `/jobs/${id}/when`) : () => true,
-            stepConditions: job.steps.map((step, index) =>
-              conditionOf(step.when, `/jobs/${id}/steps/${String(index)}/when`),
+            needs: Object.fromEntries(
+              (job.needs ?? []).flatMap((needed) => {
+                const outcome = outcomes.get(needed);
+
+                return outcome === undefined ? [] : [[needed, outcome]];
+              }),
             ),
             mayRun: job.needsPolicy === "always" || needsSatisfied,
             failsGate: job.needsPolicy === "gate" && !needsSatisfied,
