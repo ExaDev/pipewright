@@ -336,6 +336,7 @@ async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise
   }
 
   // Preparation happens only for a job that runs, because a host resolves actions, which reads the filesystem and may fetch, and a job that does not run must not reach outside the run.
+  const range = plan.options.steps === undefined ? undefined : { ...plan.options.steps };
   const host = plan.options.host;
   let steps: readonly Step[] = job.steps;
   let declared: Record<string, string> = {
@@ -350,6 +351,7 @@ async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise
       matrix,
       needs: plan.needs,
       env: { ...declared },
+      range,
     });
     steps = expansion.steps;
     declared = { ...declared, ...expansion.env };
@@ -384,6 +386,7 @@ async function runCombination(plan: JobPlan, matrix: MatrixCombination): Promise
         matrix,
         needs: plan.needs,
         env: { ...state.env, ...declared },
+        range,
         steps: [...records],
       });
       if (resolution.kind === "unhandled") {
