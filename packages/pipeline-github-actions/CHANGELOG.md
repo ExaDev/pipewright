@@ -1,3 +1,14 @@
+## [0.3.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.2.0...@pipewright/pipeline-github-actions@0.3.0) (2026-10-11)
+
+### Features
+
+* **github-actions:** carry workflow-level settings at pipeline level ([348aab7](https://github.com/ExaDev/pipewright/commit/348aab731d356e82b4e35e41f14aa69e1011c588))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.2.0
+
 ## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-github-actions@0.1.2...@pipewright/pipeline-github-actions@0.2.0) (2026-10-11)
 
 ### Features

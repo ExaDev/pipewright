@@ -1,3 +1,14 @@
+## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-circleci@0.1.2...@pipewright/pipeline-circleci@0.2.0) (2026-10-11)
+
+### Features
+
+* **circleci:** carry orbs and other top-level settings at pipeline level ([d5adf20](https://github.com/ExaDev/pipewright/commit/d5adf20dd89d889d60217cc1ad98be6cd2387935))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.2.0
+
 ## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-circleci@0.1.1...@pipewright/pipeline-circleci@0.1.2) (2026-10-11)
 
 ### Bug Fixes

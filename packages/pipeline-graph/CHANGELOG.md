@@ -1,3 +1,10 @@
+## [0.1.3](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-graph@0.1.2...@pipewright/pipeline-graph@0.1.3) (2026-10-11)
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.2.0
+
 ## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-graph@0.1.1...@pipewright/pipeline-graph@0.1.2) (2026-10-11)
 
 

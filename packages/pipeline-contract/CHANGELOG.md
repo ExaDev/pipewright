@@ -1,3 +1,13 @@
+## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.1.2...@pipewright/pipeline-contract@0.2.0) (2026-10-11)
+
+### Features
+
+* **contract:** carry provider-owned settings at pipeline level ([61b854c](https://github.com/ExaDev/pipewright/commit/61b854c0f5dc6e6669d667c8f2f9d02fcc8faeeb))
+
+### Tests
+
+* **conformance:** require the pipeline-level carrier in every compiler ([b85646e](https://github.com/ExaDev/pipewright/commit/b85646e9e7cfac7ad95e603d301a91e3278f028d))
+
 ## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-contract@0.1.1...@pipewright/pipeline-contract@0.1.2) (2026-10-11)
 
 ### Bug Fixes

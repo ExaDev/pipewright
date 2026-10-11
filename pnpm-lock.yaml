@@ -258,38 +258,38 @@ importers:
   packages/check-names:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
     devDependencies:
       '@pipewright/pipeline-github-actions':
-        specifier: 0.2.0
+        specifier: 0.3.0
         version: link:../pipeline-github-actions
       '@pipewright/pipeline-gitlab-ci':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-gitlab-ci
 
   packages/cli:
     dependencies:
       '@pipewright/check-names':
-        specifier: 0.1.3
+        specifier: 0.1.4
         version: link:../check-names
       '@pipewright/pipeline-bitbucket':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-bitbucket
       '@pipewright/pipeline-circleci':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-circleci
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
       '@pipewright/pipeline-github-actions':
-        specifier: 0.2.0
+        specifier: 0.3.0
         version: link:../pipeline-github-actions
       '@pipewright/pipeline-gitlab-ci':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-gitlab-ci
       '@pipewright/pipeline-local':
-        specifier: 0.1.2
+        specifier: 0.1.3
         version: link:../pipeline-local
       '@pipewright/platform-contract':
         specifier: 0.1.0
@@ -314,7 +314,7 @@ importers:
   packages/pipeline-bitbucket:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
         specifier: 0.1.0
@@ -326,7 +326,7 @@ importers:
   packages/pipeline-circleci:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
         specifier: 0.1.0
@@ -354,7 +354,7 @@ importers:
   packages/pipeline-github-actions:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
         specifier: 0.1.0
@@ -366,7 +366,7 @@ importers:
   packages/pipeline-gitlab-ci:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
       '@pipewright/yaml-emit':
         specifier: 0.1.0
@@ -378,7 +378,7 @@ importers:
   packages/pipeline-graph:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
       '@pipewright/platform-contract':
         specifier: 0.1.0
@@ -390,7 +390,7 @@ importers:
   packages/pipeline-local:
     dependencies:
       '@pipewright/pipeline-contract':
-        specifier: 0.1.2
+        specifier: 0.2.0
         version: link:../pipeline-contract
 
   packages/platform-contract:

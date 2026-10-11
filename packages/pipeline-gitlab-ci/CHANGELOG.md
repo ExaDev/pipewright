@@ -1,3 +1,14 @@
+## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-gitlab-ci@0.1.2...@pipewright/pipeline-gitlab-ci@0.2.0) (2026-10-11)
+
+### Features
+
+* **gitlab-ci:** carry top-level settings and hidden jobs at pipeline level ([382b5ac](https://github.com/ExaDev/pipewright/commit/382b5ac8761dc7fa7bc7162e5e5fc1a5daaf7f87))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.2.0
+
 ## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-gitlab-ci@0.1.1...@pipewright/pipeline-gitlab-ci@0.1.2) (2026-10-11)
 
 ### Bug Fixes

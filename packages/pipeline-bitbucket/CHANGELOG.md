@@ -1,3 +1,14 @@
+## [0.2.0](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.1.2...@pipewright/pipeline-bitbucket@0.2.0) (2026-10-11)
+
+### Features
+
+* **bitbucket:** carry definitions and tag pipelines at pipeline level ([8093706](https://github.com/ExaDev/pipewright/commit/8093706fd0348c242970984cf08e08ec2f06f0bb))
+
+
+### Dependencies
+
+- Updated @pipewright/pipeline-contract to 0.2.0
+
 ## [0.1.2](https://github.com/ExaDev/pipewright/compare/@pipewright/pipeline-bitbucket@0.1.1...@pipewright/pipeline-bitbucket@0.1.2) (2026-10-11)
 
 ### Bug Fixes
