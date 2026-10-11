@@ -43,6 +43,7 @@ import { createGitLabCiCompiler, createGitLabCiImporter } from "@pipewright/pipe
 import { createLocalRunner } from "@pipewright/pipeline-local";
 import { createGitHubReader } from "@pipewright/platform-github";
 
+import { createActionHost } from "./actions.ts";
 import { resolveContext } from "./context.ts";
 
 /**
@@ -88,7 +89,7 @@ Commands
   emit         --pipeline <file> --provider <id> [--tool-command <cmd>]   write the provider's native files
   check        --pipeline <file> --provider <id> [--tool-command <cmd>]   fail when a written file has drifted
   run          --pipeline <file> [--job <id>]... [--steps <from>-<to>] [--matrix <axis>=<value>]... [--context <key>=<value>]...
-               [--local] [--skip-provider-steps]
+               [--secret <name>[=<value>]]... [--local] [--skip-provider-steps]
                                                                           execute the pipeline directly, no emitted files
   import       --provider <id> --file <native> [--output <file>]
                [--format ts|json] [--schema <reference>]                   read a provider's native file into a pipeline
@@ -198,6 +199,34 @@ function contextOverrides(
   }
 
   return overrides;
+}
+
+/**
+ * The secrets a run was given, by name. `--secret name=value` supplies one outright and `--secret name` reads the environment variable of that name, so a secret's value never has to appear on a command line. The values are held for the run's lifetime, passed only to the expression evaluator, and never printed, logged or stored.
+ */
+function secretsOf(
+  entries: readonly string[] | undefined,
+  env: Readonly<Record<string, string | undefined>>,
+): Record<string, string> {
+  const secrets: Record<string, string> = {};
+  for (const entry of entries ?? []) {
+    const separator = entry.indexOf("=");
+    if (separator > 0) {
+      secrets[entry.slice(0, separator)] = entry.slice(separator + 1);
+      continue;
+    }
+    if (separator === -1 && /^[A-Za-z_][A-Za-z0-9_]*$/.test(entry)) {
+      const value = env[entry];
+      if (value === undefined || value === "") {
+        throw new Error(`--secret names ${entry}, which the environment does not carry`);
+      }
+      secrets[entry] = value;
+      continue;
+    }
+    throw new Error(`--secret expects <name>=<value> or <name>, got "${entry}"`);
+  }
+
+  return secrets;
 }
 
 /**
@@ -365,25 +394,42 @@ export async function main(argv: readonly string[], io: Io): Promise<number> {
             steps: { type: "string" },
             matrix: { type: "string", multiple: true },
             context: { type: "string", multiple: true },
+            secret: { type: "string", multiple: true },
             local: { type: "boolean" },
             "skip-provider-steps": { type: "boolean" },
           },
         });
         const { pipeline } = await load(io, required(values.pipeline, "--pipeline"));
         const matrix: MatrixCombination = Object.fromEntries(keyValues(values.matrix, "--matrix"));
-        const report = await createLocalRunner().run(pipeline, {
-          executor: io.executor,
-          scratch: io.scratch,
-          output: cliRunOutput(io),
-          context: resolveContext(io.env, {
-            ...(values.local === true ? localContext(pipeline.name) : {}),
-            ...contextOverrides(values.context),
-          }),
-          ...(values.job === undefined ? {} : { only: values.job }),
-          ...(values["skip-provider-steps"] === true ? { skipProviderSteps: true } : {}),
-          ...(values.steps === undefined ? {} : { steps: parseRange(values.steps) }),
-          ...(Object.keys(matrix).length === 0 ? {} : { matrix }),
+        const context = resolveContext(io.env, {
+          ...(values.local === true ? localContext(pipeline.name) : {}),
+          ...contextOverrides(values.context),
         });
+        const name = io.env.CI_ADAPTERS_TOKEN_VARIABLE ?? "GH_TOKEN";
+        const host = createActionHost({
+          cwd: io.cwd,
+          fetch: io.fetch,
+          context,
+          token: io.env[name],
+          secrets: secretsOf(values.secret, io.env),
+          skipProviderSteps: values["skip-provider-steps"] === true,
+        });
+        let report;
+        try {
+          report = await createLocalRunner().run(pipeline, {
+            executor: io.executor,
+            scratch: io.scratch,
+            output: cliRunOutput(io),
+            context,
+            host: host.steps,
+            ...(values.job === undefined ? {} : { only: values.job }),
+            ...(values["skip-provider-steps"] === true ? { skipProviderSteps: true } : {}),
+            ...(values.steps === undefined ? {} : { steps: parseRange(values.steps) }),
+            ...(Object.keys(matrix).length === 0 ? {} : { matrix }),
+          });
+        } finally {
+          await host.dispose();
+        }
         for (const job of report.jobs) {
           const label =
             Object.keys(job.matrix).length === 0 ? "" : ` ${JSON.stringify(job.matrix)}`;

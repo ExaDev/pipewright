@@ -1,0 +1,9 @@
+name: Write
+description: Writes the file a node action was handed, the way an imported node action runs on the host
+inputs:
+  text:
+    description: The text to write
+    required: true
+runs:
+  using: node20
+  main: index.js
