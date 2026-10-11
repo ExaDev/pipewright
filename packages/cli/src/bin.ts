@@ -36,7 +36,8 @@ const io: Io = {
   executor: {
     async execute(execution, signal) {
       return new Promise((done, fail) => {
-        const child = spawn("sh", ["-c", execution.command], {
+        // A run step stops at its first failing command, as it does under GitHub's `bash -e`, so a multi-line step cannot pass with an early command failed.
+        const child = spawn("sh", ["-e", "-c", execution.command], {
           stdio: "inherit",
           cwd:
             execution.workingDirectory === undefined
