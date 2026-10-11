@@ -359,6 +359,9 @@ importers:
       '@pipewright/yaml-emit':
         specifier: 0.1.0
         version: link:../yaml-emit
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/pipeline-gitlab-ci:
     dependencies:
