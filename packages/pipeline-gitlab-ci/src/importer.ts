@@ -488,12 +488,15 @@ function importConfiguration(file: EmittedFile): Pipeline {
   if (stages === undefined) return fail(["stages"], "stages that are not a list of names");
 
   const jobs = new Map<string, Record<string, unknown>>();
+  const carried: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(document)) {
     if (key === "workflow" || key === "stages" || key === "variables") continue;
     if (DEFAULT_KEYS.has(key) || key === "default") continue;
-    if (RESERVED_NAMES.has(key)) fail([key], `the ${key} setting, which has no place in the model`);
-    if (key.startsWith("."))
-      fail([key], "a hidden job, which is a template the model does not resolve");
+    // Top-level GitLab settings and hidden-job templates change what the whole file does, so they are carried at pipeline level and another provider rejects the pipeline rather than run the jobs without them.
+    if (RESERVED_NAMES.has(key) || key.startsWith(".")) {
+      carried[key] = entry;
+      continue;
+    }
     jobs.set(key, recordAt(entry, [key], "a job"));
   }
   if (jobs.size === 0) return fail([], "a configuration with no jobs");
@@ -550,6 +553,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
     triggers: rules.map((rule, index) => triggerAt(rule, ["workflow", "rules", index])),
     ...(concurrency === undefined ? {} : { concurrency }),
     ...(env === undefined ? {} : { env }),
+    ...(Object.keys(carried).length === 0 ? {} : { native: { [PROVIDER]: carried } }),
     jobs: Object.fromEntries(
       jobEntries.map(([name, job]) => {
         const id = idOf.get(name) ?? name;
@@ -571,7 +575,7 @@ function importConfiguration(file: EmittedFile): Pipeline {
 /**
  * Reads a `.gitlab-ci.yml` into the neutral model: the inverse of `createGitLabCiCompiler`.
  *
- * Read: workflow rules that select a pipeline source with an optional branch filter, stages and `needs` (a job with no `needs` waits for the whole stage before it, as GitLab runs it), tags, matrix, timeout, environment, variables, `rules` that are one `if` over the neutral variables as anchored case-insensitive matches (and `when: always`), concurrency written as `interruptible` or a shared `resource_group`, and the script, one `run` step per line, after a `checkout` that carries `GIT_DEPTH`. What GitLab owns and the model carries verbatim is kept: any other job key, and a setting with no neutral form, go into the job's `native` mapping. What has nowhere to be carried is rejected with its JSON pointer: a file with no workflow rules, a hidden job or an `extends`, a downstream trigger, top-level `default`, `include` and the like, a `needs` entry with options, and a call to this tool's runner. A gate and an ordinary dependent job are written the same, so a gate reads back as an ordinary job.
+ * Read: workflow rules that select a pipeline source with an optional branch filter, stages and `needs` (a job with no `needs` waits for the whole stage before it, as GitLab runs it), tags, matrix, timeout, environment, variables, `rules` that are one `if` over the neutral variables as anchored case-insensitive matches (and `when: always`), concurrency written as `interruptible` or a shared `resource_group`, and the script, one `run` step per line, after a `checkout` that carries `GIT_DEPTH`. What GitLab owns and the model carries verbatim is kept: any other job key, and a setting with no neutral form, go into the job's `native` mapping. Top-level settings and hidden-job templates are carried at pipeline level. What has nowhere to be carried is rejected with its JSON pointer: a file with no workflow rules, an `extends`, a downstream trigger, top-level `default` a job does not inherit, a `needs` entry with options, and a call to this tool's runner. A gate and an ordinary dependent job are written the same, so a gate reads back as an ordinary job.
  */
 export function createGitLabCiImporter(): PipelineImporter {
   return {

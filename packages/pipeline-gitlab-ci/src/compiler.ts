@@ -19,6 +19,8 @@ import {
   type Step,
   type Trigger,
   joinShellSteps,
+  mergeNative,
+  nativeOf,
 } from "@pipewright/pipeline-contract";
 import { renderYaml } from "@pipewright/yaml-emit";
 import { dag } from "process-graph";
@@ -447,7 +449,11 @@ export function createGitLabCiCompiler(): PipelineCompiler {
       return Promise.resolve([
         {
           path: ".gitlab-ci.yml",
-          content: renderYaml(document, comments, generatedHeaderLines(options.source)),
+          content: renderYaml(
+            mergeNative(document, nativeOf(pipeline, PROVIDER)),
+            comments,
+            generatedHeaderLines(options.source),
+          ),
         },
       ]);
     },
