@@ -46,14 +46,24 @@ describe("parseKeyValueFile", () => {
     expect(parseKeyValueFile("GITHUB_OUTPUT", "k=a<<b\n")).toEqual([{ key: "k", value: "a<<b" }]);
   });
 
-  it("rejects a malformed line, an empty key, and an unterminated heredoc, each naming the file and line", () => {
-    expect(() => parseKeyValueFile("GITHUB_ENV", "A=1\nnot an entry\n")).toThrow(
-      "GITHUB_ENV line 2",
+  it("rejects a malformed line, an empty key, and an unterminated heredoc, each naming the file and line and echoing none of it", () => {
+    expect(() => parseKeyValueFile("GITHUB_ENV", "A=1\nsecret-value-not-quoted\n")).toThrow(
+      "GITHUB_ENV line 2 is neither key=value nor a heredoc",
     );
-    expect(() => parseKeyValueFile("GITHUB_ENV", "=1\n")).toThrow("GITHUB_ENV line 1");
+    expect(() => parseKeyValueFile("GITHUB_ENV", "=1\n")).toThrow(
+      "GITHUB_ENV line 1 has an empty key",
+    );
     expect(() => parseKeyValueFile("GITHUB_OUTPUT", "k<<eof\nvalue\n")).toThrow(
-      "GITHUB_OUTPUT line 1",
+      "GITHUB_OUTPUT line 1 opens a heredoc",
     );
+    // A malformed line can carry a value a step masked, so the message must not quote the line's text.
+    let message: string | undefined;
+    try {
+      parseKeyValueFile("GITHUB_ENV", "hunter2\n");
+    } catch (error) {
+      message = error instanceof Error ? error.message : undefined;
+    }
+    expect(message).not.toContain("hunter2");
   });
 });
 

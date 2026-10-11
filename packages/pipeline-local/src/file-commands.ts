@@ -30,7 +30,8 @@ export function parseKeyValueFile(fileName: string, content: string): FileEntry[
     const heredoc = line.indexOf("<<");
     if (equals >= 0 && (heredoc < 0 || equals < heredoc)) {
       const key = line.slice(0, equals);
-      if (key === "") throw new Error(`${at} has an empty key: ${line}`);
+      // The line's text is never in the message, because a malformed line can carry a value a step masked.
+      if (key === "") throw new Error(`${at} has an empty key`);
 
       entries.push({ key, value: line.slice(equals + 1) });
       continue;
@@ -39,7 +40,7 @@ export function parseKeyValueFile(fileName: string, content: string): FileEntry[
       const key = line.slice(0, heredoc);
       const delimiter = line.slice(heredoc + 2);
       if (key === "" || delimiter === "") {
-        throw new Error(`${at} opens a heredoc with an empty key or delimiter: ${line}`);
+        throw new Error(`${at} opens a heredoc with an empty key or delimiter`);
       }
       const end = lines.indexOf(delimiter, offset + 1);
       if (end === -1) {
@@ -50,7 +51,7 @@ export function parseKeyValueFile(fileName: string, content: string): FileEntry[
       continue;
     }
 
-    throw new Error(`${at} is neither key=value nor a heredoc: ${line}`);
+    throw new Error(`${at} is neither key=value nor a heredoc`);
   }
 
   return entries;
