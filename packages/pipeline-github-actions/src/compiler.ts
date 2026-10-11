@@ -19,6 +19,8 @@ import {
   type PredicateHandlers,
   type PredicateNode,
   type Step,
+  mergeNative,
+  nativeOf,
 } from "@pipewright/pipeline-contract";
 import { renderYaml } from "@pipewright/yaml-emit";
 
@@ -394,7 +396,11 @@ export function createGitHubActionsCompiler(): PipelineCompiler {
       return Promise.resolve([
         {
           path: `.github/workflows/${slugOf(pipeline.name)}.yml`,
-          content: renderYaml(document, comments, generatedHeaderLines(options.source)),
+          content: renderYaml(
+            mergeNative(document, nativeOf(pipeline, PROVIDER)),
+            comments,
+            generatedHeaderLines(options.source),
+          ),
         },
       ]);
     },
