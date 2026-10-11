@@ -79,7 +79,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Generated files
-        run: node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts"
+        run: node packages/cli/src/bin.ts check --pipeline ci/ci.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts check --pipeline ci/e2e.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts" && node packages/cli/src/bin.ts check --pipeline ci/release.pipeline.ts --provider github-actions --tool-command "node packages/cli/src/bin.ts"
   # Validates the emitted workflow with GitHub's own linter rules.
   actionlint:
     name: Actionlint

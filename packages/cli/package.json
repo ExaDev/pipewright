@@ -45,5 +45,9 @@
     "url": "git+https://github.com/ExaDev/pipewright.git",
     "directory": "packages/cli"
   },
+  "scripts": {
+    "postpack": "node ../../scripts/postpack.ts",
+    "prepack": "node ../../scripts/prepack.ts"
+  },
   "type": "module"
 }
