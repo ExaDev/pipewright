@@ -28,6 +28,7 @@ import {
   PROVIDER,
   RESERVED_NAMES,
   escapeRegex,
+  FAIL_FAST,
 } from "./vocabulary.ts";
 
 function isEventKind(value: string): value is EventKind {
@@ -217,6 +218,8 @@ function jobOf(input: JobInput): JobOutput {
   const script: string[] = [];
   /** The script entry that consecutive `run` steps are being joined into, since the lines of a GitLab script share one shell. */
   let openRun: number | undefined;
+  /** The script entries written from `run` steps, which are the ones that must stop at their first failing command. */
+  const runEntries = new Set<number>();
   let gitDepth: string | undefined;
 
   let index = 0;
@@ -259,6 +262,7 @@ function jobOf(input: JobInput): JobOutput {
         const label = step.description ?? step.name;
         if (openRun === undefined) {
           openRun = script.length;
+          runEntries.add(openRun);
           script.push(step.run);
           if (label !== undefined) comments.set(`${key}/script/${String(openRun)}`, label);
         } else {
@@ -337,7 +341,9 @@ function jobOf(input: JobInput): JobOutput {
       ...(pipeline.concurrency?.cancelInProgress === false && group !== undefined
         ? { resource_group: group }
         : {}),
-      script,
+      script: script.map((entry, at) =>
+        runEntries.has(at) && entry.includes("\n") ? `${FAIL_FAST}\n${entry}` : entry,
+      ),
       ...(job.native?.["gitlab-ci"] ?? {}),
     },
   };

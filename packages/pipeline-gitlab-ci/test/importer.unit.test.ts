@@ -317,5 +317,6 @@ describe("GitLab CI import", () => {
       { kind: "run", run: "cd web\nnpm test", description: "Enter the package." },
     ]);
     expect(second?.content).toBe(first.content);
+    expect(first.content).toMatch(/set -e\n\s+cd web\n\s+npm test/);
   });
 });

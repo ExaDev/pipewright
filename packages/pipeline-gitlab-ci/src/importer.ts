@@ -18,6 +18,7 @@ import {
   PROVIDER,
   RESERVED_NAMES,
   literalOfRegex,
+  FAIL_FAST,
 } from "./vocabulary.ts";
 
 type Pointer = readonly (string | number)[];
@@ -329,7 +330,7 @@ function jobAt(name: string, value: unknown, context: JobContext): Record<string
       ? [{ kind: "checkout", ...(fetchDepth === undefined ? {} : { fetchDepth }) }]
       : []),
     portable
-      ? { kind: "run", run: lines.join("\n"), ...described }
+      ? { kind: "run", run: lines.map(withoutFailFast).join("\n"), ...described }
       : { kind: "provider", provider: PROVIDER, native: { script: lines }, ...described },
   ];
 
@@ -396,6 +397,15 @@ function implicitNeedsOf(
   }
 
   return needs;
+}
+
+/**
+ * A script entry as the neutral step's text: the fail-fast line the compiler starts a multi-line entry with is the model's own rule for run steps, so it is not part of the text.
+ */
+function withoutFailFast(entry: string): string {
+  const prefix = `${FAIL_FAST}\n`;
+
+  return entry.startsWith(prefix) ? entry.slice(prefix.length) : entry;
 }
 
 const DEFAULT_GROUP = "{{ workflow }}-{{ refName }}";
