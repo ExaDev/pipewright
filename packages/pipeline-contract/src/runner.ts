@@ -71,11 +71,15 @@ export interface StepFileContents {
 }
 
 /**
- * Allocates and reads the per-step command files, the runner's filesystem boundary: the runner never touches a filesystem itself, so the host creates each step's files empty before the command runs and reads them back after it exits. Both are per step, so one step can never read what another wrote.
+ * Allocates, reads and reclaims the per-step command files, the runner's filesystem boundary: the runner never touches a filesystem itself, so the host creates each step's files empty before the command runs, reads them back after it exits and removes them once read, so one step can never read what another wrote, not even from disk.
  */
 export interface StepScratch {
   readonly create: () => Promise<StepCommandFiles>;
   readonly read: (files: StepCommandFiles) => Promise<StepFileContents>;
+  /** Called once the runner has read a step's files, so the host removes them: a later step's process must not be able to read what an earlier one wrote. */
+  readonly release: (files: StepCommandFiles) => Promise<void>;
+  /** Called when the run ends, so the host removes the scratch root and nothing the run wrote outlives it. */
+  readonly dispose: () => Promise<void>;
 }
 
 export interface CommandExecutor {

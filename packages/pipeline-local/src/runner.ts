@@ -260,6 +260,7 @@ async function runStep(
   );
   processStdout(plan, state, step, result.stdout);
   const contents = await plan.options.scratch.read(files);
+  await plan.options.scratch.release(files);
 
   return {
     outcome: result.exitCode === 0 ? "success" : "failure",
@@ -401,6 +402,7 @@ export function createLocalRunner(): PipelineRunner {
       });
 
       const reports = jobReports.flat();
+      await options.scratch.dispose();
 
       return { jobs: reports, ok: reports.every((report) => report.outcome !== "failure") };
     },
