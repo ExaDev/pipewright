@@ -119,8 +119,9 @@ function parseAnnotation(command: string, properties: string): Annotation | unde
   const annotation: { file?: string; line?: number; endLine?: number; title?: string } = {};
   for (const part of properties.split(",")) {
     const separator = part.indexOf("=");
+    // The property's text is never quoted in the message, because a malformed property can carry a value a step masked.
     if (separator <= 0) {
-      throw new Error(`::${command}:: carries the property "${part}", which is not name=value`);
+      throw new Error(`::${command}:: carries a property that is not name=value`);
     }
     const name = part.slice(0, separator);
     const value = unescape(part.slice(separator + 1), PROPERTY_CODES);
