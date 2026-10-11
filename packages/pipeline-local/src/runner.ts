@@ -191,6 +191,24 @@ function recordOf(entries: readonly FileEntry[]): Record<string, string> {
 /**
  * Reads the workflow command stream from one step's stdout and echoes the rest through the run's output, masked. A mask covers only the lines after the command that registered it, as a runner reading the stream live does.
  */
+/**
+ * A step's stderr carries no workflow commands, but it can carry a masked value, so each line is emitted through the masks the run has registered.
+ */
+function processStderr(plan: JobPlan, state: JobRunState, step: Step, stderr: string): void {
+  if (stderr === "") return;
+  const lines = stderr.split("\n");
+  if (lines[lines.length - 1] === "") lines.pop();
+  for (const ended of lines) {
+    const line = ended.endsWith("\r") ? ended.slice(0, -1) : ended;
+    plan.options.output.log({
+      job: plan.job.name,
+      step: stepName(step),
+      level: "info",
+      message: applyMasks(line, state.masks),
+    });
+  }
+}
+
 function processStdout(plan: JobPlan, state: JobRunState, step: Step, stdout: string): void {
   const lines = stdout.split("\n");
   // A trailing newline ends the last line rather than starting an empty one, and a line's own CR is dropped, so a command emitted with CRLF line endings is still read.
@@ -262,6 +280,7 @@ async function runStep(
   let contents: StepFileContents;
   try {
     processStdout(plan, state, step, result.stdout);
+    processStderr(plan, state, step, result.stderr);
     contents = await plan.options.scratch.read(files);
   } finally {
     // The files go even when reading or the command stream throws, so a failure leaves nothing a later process can read.

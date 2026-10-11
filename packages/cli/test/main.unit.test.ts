@@ -165,6 +165,7 @@ function harness(options: HarnessOptions = {}): Harness {
         return Promise.resolve({
           exitCode: failing(execution.command) ? 1 : 0,
           stdout: answer.stdout,
+          stderr: "",
         });
       },
     },
