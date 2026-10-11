@@ -229,12 +229,14 @@ function paxRecords(data: Uint8Array): Map<string, string> {
 async function extractTarball(root: string, tarball: Uint8Array): Promise<void> {
   await readTar(gunzipSync(tarball)).reduce<Promise<void>>(async (previous, entry) => {
     await previous;
-    // Every entry of a repository tarball starts with the repository's own root directory, whose name the action never sees.
-    const segments = entry.name.split("/").slice(1);
+    // Every entry of a repository tarball starts with the repository's own root directory, whose name the action never sees, and a directory entry's name ends with the slash that ends it.
+    const whole = entry.name.endsWith("/") ? entry.name.slice(0, -1) : entry.name;
+    const segments = whole.split("/").slice(1);
     const climbs = segments.some(
       (segment) => segment === "" || segment === "." || segment === "..",
     );
     if (segments.length === 0 || climbs) {
+      if (entry.bytes === null) return;
       throw new Error(`a tarball entry outside its repository root: ${entry.name}`);
     }
     const target = join(root, ...segments);
