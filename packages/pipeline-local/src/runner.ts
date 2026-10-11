@@ -218,7 +218,8 @@ function processStdout(plan: JobPlan, state: JobRunState, step: Step, stdout: st
     const parsed = parseStdoutLine(line);
     if (parsed.kind === "command") {
       if (parsed.command.kind === "mask") {
-        state.masks.push(parsed.command.value);
+        // The runner's own command manager registers each decoded line of the value as its own mask, because output is filtered one line at a time.
+        for (const mask of parsed.command.value.split("\n")) state.masks.push(mask);
         continue;
       }
       plan.options.output.log({
