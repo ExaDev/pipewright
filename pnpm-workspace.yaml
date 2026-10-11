@@ -18,6 +18,7 @@ minimumReleaseAgeExclude:
   - "@exadev/process-graph-projection"
   - "@exadev/process-graph-schema"
   - "@exadev/semantic-release-workspace"
+  - "@pipewright/*"
   - "process-graph"
   - "trilean"
   - "trilean-regex"
