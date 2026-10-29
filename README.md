@@ -1,5 +1,7 @@
 # pipewright
 
+[![GitHub](https://img.shields.io/badge/GitHub-181717?logo=github&logoColor=white)](https://github.com/ExaDev/pipewright) [![Release](https://img.shields.io/github/v/release/ExaDev/pipewright)](https://github.com/ExaDev/pipewright/releases/latest) [![CI](https://img.shields.io/github/actions/workflow/status/ExaDev/pipewright/ci.yml?branch=main)](https://github.com/ExaDev/pipewright/actions)
+
 Write a CI pipeline once, in TypeScript, and use it however the provider allows: compile it to the provider's native configuration, run it directly with no generated file, or query the platform it ran on. The three are separate and none needs the others.
 
 The repository name is `pipewright`. An unrelated tool of the same name exists (see [`docs/research.md`](docs/research.md)), so the name is a working one.
