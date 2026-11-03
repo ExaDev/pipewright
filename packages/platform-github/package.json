@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "dependencies": {
     "@pipewright/platform-contract": "0.1.0",
-    "zod": "4.6.5"
+    "zod": "4.6.6"
   },
   "exports": {
     ".": "./src/index.ts"
